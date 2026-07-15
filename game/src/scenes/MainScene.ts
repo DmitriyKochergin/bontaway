@@ -20,8 +20,8 @@ export default class MainScene extends Phaser.Scene {
     private readonly fovRadiusTiles = 7.5;
     private readonly fovFadeTiles = 7.5;
     private readonly tileSize = 32;
-    private readonly dungeonColumns = 48;
-    private readonly dungeonRows = 34;
+    private readonly dungeonColumns = 96;
+    private readonly dungeonRows = 64;
     private readonly movementSpeed = 250;
     private readonly fovRefreshMs = 33;
     private readonly fovOffsetMax = 10;
@@ -32,8 +32,8 @@ export default class MainScene extends Phaser.Scene {
     private fovOffsetX = 0;
     private fovOffsetY = 0;
     private currentFacingDirection: PlayerDirection = 'south';
-    // private playerAppearance: PlayerAppearance = 'circle';
-    private playerAppearance: PlayerAppearance = 'franciscan';
+    private playerAppearance: PlayerAppearance = 'circle';
+    // private playerAppearance: PlayerAppearance = 'franciscan';
 
     constructor() {
         super('MainScene');
@@ -271,6 +271,17 @@ export default class MainScene extends Phaser.Scene {
         carveRoom(18, 24, 10, 6);
         carveRoom(7, 5, 6, 5);
         carveRoom(36, 24, 6, 5);
+        carveRoom(49, 7, 11, 7);
+        carveRoom(53, 21, 12, 8);
+        carveRoom(41, 35, 14, 8);
+        carveRoom(9, 34, 10, 8);
+        carveRoom(27, 40, 9, 6);
+        carveRoom(68, 8, 10, 8);
+        carveRoom(77, 22, 12, 8);
+        carveRoom(72, 36, 14, 9);
+        carveRoom(58, 47, 11, 7);
+        carveRoom(83, 45, 8, 6);
+        carveRoom(19, 50, 12, 7);
 
         carveHorizontalPassage(10, 16, 15);
         carveHorizontalPassage(30, 34, 13);
@@ -278,6 +289,21 @@ export default class MainScene extends Phaser.Scene {
         carveVerticalPassage(23, 20, 24);
         carveHorizontalPassage(12, 18, 7);
         carveVerticalPassage(39, 17, 23);
+        carveHorizontalPassage(40, 52, 10);
+        carveVerticalPassage(58, 12, 25);
+        carveHorizontalPassage(48, 61, 25);
+        carveVerticalPassage(48, 25, 39);
+        carveHorizontalPassage(14, 30, 38);
+        carveVerticalPassage(31, 32, 44);
+        carveHorizontalPassage(56, 73, 11);
+        carveVerticalPassage(74, 11, 27);
+        carveHorizontalPassage(66, 86, 25);
+        carveVerticalPassage(85, 25, 41);
+        carveHorizontalPassage(60, 79, 40);
+        carveVerticalPassage(60, 40, 52);
+        carveHorizontalPassage(22, 34, 53);
+        carveVerticalPassage(34, 48, 58);
+        carveHorizontalPassage(74, 89, 48);
 
         return {
             walkable,
