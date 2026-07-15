@@ -1,6 +1,5 @@
 import { defineConfig } from "@rsbuild/core";
 
-// biome-ignore suppressions/unused: Rsbuild requires a default-exported config.
 export default defineConfig({
   server: {
     open: true,
@@ -11,7 +10,7 @@ export default defineConfig({
   },
   source: {
     entry: {
-      index: "./src/index.tsx"
+      index: "./src/main.ts"
     }
   },
   output: {
