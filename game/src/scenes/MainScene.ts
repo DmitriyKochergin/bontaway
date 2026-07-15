@@ -1,6 +1,10 @@
 import Phaser from 'phaser';
 import { type PhaserRaycasterPlugin, type Raycaster, type RaycasterRay } from '../phaser-raycaster';
 
+const playerDirections = ['south', 'south_west', 'west', 'north_west', 'north', 'north_east', 'east', 'south_east'] as const;
+type PlayerDirection = (typeof playerDirections)[number];
+type PlayerAppearance = 'circle' | 'franciscan';
+
 export default class MainScene extends Phaser.Scene {
     raycasterPlugin!: PhaserRaycasterPlugin;
     private player!: Phaser.Types.Physics.Arcade.SpriteWithDynamicBody;
@@ -27,6 +31,9 @@ export default class MainScene extends Phaser.Scene {
     private lastFovCenterY = Number.NaN;
     private fovOffsetX = 0;
     private fovOffsetY = 0;
+    private currentFacingDirection: PlayerDirection = 'south';
+    // private playerAppearance: PlayerAppearance = 'circle';
+    private playerAppearance: PlayerAppearance = 'franciscan';
 
     constructor() {
         super('MainScene');
@@ -88,6 +95,16 @@ export default class MainScene extends Phaser.Scene {
         obstacle.fillCircle(34, 31, 4);
         obstacle.generateTexture('obstacle', 48, 48);
         obstacle.destroy();
+
+        // 5. Franciscan player spritesheet copied from dungeon-crawler-now
+        this.load.spritesheet('franciscan_idle', 'assets/characters/franciscan_idle.png', {
+            frameWidth: 32,
+            frameHeight: 32
+        });
+        this.load.spritesheet('franciscan_walk', 'assets/characters/franciscan_walk.png', {
+            frameWidth: 32,
+            frameHeight: 32
+        });
     }
 
     create() {
@@ -151,11 +168,14 @@ export default class MainScene extends Phaser.Scene {
         this.raycaster.mapGameObjects(this.raycasterOccluders, false);
 
         // Player
-        this.player = this.physics.add.sprite(dungeon.spawnX, dungeon.spawnY, 'player');
-        this.player.setCircle(14);
+        this.player = this.physics.add.sprite(dungeon.spawnX, dungeon.spawnY, 'franciscan_idle', this.getIdleFrameIndex(this.currentFacingDirection));
         this.player.setDepth(300);
+        this.player.setFrame(this.getIdleFrameIndex(this.currentFacingDirection));
 
         this.physics.add.collider(this.player, physicsWalls);
+
+        this.createPlayerAnimations();
+        this.applyPlayerAppearance();
 
         this.cameras.main.startFollow(this.player, true, 0.1, 0.1);
 
@@ -165,6 +185,11 @@ export default class MainScene extends Phaser.Scene {
 
         this.cursors = this.input.keyboard.createCursorKeys();
         this.keys = this.input.keyboard.addKeys('W,A,S,D') as Partial<Record<'W' | 'A' | 'S' | 'D', Phaser.Input.Keyboard.Key>>;
+
+        this.input.keyboard.on('keydown-TAB', (event: KeyboardEvent) => {
+            event.preventDefault();
+            this.togglePlayerAppearance();
+        });
 
         const outerRadius = this.tileSize * (this.fovRadiusTiles + this.fovFadeTiles);
         this.fovRay = this.raycaster.createRay({
@@ -419,20 +444,36 @@ export default class MainScene extends Phaser.Scene {
 
         if (movementVector.lengthSq() > 0) {
             movementVector.normalize().scale(this.movementSpeed);
+            if (this.playerAppearance === 'circle') {
+                this.targetRotation = Math.atan2(movementVector.y, movementVector.x) + Math.PI / 2;
+                const diff = Phaser.Math.Angle.Wrap(this.targetRotation - this.player.rotation);
+                const rotationSpeed = 0.01 * delta;
 
-            this.targetRotation = Math.atan2(movementVector.y, movementVector.x) + Math.PI / 2;
-            const diff = Phaser.Math.Angle.Wrap(this.targetRotation - this.player.rotation);
-            const rotationSpeed = 0.01 * delta;
-
-            if (Math.abs(diff) < rotationSpeed) {
-                this.player.rotation = this.targetRotation;
-            } else {
-                this.player.rotation += Math.sign(diff) * rotationSpeed;
+                if (Math.abs(diff) < rotationSpeed) {
+                    this.player.rotation = this.targetRotation;
+                } else {
+                    this.player.rotation += Math.sign(diff) * rotationSpeed;
+                }
             }
 
+
+
             this.player.setVelocity(movementVector.x, movementVector.y);
+            const direction = this.getDirectionFromMovement(movementVector);
+
+            if (direction !== this.currentFacingDirection) {
+                this.currentFacingDirection = direction;
+            }
+
+            if (this.playerAppearance === 'franciscan') {
+                this.player.anims.play(this.getWalkAnimationKey(direction), true);
+            }
         } else {
             this.player.setVelocity(0, 0);
+            if (this.playerAppearance === 'franciscan') {
+                this.player.anims.stop();
+                this.player.setFrame(this.getIdleFrameIndex(this.currentFacingDirection));
+            }
         }
 
         const targetOffsetX = movementVector.lengthSq() > 0 ? (movementVector.x / this.movementSpeed) * this.fovOffsetMax : 0;
@@ -455,6 +496,90 @@ export default class MainScene extends Phaser.Scene {
 
         this.fovRefreshAccumulator = 0;
         this.redrawFovMask();
+    }
+
+    private createPlayerAnimations() {
+        for (const [index, direction] of playerDirections.entries()) {
+            this.anims.create({
+                key: `player_idle_${direction}`,
+                frames: [{ key: 'franciscan_idle', frame: index }],
+                frameRate: 1
+            });
+
+            this.anims.create({
+                key: `player_walk_${direction}`,
+                frames: [0, 1, 2, 3].map(row => ({
+                    key: 'franciscan_walk',
+                    frame: row * 8 + index
+                })),
+                frameRate: 8,
+                repeat: -1
+            });
+        }
+    }
+
+    private applyPlayerAppearance() {
+        if (this.playerAppearance === 'circle') {
+            this.player.anims.stop();
+            this.player.setTexture('player');
+            this.player.setFrame(0);
+            this.player.setCircle(14);
+            this.player.body?.setOffset(2, 2);
+            return;
+        }
+
+        this.player.setTexture('franciscan_idle', this.getIdleFrameIndex(this.currentFacingDirection));
+        this.player.setFrame(this.getIdleFrameIndex(this.currentFacingDirection));
+        this.player.body?.setCircle(0);
+        this.player.body?.setSize(32, 32, true);
+    }
+
+    private togglePlayerAppearance() {
+        this.playerAppearance = this.playerAppearance === 'circle' ? 'franciscan' : 'circle';
+        this.applyPlayerAppearance();
+    }
+
+    private getIdleFrameIndex(direction: PlayerDirection) {
+        return playerDirections.indexOf(direction);
+    }
+
+    private getWalkAnimationKey(direction: PlayerDirection) {
+        return `player_walk_${direction}`;
+    }
+
+    private getDirectionFromMovement(movementVector: Phaser.Math.Vector2): PlayerDirection {
+        const horizontal = Math.abs(movementVector.x);
+        const vertical = Math.abs(movementVector.y);
+
+        if (horizontal === 0 && vertical === 0) {
+            return this.currentFacingDirection;
+        }
+
+        if (movementVector.x !== 0 && movementVector.y !== 0) {
+            if (movementVector.x > 0 && movementVector.y > 0) {
+                return 'south_east';
+            }
+
+            if (movementVector.x > 0 && movementVector.y < 0) {
+                return 'north_east';
+            }
+
+            if (movementVector.x < 0 && movementVector.y > 0) {
+                return 'south_west';
+            }
+
+            return 'north_west';
+        }
+
+        if (horizontal > vertical) {
+            return movementVector.x > 0 ? 'east' : 'west';
+        }
+
+        if (vertical > horizontal) {
+            return movementVector.y > 0 ? 'south' : 'north';
+        }
+
+        return movementVector.x > 0 ? 'east' : 'west';
     }
 }
 
