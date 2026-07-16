@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="CopilotDiffPersistence">
+    <option name="pendingDiffs">
+      <map>
+        <entry key="$PROJECT_DIR$/game2/src/phaser-raycaster.ts">
+          <value>
+            <PendingDiffInfo>
+              <option name="filePath" value="$PROJECT_DIR$/game2/src/phaser-raycaster.ts" />
+              <option name="updatedContent" value="import Phaser from 'phaser';&#10;// @ts-expect-error - package export target is broken in this workspace, so import the installed ESM file directly.&#10;import PhaserRaycasterRuntime from '../node_modules/phaser-raycaster/src/main-esm.js';&#10;&#10;export type RaycasterPoint = { x: number; y: number };&#10;&#10;export interface RaycasterRay {&#10;    setRay(x: number, y: number, angle?: number, range?: number): RaycasterRay;&#10;    castCircle(options?: { objects?: object[] }): Phaser.Math.Vector2[];&#10;}&#10;&#10;export interface RaycasterInstance {&#10;    createRay(options?: {&#10;        origin?: Phaser.Math.Vector2 | RaycasterPoint;&#10;        angle?: number;&#10;        angleDeg?: number;&#10;        cone?: number;&#10;        coneDeg?: number;&#10;        range?: number;&#10;        collisionRange?: number;&#10;        detectionRange?: number;&#10;        ignoreNotIntersectedRays?: boolean;&#10;        autoSlice?: boolean;&#10;        round?: boolean;&#10;        enablePhysics?: boolean | 'arcade' | 'matter';&#10;    }): RaycasterRay;&#10;    mapGameObjects(objects: object | object[], dynamic?: boolean, options?: Record&lt;string, unknown&gt;): RaycasterInstance;&#10;    setBoundingBox(x: number, y: number, width: number, height: number): RaycasterInstance;&#10;    update(): RaycasterInstance;&#10;}&#10;&#10;export type PhaserRaycasterPlugin = Phaser.Plugins.ScenePlugin &amp; {&#10;    createRaycaster(options?: {&#10;        mapSegmentCount?: number;&#10;        objects?: object | object[];&#10;        boundingBox?: Phaser.Geom.Rectangle;&#10;        autoUpdate?: boolean;&#10;        debug?: boolean | Record&lt;string, unknown&gt;;&#10;    }): RaycasterInstance;&#10;};&#10;&#10;const PhaserRaycaster = PhaserRaycasterRuntime as unknown as new (&#10;    scene: Phaser.Scene,&#10;    pluginManager: Phaser.Plugins.PluginManager&#10;) =&gt; PhaserRaycasterPlugin;&#10;&#10;export type Raycaster = RaycasterInstance;&#10;export default PhaserRaycaster;&#10;" />
+            </PendingDiffInfo>
+          </value>
+        </entry>
+      </map>
+    </option>
+  </component>
+</project>

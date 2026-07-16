@@ -1,0 +1,14 @@
+.env
+.env.development
+.env.production
+.env.*.local
+
+node
+node_modules
+/.idea
+/build
+/dist
+/artifacts
+.yarn
+*.log
+.eslintcache
