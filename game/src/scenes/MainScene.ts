@@ -34,6 +34,10 @@ export default class MainScene extends Phaser.Scene {
     private currentFacingDirection: PlayerDirection = 'south';
     private playerAppearance: PlayerAppearance = 'circle';
     // private playerAppearance: PlayerAppearance = 'franciscan';
+    private playerLight!: Phaser.GameObjects.Light;
+    private physicsWalls!: Phaser.Physics.Arcade.StaticGroup;
+    private activeProjectiles: Phaser.Types.Physics.Arcade.SpriteWithDynamicBody[] = [];
+    private activeExplosions: { x: number; y: number; radius: number }[] = [];
 
     constructor() {
         super('MainScene');
@@ -105,10 +109,21 @@ export default class MainScene extends Phaser.Scene {
             frameWidth: 32,
             frameHeight: 32
         });
+
+        // 6. Fireball texture
+        const fireball = this.add.graphics();
+        fireball.fillStyle(0xff5500);
+        fireball.fillCircle(8, 8, 8);
+        fireball.generateTexture('fireball', 16, 16);
+        fireball.destroy();
     }
 
     create() {
         this.cameras.main.setBackgroundColor('#000000');
+
+        // Enable Phaser lighting system
+        this.lights.enable();
+        this.lights.setAmbientColor(0x111122); // Dark blue night/dungeon environment
 
         const tileSize = this.tileSize;
         const dungeon = this.buildDungeonLayout();
@@ -123,15 +138,17 @@ export default class MainScene extends Phaser.Scene {
                     continue;
                 }
 
-                this.add.image(
+                const floorImage = this.add.image(
                     column * tileSize + tileSize / 2,
                     row * tileSize + tileSize / 2,
                     'floor'
                 ).setDepth(0);
+                floorImage.setPipeline('Light2D'); // Floor responds to light
             }
         }
 
         const physicsWalls = this.physics.add.staticGroup();
+        this.physicsWalls = physicsWalls;
         const wallCells = this.buildWallCells(dungeon.walkable);
 
         for (const wallCell of wallCells) {
@@ -171,11 +188,15 @@ export default class MainScene extends Phaser.Scene {
         this.player = this.physics.add.sprite(dungeon.spawnX, dungeon.spawnY, 'franciscan_idle', this.getIdleFrameIndex(this.currentFacingDirection));
         this.player.setDepth(300);
         this.player.setFrame(this.getIdleFrameIndex(this.currentFacingDirection));
+        this.player.setPipeline('Light2D'); // Player responds to light
 
         this.physics.add.collider(this.player, physicsWalls);
 
         this.createPlayerAnimations();
         this.applyPlayerAppearance();
+
+        // Light around player (radius 200, yellowish color, intensity 2)
+        this.playerLight = this.lights.addLight(this.player.x, this.player.y, 500, 0xffeebb, 2);
 
         this.cameras.main.startFollow(this.player, true, 0.1, 0.1);
 
@@ -189,6 +210,11 @@ export default class MainScene extends Phaser.Scene {
         this.input.keyboard.on('keydown-TAB', (event: KeyboardEvent) => {
             event.preventDefault();
             this.togglePlayerAppearance();
+        });
+
+        // Cast fireball on click/pointerdown
+        this.input.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
+            this.castFireball(pointer.worldX, pointer.worldY);
         });
 
         const outerRadius = this.tileSize * (this.fovRadiusTiles + this.fovFadeTiles);
@@ -212,6 +238,7 @@ export default class MainScene extends Phaser.Scene {
         walkable: boolean[][]
     ) {
         const wallBlock = this.physics.add.staticImage(x, y, 'wall');
+        wallBlock.setPipeline('Light2D'); // Wall responds to light
         wallBlock.setDepth(200);
         wallBlock.refreshBody();
 
@@ -364,6 +391,7 @@ export default class MainScene extends Phaser.Scene {
         height: number
     ) {
         const obstacle = this.physics.add.staticImage(x, y, 'obstacle');
+        obstacle.setPipeline('Light2D'); // Obstacle responds to light
         obstacle.setDisplaySize(width, height);
         obstacle.refreshBody();
         obstacle.setDepth(200);
@@ -449,6 +477,46 @@ export default class MainScene extends Phaser.Scene {
         context.fillStyle = radialGradient;
         context.fillRect(0, 0, width, height);
         context.restore();
+
+        // Draw circles for fireballs and explosions directly to the mask (no shadows/raycasting)
+        context.save();
+        context.globalCompositeOperation = 'destination-out';
+
+        for (const projectile of this.activeProjectiles) {
+            if (!projectile.active) continue;
+            const pX = projectile.x - camera.scrollX;
+            const pY = projectile.y - camera.scrollY;
+            const radius = 150; // Match fireball light radius
+
+            const grad = context.createRadialGradient(pX, pY, 0, pX, pY, radius);
+            grad.addColorStop(0, 'rgba(0, 0, 0, 1)');
+            grad.addColorStop(0.5, 'rgba(0, 0, 0, 0.7)');
+            grad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+
+            context.fillStyle = grad;
+            context.beginPath();
+            context.arc(pX, pY, radius, 0, Math.PI * 2);
+            context.fill();
+        }
+
+        for (const explosion of this.activeExplosions) {
+            const eX = explosion.x - camera.scrollX;
+            const eY = explosion.y - camera.scrollY;
+            const radius = explosion.radius;
+
+            const grad = context.createRadialGradient(eX, eY, 0, eX, eY, radius);
+            grad.addColorStop(0, 'rgba(0, 0, 0, 1)');
+            grad.addColorStop(0.5, 'rgba(0, 0, 0, 0.7)');
+            grad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+
+            context.fillStyle = grad;
+            context.beginPath();
+            context.arc(eX, eY, radius, 0, Math.PI * 2);
+            context.fill();
+        }
+
+        context.restore();
+
         this.lastFovCenterX = centerX;
         this.lastFovCenterY = centerY;
         this.fovMaskTexture.refresh();
@@ -456,6 +524,12 @@ export default class MainScene extends Phaser.Scene {
 
     update(_time: number, delta: number) {
         if (!this.player.body) return;
+
+        // Update light position to track player
+        if (this.playerLight) {
+            this.playerLight.x = this.player.x;
+            this.playerLight.y = this.player.y;
+        }
 
         const movementVector = new Phaser.Math.Vector2(0, 0);
 
@@ -514,7 +588,9 @@ export default class MainScene extends Phaser.Scene {
         const currentFovCenterY = this.player.y - camera.scrollY;
         const movedEnough =
             Math.abs(currentFovCenterX - this.lastFovCenterX) > 0.25 ||
-            Math.abs(currentFovCenterY - this.lastFovCenterY) > 0.25;
+            Math.abs(currentFovCenterY - this.lastFovCenterY) > 0.25 ||
+            this.activeProjectiles.length > 0 ||
+            this.activeExplosions.length > 0;
 
         if (!movedEnough && this.fovRefreshAccumulator < this.fovRefreshMs) {
             return;
@@ -551,6 +627,7 @@ export default class MainScene extends Phaser.Scene {
             this.player.setFrame(0);
             this.player.setCircle(14);
             this.player.body?.setOffset(2, 2);
+            this.player.setPipeline('Light2D');
             return;
         }
 
@@ -558,6 +635,7 @@ export default class MainScene extends Phaser.Scene {
         this.player.setFrame(this.getIdleFrameIndex(this.currentFacingDirection));
         this.player.body?.setCircle(0);
         this.player.body?.setSize(32, 32, true);
+        this.player.setPipeline('Light2D');
     }
 
     private togglePlayerAppearance() {
@@ -606,6 +684,109 @@ export default class MainScene extends Phaser.Scene {
         }
 
         return movementVector.x > 0 ? 'east' : 'west';
+    }
+
+    private castFireball(targetX: number, targetY: number) {
+        // Create fireball sprite
+        const projectile = this.physics.add.sprite(this.player.x, this.player.y, 'fireball');
+        projectile.setPipeline('Light2D');
+        projectile.setDepth(250);
+
+        this.activeProjectiles.push(projectile);
+
+        // Add light that flies with the fireball
+        const spellLight = this.lights.addLight(projectile.x, projectile.y, 150, 0xff5500, 3);
+
+        // Particles (fire trail)
+        const particles = this.add.particles(0, 0, 'fireball', {
+            speed: 20,
+            scale: { start: 1, end: 0 },
+            blendMode: 'ADD',
+            lifespan: 300
+        });
+        particles.setDepth(240);
+        particles.startFollow(projectile);
+
+        // Move to target coordinates
+        this.physics.moveTo(projectile, targetX, targetY, 300);
+
+        let isCleanedUp = false;
+        const cleanUp = () => {
+            if (isCleanedUp) return;
+            isCleanedUp = true;
+            this.activeProjectiles = this.activeProjectiles.filter(p => p !== projectile);
+            this.lights.removeLight(spellLight);
+            particles.destroy();
+            projectile.destroy();
+            this.events.off('update', updateListener);
+        };
+
+        // Destroy fireball and trigger explosion when it hits a wall/obstacle
+        this.physics.add.collider(projectile, this.physicsWalls, () => {
+            this.createExplosion(projectile.x, projectile.y);
+            cleanUp();
+        });
+
+        // Destroy and cleanup after 10 seconds (or upon wall/obstacle collision)
+        this.time.delayedCall(10000, () => {
+            cleanUp();
+        });
+
+        // Update light position every frame
+        const updateListener = () => {
+            if (projectile.active) {
+                spellLight.x = projectile.x;
+                spellLight.y = projectile.y;
+            } else {
+                cleanUp();
+            }
+        };
+        this.events.on('update', updateListener);
+    }
+
+    private createExplosion(x: number, y: number) {
+        // Create an expanding explosion light (matching fireball's orange color)
+        const explosionLight = this.lights.addLight(x, y, 50, 0xff5500, 10);
+
+        const explosionObj = { x, y, radius: 50 };
+        this.activeExplosions.push(explosionObj);
+
+        // Explosion particles (longer lifespan to match the slower fade out)
+        const particles = this.add.particles(x, y, 'fireball', {
+            speed: { min: 30, max: 120 },
+            angle: { min: 0, max: 360 },
+            scale: { start: 2, end: 0 },
+            blendMode: 'ADD',
+            lifespan: { min: 600, max: 700 },
+            maxParticles: 25
+        });
+        particles.setDepth(260);
+
+        // Animate the light expansion and fading (longer duration for a slower fade out)
+        let elapsed = 0;
+        const duration = 1000; // 1000 ms (1 second fade out)
+
+        const updateLight = (_time: number, delta: number) => {
+            elapsed += delta;
+            const progress = Math.min(elapsed / duration, 1);
+
+            explosionLight.radius = 150 + progress * 250; // Expands to 400 radius
+            explosionLight.intensity = 10 * (1 - progress);
+            explosionObj.radius = explosionLight.radius;
+
+            if (progress >= 1) {
+                this.lights.removeLight(explosionLight);
+                this.events.off('update', updateLight);
+                this.activeExplosions = this.activeExplosions.filter(e => e !== explosionObj);
+            }
+        };
+
+        this.events.on('update', updateLight);
+
+        // Destroy particle emitter system when all particles fade
+        this.time.delayedCall(1200, () => {
+            particles.destroy();
+        });
     }
 }
 
