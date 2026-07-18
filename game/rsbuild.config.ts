@@ -3,7 +3,7 @@ import { defineConfig } from "@rsbuild/core";
 export default defineConfig({
   server: {
     open: true,
-    base: "/bontaway",
+    base: "/bontaway"
   },
   html: {
     template: "./index.html"
