@@ -11,7 +11,7 @@ export interface DungeonGeometry {
   raycasterOccluders: Phaser.Physics.Arcade.Image[];
 }
 
-export class DungeonLayoutSystem {
+export class DungeonSystem {
   constructor(
     private readonly scene: Phaser.Scene,
     private readonly tileSize: number,
