@@ -5,7 +5,7 @@ const playerDirections = ['south', 'south_west', 'west', 'north_west', 'north', 
 type PlayerDirection = (typeof playerDirections)[number];
 type PlayerAppearance = 'circle' | 'franciscan';
 
-export default class MainScene extends Phaser.Scene {
+export default class GameScene extends Phaser.Scene {
     raycasterPlugin!: PhaserRaycasterPlugin;
     private player!: Phaser.Types.Physics.Arcade.SpriteWithDynamicBody;
     private cursors!: Phaser.Types.Input.Keyboard.CursorKeys;
