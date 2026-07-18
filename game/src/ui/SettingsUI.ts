@@ -31,6 +31,8 @@ export class SettingsUI {
   private readonly PANEL_HEIGHT = 400;
   private readonly SLIDER_WIDTH = 120;
   private readonly TRACK_X = 0;
+  private readonly OVERLAY_DEPTH = 990;
+  private readonly PANEL_DEPTH = 1000;
 
   constructor(scene: Phaser.Scene, audioSystem?: AudioSystem) {
     this.scene = scene;
@@ -85,11 +87,11 @@ export class SettingsUI {
     const centerY = cam.scrollY + cam.height / 2;
 
     this.overlay = this.scene.add.rectangle(centerX, centerY, cam.width * 3, cam.height * 3, 0x000000, 0);
-    this.overlay.setDepth(199);
+    this.overlay.setDepth(this.OVERLAY_DEPTH);
     this.overlay.setInteractive();
 
     this.panel = this.scene.add.container(centerX, centerY + cam.height);
-    this.panel.setDepth(200);
+    this.panel.setDepth(this.PANEL_DEPTH);
     this.panel.setAlpha(0);
 
     this.createPanel();
@@ -202,7 +204,7 @@ export class SettingsUI {
     closeBtn.setInteractive({ useHandCursor: true });
     closeBtn.on("pointerover", () => closeBtn.setColor("#ff4444"));
     closeBtn.on("pointerout", () => closeBtn.setColor("#666666"));
-    closeBtn.on("pointerdown", (event: any) => {
+    closeBtn.on("pointerdown", (_pointer: Phaser.Input.Pointer, _localX: number, _localY: number, event: Event) => {
       this.hide();
       event.stopPropagation();
     });
