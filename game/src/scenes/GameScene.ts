@@ -1,8 +1,9 @@
 import Phaser from "phaser";
 import { Player } from "../entities/Player";
+import { BaseScene } from "./BaseScene";
 import { type PhaserRaycasterPlugin, type Raycaster, type RaycasterRay } from "../phaser-raycaster";
 
-export default class GameScene extends Phaser.Scene {
+export default class GameScene extends BaseScene {
   raycasterPlugin!: PhaserRaycasterPlugin;
   private player!: Player;
   private raycaster!: Raycaster;
@@ -26,76 +27,18 @@ export default class GameScene extends Phaser.Scene {
 
   constructor() {
     super("MainScene");
-
-    void this.preload;
-    void this.create;
   }
 
-  preload() {
-    // 1. Floor Tile
-    const floor = this.add.graphics();
-    floor.fillStyle(0x1a1a1a);
-    floor.fillRect(0, 0, 32, 32);
-    floor.lineStyle(1, 0x121212);
-    floor.strokeRect(0, 0, 32, 32);
-    for (let i = 0; i < 5; i++) {
-      floor.fillStyle(0x222222, 0.5);
-      floor.fillRect(Phaser.Math.Between(2, 25), Phaser.Math.Between(2, 25), 4, 4);
-    }
-    floor.generateTexture("floor", 32, 32);
-    floor.destroy();
-
-    // 2. Wall
-    const wall = this.add.graphics();
-    wall.fillStyle(0x333333);
-    wall.fillRect(0, 0, 32, 32);
-    wall.lineStyle(2, 0x111111);
-    wall.strokeRect(0, 0, 32, 32);
-    wall.lineStyle(1, 0x444444);
-    wall.moveTo(0, 0);
-    wall.lineTo(32, 0);
-    wall.moveTo(0, 0);
-    wall.lineTo(0, 32);
-    wall.strokePath();
-    wall.generateTexture("wall", 32, 32);
-    wall.destroy();
-
-    // 3. Player (32x32 texture with eyes for direction)
-    const player = this.add.graphics();
-
-    // Cloak (main body)
-    player.fillStyle(0x777777);
-    player.fillCircle(16, 16, 14);
-
-    // Two eyes to show direction (facing "up" by default)
-    player.fillStyle(0x111111, 0.9);
-    player.fillRoundedRect(9, 8, 5, 9, 3); // Left eye
-    player.fillRoundedRect(18, 8, 5, 9, 3); // Right eye
-
-    player.generateTexture("player", 32, 32);
-    player.destroy();
-
-    // 4. Obstacle tile
-    const obstacle = this.add.graphics();
-    obstacle.fillStyle(0x4a4a4a);
-    obstacle.fillRoundedRect(0, 0, 48, 48, 8);
-    obstacle.lineStyle(2, 0x1b1b1b);
-    obstacle.strokeRoundedRect(0, 0, 48, 48, 8);
-    obstacle.fillStyle(0x2f2f2f, 0.45);
-    obstacle.fillCircle(16, 16, 5);
-    obstacle.fillCircle(34, 31, 4);
-    obstacle.generateTexture("obstacle", 48, 48);
-    obstacle.destroy();
-
-    // 5. Fireball texture
-    const fireball = this.add.graphics();
-    fireball.fillStyle(0xff5500);
-    fireball.fillCircle(8, 8, 8);
-    fireball.generateTexture("fireball", 16, 16);
-    fireball.destroy();
+  create(): void {
+    this.setupShutdownCleanup();
+    this.createScene();
   }
 
-  create() {
+  createScene() {
+    this.initSettingsUI();
+    this.initAudio("exploration");
+    this.bindSettingsKeys();
+
     this.cameras.main.setBackgroundColor("#000000");
 
     // Enable Phaser lighting system
@@ -174,6 +117,10 @@ export default class GameScene extends Phaser.Scene {
 
     // Cast fireball on click/pointerdown
     this.input.on("pointerdown", (pointer: Phaser.Input.Pointer) => {
+      if (this.isUIBlocking()) {
+        return;
+      }
+
       this.castFireball(pointer.worldX, pointer.worldY);
     });
 
@@ -475,6 +422,11 @@ export default class GameScene extends Phaser.Scene {
   update(_time: number, delta: number) {
     if (!this.player || !this.player.body) return;
 
+    if (this.isUIBlocking()) {
+      this.player.setVelocity(0, 0);
+      return;
+    }
+
     this.player.update(_time, delta);
 
     this.fovRefreshAccumulator += delta;
@@ -498,6 +450,8 @@ export default class GameScene extends Phaser.Scene {
 
 
   private castFireball(targetX: number, targetY: number) {
+    this.audioSystem?.play("sfx_attack", 0.35);
+
     // Create fireball sprite
     const projectile = this.physics.add.sprite(this.player.x, this.player.y, "fireball");
     projectile.setPipeline("Light2D");
@@ -534,6 +488,7 @@ export default class GameScene extends Phaser.Scene {
 
     // Destroy fireball and trigger explosion when it hits a wall/obstacle
     this.physics.add.collider(projectile, this.physicsWalls, () => {
+      this.audioSystem?.play("sfx_hit", 0.4);
       this.createExplosion(projectile.x, projectile.y);
       cleanUp();
     });
