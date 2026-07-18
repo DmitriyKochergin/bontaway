@@ -202,7 +202,10 @@ export class SettingsUI {
     closeBtn.setInteractive({ useHandCursor: true });
     closeBtn.on("pointerover", () => closeBtn.setColor("#ff4444"));
     closeBtn.on("pointerout", () => closeBtn.setColor("#666666"));
-    closeBtn.on("pointerdown", () => this.hide());
+    closeBtn.on("pointerdown", (event: any) => {
+      this.hide();
+      event.stopPropagation();
+    });
     this.panel.add(closeBtn);
   }
 
