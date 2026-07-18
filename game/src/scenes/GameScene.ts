@@ -1,5 +1,5 @@
 import Phaser from "phaser";
-import { Player, playerDirections } from "../entities/Player";
+import { Player } from "../entities/Player";
 import { type PhaserRaycasterPlugin, type Raycaster, type RaycasterRay } from "../phaser-raycaster";
 
 export default class GameScene extends Phaser.Scene {
@@ -87,17 +87,7 @@ export default class GameScene extends Phaser.Scene {
     obstacle.generateTexture("obstacle", 48, 48);
     obstacle.destroy();
 
-    // 5. Franciscan player spritesheet copied from dungeon-crawler-now
-    this.load.spritesheet("franciscan_idle", "assets/characters/franciscan_idle.png", {
-      frameWidth: 32,
-      frameHeight: 32
-    });
-    this.load.spritesheet("franciscan_walk", "assets/characters/franciscan_walk.png", {
-      frameWidth: 32,
-      frameHeight: 32
-    });
-
-    // 6. Fireball texture
+    // 5. Fireball texture
     const fireball = this.add.graphics();
     fireball.fillStyle(0xff5500);
     fireball.fillCircle(8, 8, 8);
@@ -179,8 +169,6 @@ export default class GameScene extends Phaser.Scene {
     this.player = new Player(this, dungeon.spawnX, dungeon.spawnY);
 
     this.physics.add.collider(this.player, physicsWalls);
-
-    this.createPlayerAnimations();
 
     this.cameras.main.startFollow(this.player, true, 0.1, 0.1);
 
@@ -508,25 +496,6 @@ export default class GameScene extends Phaser.Scene {
     this.redrawFovMask();
   }
 
-  private createPlayerAnimations() {
-    for (const [index, direction] of playerDirections.entries()) {
-      this.anims.create({
-        key: `player_idle_${direction}`,
-        frames: [{ key: "franciscan_idle", frame: index }],
-        frameRate: 1
-      });
-
-      this.anims.create({
-        key: `player_walk_${direction}`,
-        frames: [0, 1, 2, 3].map(row => ({
-          key: "franciscan_walk",
-          frame: row * 8 + index
-        })),
-        frameRate: 8,
-        repeat: -1
-      });
-    }
-  }
 
   private castFireball(targetX: number, targetY: number) {
     // Create fireball sprite

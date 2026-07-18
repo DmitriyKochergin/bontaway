@@ -1,19 +1,5 @@
 import Phaser from "phaser";
 
-export const playerDirections = [
-  "south",
-  "south_west",
-  "west",
-  "north_west",
-  "north",
-  "north_east",
-  "east",
-  "south_east"
-] as const;
-
-export type PlayerDirection = (typeof playerDirections)[number];
-export type PlayerAppearance = "circle" | "franciscan";
-
 export class Player extends Phaser.Physics.Arcade.Sprite {
   private cursors!: Phaser.Types.Input.Keyboard.CursorKeys;
   private keys: Partial<Record<"W" | "A" | "S" | "D", Phaser.Input.Keyboard.Key>> = {};
@@ -24,8 +10,6 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
 
   public fovOffsetX = 0;
   public fovOffsetY = 0;
-  public currentFacingDirection: PlayerDirection = "south";
-  public playerAppearance: PlayerAppearance = "circle";
   public playerLight!: Phaser.GameObjects.Light;
 
   constructor(scene: Phaser.Scene, x: number, y: number) {
@@ -45,84 +29,18 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
       this.keys = scene.input.keyboard.addKeys("W,A,S,D") as Partial<
         Record<"W" | "A" | "S" | "D", Phaser.Input.Keyboard.Key>
       >;
-
-      scene.input.keyboard.on("keydown-TAB", (event: KeyboardEvent) => {
-        event.preventDefault();
-        this.togglePlayerAppearance();
-      });
     }
 
-    this.applyPlayerAppearance();
-  }
-
-  public togglePlayerAppearance() {
-    this.playerAppearance = this.playerAppearance === "circle" ? "franciscan" : "circle";
     this.applyPlayerAppearance();
   }
 
   public applyPlayerAppearance() {
-    if (this.playerAppearance === "circle") {
-      this.anims.stop();
-      this.setTexture("player");
-      this.setFrame(0);
-      this.setCircle(14);
-      this.body?.setOffset(2, 2);
-      this.setPipeline("Light2D");
-      return;
-    }
-
-    this.setTexture("franciscan_idle", this.getIdleFrameIndex(this.currentFacingDirection));
-    this.setFrame(this.getIdleFrameIndex(this.currentFacingDirection));
-    if (this.body) {
-      if ("setCircle" in this.body) {
-        (this.body as Phaser.Physics.Arcade.Body).setCircle(0);
-      }
-      this.body.setSize(32, 32, true);
-    }
+    this.anims.stop();
+    this.setTexture("player");
+    this.setFrame(0);
+    this.setCircle(14);
+    this.body?.setOffset(2, 2);
     this.setPipeline("Light2D");
-  }
-
-  private getIdleFrameIndex(direction: PlayerDirection) {
-    return playerDirections.indexOf(direction);
-  }
-
-  private getWalkAnimationKey(direction: PlayerDirection) {
-    return `player_walk_${direction}`;
-  }
-
-  private getDirectionFromMovement(movementVector: Phaser.Math.Vector2): PlayerDirection {
-    const horizontal = Math.abs(movementVector.x);
-    const vertical = Math.abs(movementVector.y);
-
-    if (horizontal === 0 && vertical === 0) {
-      return this.currentFacingDirection;
-    }
-
-    if (movementVector.x !== 0 && movementVector.y !== 0) {
-      if (movementVector.x > 0 && movementVector.y > 0) {
-        return "south_east";
-      }
-
-      if (movementVector.x > 0 && movementVector.y < 0) {
-        return "north_east";
-      }
-
-      if (movementVector.x < 0 && movementVector.y > 0) {
-        return "south_west";
-      }
-
-      return "north_west";
-    }
-
-    if (horizontal > vertical) {
-      return movementVector.x > 0 ? "east" : "west";
-    }
-
-    if (vertical > horizontal) {
-      return movementVector.y > 0 ? "south" : "north";
-    }
-
-    return movementVector.x > 0 ? "east" : "west";
   }
 
   update(_time: number, delta: number) {
@@ -147,34 +65,19 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
 
     if (movementVector.lengthSq() > 0) {
       movementVector.normalize().scale(this.movementSpeed);
-      if (this.playerAppearance === "circle") {
-        this.targetRotation = Math.atan2(movementVector.y, movementVector.x) + Math.PI / 2;
-        const diff = Phaser.Math.Angle.Wrap(this.targetRotation - this.rotation);
-        const rotationSpeed = 0.01 * delta;
+      this.targetRotation = Math.atan2(movementVector.y, movementVector.x) + Math.PI / 2;
+      const diff = Phaser.Math.Angle.Wrap(this.targetRotation - this.rotation);
+      const rotationSpeed = 0.01 * delta;
 
-        if (Math.abs(diff) < rotationSpeed) {
-          this.rotation = this.targetRotation;
-        } else {
-          this.rotation += Math.sign(diff) * rotationSpeed;
-        }
+      if (Math.abs(diff) < rotationSpeed) {
+        this.rotation = this.targetRotation;
+      } else {
+        this.rotation += Math.sign(diff) * rotationSpeed;
       }
 
       this.setVelocity(movementVector.x, movementVector.y);
-      const direction = this.getDirectionFromMovement(movementVector);
-
-      if (direction !== this.currentFacingDirection) {
-        this.currentFacingDirection = direction;
-      }
-
-      if (this.playerAppearance === "franciscan") {
-        this.anims.play(this.getWalkAnimationKey(direction), true);
-      }
     } else {
       this.setVelocity(0, 0);
-      if (this.playerAppearance === "franciscan") {
-        this.anims.stop();
-        this.setFrame(this.getIdleFrameIndex(this.currentFacingDirection));
-      }
     }
 
     const targetOffsetX =
