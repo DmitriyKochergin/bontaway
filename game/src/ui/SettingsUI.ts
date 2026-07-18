@@ -318,14 +318,14 @@ export class SettingsUI {
     };
 
     hitArea.on("pointerdown", (pointer: Phaser.Input.Pointer) => {
-      const localX = pointer.x - (this.panel!.x + this.TRACK_X);
+      const localX = pointer.worldX - (this.panel!.x + this.TRACK_X);
       const newValue = Phaser.Math.Clamp(localX / this.SLIDER_WIDTH, 0, 1);
       this.updateSlider(sliderData, newValue);
       setValue(newValue);
     });
 
     hitArea.on("drag", (pointer: Phaser.Input.Pointer) => {
-      const localX = pointer.x - (this.panel!.x + this.TRACK_X);
+      const localX = pointer.worldX - (this.panel!.x + this.TRACK_X);
       const newValue = Phaser.Math.Clamp(localX / this.SLIDER_WIDTH, 0, 1);
       this.updateSlider(sliderData, newValue);
       setValue(newValue);
