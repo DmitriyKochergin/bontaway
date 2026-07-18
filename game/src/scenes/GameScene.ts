@@ -82,8 +82,8 @@ export default class GameScene extends Phaser.Scene {
 
         // Two eyes to show direction (facing "up" by default)
         player.fillStyle(0x111111, 0.9);
-        player.fillRoundedRect(9, 8, 5, 10, 2.5); // Left eye
-        player.fillRoundedRect(18, 8, 5, 10, 2.5); // Right eye
+        player.fillRoundedRect(9, 8, 5, 9, 3); // Left eye
+        player.fillRoundedRect(18, 8, 5, 9, 3); // Right eye
 
         player.generateTexture('player', 32, 32);
         player.destroy();

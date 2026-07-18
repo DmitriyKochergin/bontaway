@@ -7,7 +7,11 @@ export const gameConfig: Phaser.Types.Core.GameConfig = {
     width: window.innerWidth,
     height: window.innerHeight,
     parent: 'game-container',
+    backgroundColor: '#1a1a2e',
     pixelArt: true,
+    render: {
+        maxLights: 100,
+    },
     physics: {
         default: 'arcade',
         arcade: {
