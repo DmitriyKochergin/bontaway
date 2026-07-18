@@ -2,7 +2,7 @@ import Phaser from "phaser";
 import { Player } from "../entities/Player";
 import { type PhaserRaycasterPlugin } from "../phaser-raycaster";
 import { preloadGameSceneAssets } from "./game/GameSceneAssets";
-import { DungeonSystem } from "../systems/DungeonSystem";
+import { DungeonLayoutSystem } from "../systems/DungeonLayoutSystem";
 import { FieldOfViewSystem } from "../systems/FieldOfViewSystem";
 import { ProjectileSystem } from "../systems/ProjectileSystem";
 import { createPlayerAnimations } from "../systems/PlayerAnimationSystem";
@@ -15,7 +15,7 @@ export default class GameScene extends Phaser.Scene {
   private readonly tileSize = 32;
   private readonly dungeonColumns = 96;
   private readonly dungeonRows = 64;
-  private dungeonLayoutSystem!: DungeonSystem;
+  private dungeonLayoutSystem!: DungeonLayoutSystem;
   private projectileSystem!: ProjectileSystem;
   private fieldOfViewSystem!: FieldOfViewSystem;
 
@@ -34,7 +34,7 @@ export default class GameScene extends Phaser.Scene {
     this.lights.enable();
     this.lights.setAmbientColor(0x111122);
 
-    this.dungeonLayoutSystem = new DungeonSystem(
+    this.dungeonLayoutSystem = new DungeonLayoutSystem(
       this,
       this.tileSize,
       this.dungeonColumns,
