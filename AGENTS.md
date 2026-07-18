@@ -1,11 +1,5 @@
 # Project: Bontaway (Pocket Rogues + Baldur's Gate Hybrid)
 
-## Mandatory Context
-Before fulfilling any request, you **MUST** read the following specification files in the `docs/` directory to understand the mechanical and atmospheric requirements:
-1. `docs/Game_Master_Design_Doc.md` - Overall vision and core pillars.
-2. `docs/Game_Detailed_Requirements.md` - Technical breakdown of systems.
-3. `docs/Game_Specification_PocketRogues_BaldursGate.md` - High-level goals and roadmap.
-
 ## Core Features
 - **Top-Down 2D Exploration:** Handcrafted static maps with a focus on discovery and liminality.
 - **RTwP (Real-Time with Pause):** Tactical combat with a grayscale "time-stop" visual effect.
