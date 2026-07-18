@@ -1,6 +1,6 @@
 import Phaser from "phaser";
-import GameScene from "./scenes/GameScene";
 import PhaserRaycaster from "./phaser-raycaster";
+import GameScene from "./scenes/GameScene";
 
 export const gameConfig: Phaser.Types.Core.GameConfig = {
   type: Phaser.AUTO,

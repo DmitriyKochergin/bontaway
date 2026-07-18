@@ -1,25 +1,10 @@
 import Phaser from "phaser";
+import { Player, playerDirections } from "../entities/Player";
 import { type PhaserRaycasterPlugin, type Raycaster, type RaycasterRay } from "../phaser-raycaster";
-
-const playerDirections = [
-  "south",
-  "south_west",
-  "west",
-  "north_west",
-  "north",
-  "north_east",
-  "east",
-  "south_east"
-] as const;
-type PlayerDirection = (typeof playerDirections)[number];
-type PlayerAppearance = "circle" | "franciscan";
 
 export default class GameScene extends Phaser.Scene {
   raycasterPlugin!: PhaserRaycasterPlugin;
-  private player!: Phaser.Types.Physics.Arcade.SpriteWithDynamicBody;
-  private cursors!: Phaser.Types.Input.Keyboard.CursorKeys;
-  private keys: Partial<Record<"W" | "A" | "S" | "D", Phaser.Input.Keyboard.Key>> = {};
-  private targetRotation: number = 0;
+  private player!: Player;
   private raycaster!: Raycaster;
   private fovRay!: RaycasterRay;
   private raycasterOccluders: Phaser.Physics.Arcade.Image[] = [];
@@ -31,19 +16,10 @@ export default class GameScene extends Phaser.Scene {
   private readonly tileSize = 32;
   private readonly dungeonColumns = 96;
   private readonly dungeonRows = 64;
-  private readonly movementSpeed = 250;
   private readonly fovRefreshMs = 33;
-  private readonly fovOffsetMax = 10;
-  private readonly fovOffsetLerp = 0.18;
   private fovRefreshAccumulator = 0;
   private lastFovCenterX = Number.NaN;
   private lastFovCenterY = Number.NaN;
-  private fovOffsetX = 0;
-  private fovOffsetY = 0;
-  private currentFacingDirection: PlayerDirection = "south";
-  private playerAppearance: PlayerAppearance = "circle";
-  // private playerAppearance: PlayerAppearance = 'franciscan';
-  private playerLight!: Phaser.GameObjects.Light;
   private physicsWalls!: Phaser.Physics.Arcade.StaticGroup;
   private activeProjectiles: Phaser.Types.Physics.Arcade.SpriteWithDynamicBody[] = [];
   private activeExplosions: { x: number; y: number; radius: number }[] = [];
@@ -200,39 +176,13 @@ export default class GameScene extends Phaser.Scene {
     this.raycaster.mapGameObjects(this.raycasterOccluders, false);
 
     // Player
-    this.player = this.physics.add.sprite(
-      dungeon.spawnX,
-      dungeon.spawnY,
-      "franciscan_idle",
-      this.getIdleFrameIndex(this.currentFacingDirection)
-    );
-    this.player.setDepth(300);
-    this.player.setFrame(this.getIdleFrameIndex(this.currentFacingDirection));
-    this.player.setPipeline("Light2D"); // Player responds to light
+    this.player = new Player(this, dungeon.spawnX, dungeon.spawnY);
 
     this.physics.add.collider(this.player, physicsWalls);
 
     this.createPlayerAnimations();
-    this.applyPlayerAppearance();
-
-    // Light around player (radius 200, yellowish color, intensity 2)
-    this.playerLight = this.lights.addLight(this.player.x, this.player.y, 500, 0xffeebb, 2);
 
     this.cameras.main.startFollow(this.player, true, 0.1, 0.1);
-
-    if (!this.input.keyboard) {
-      throw new Error("Keyboard input is required for this scene.");
-    }
-
-    this.cursors = this.input.keyboard.createCursorKeys();
-    this.keys = this.input.keyboard.addKeys("W,A,S,D") as Partial<
-      Record<"W" | "A" | "S" | "D", Phaser.Input.Keyboard.Key>
-    >;
-
-    this.input.keyboard.on("keydown-TAB", (event: KeyboardEvent) => {
-      event.preventDefault();
-      this.togglePlayerAppearance();
-    });
 
     // Cast fireball on click/pointerdown
     this.input.on("pointerdown", (pointer: Phaser.Input.Pointer) => {
@@ -442,8 +392,8 @@ export default class GameScene extends Phaser.Scene {
     const width = this.scale.width;
     const height = this.scale.height;
     const camera = this.cameras.main;
-    const originX = this.player.x + this.fovOffsetX;
-    const originY = this.player.y + this.fovOffsetY;
+    const originX = this.player.x + this.player.fovOffsetX;
+    const originY = this.player.y + this.player.fovOffsetY;
     const centerX = originX - camera.scrollX;
     const centerY = originY - camera.scrollY;
     const tileSize = this.tileSize;
@@ -535,63 +485,9 @@ export default class GameScene extends Phaser.Scene {
   }
 
   update(_time: number, delta: number) {
-    if (!this.player.body) return;
+    if (!this.player || !this.player.body) return;
 
-    // Update light position to track player
-    if (this.playerLight) {
-      this.playerLight.x = this.player.x;
-      this.playerLight.y = this.player.y;
-    }
-
-    const movementVector = new Phaser.Math.Vector2(0, 0);
-
-    const horizontalInput =
-      (this.cursors.left.isDown || this.keys.A?.isDown ? -1 : 0) +
-      (this.cursors.right.isDown || this.keys.D?.isDown ? 1 : 0);
-    const verticalInput =
-      (this.cursors.up.isDown || this.keys.W?.isDown ? -1 : 0) +
-      (this.cursors.down.isDown || this.keys.S?.isDown ? 1 : 0);
-
-    movementVector.set(horizontalInput, verticalInput);
-
-    if (movementVector.lengthSq() > 0) {
-      movementVector.normalize().scale(this.movementSpeed);
-      if (this.playerAppearance === "circle") {
-        this.targetRotation = Math.atan2(movementVector.y, movementVector.x) + Math.PI / 2;
-        const diff = Phaser.Math.Angle.Wrap(this.targetRotation - this.player.rotation);
-        const rotationSpeed = 0.01 * delta;
-
-        if (Math.abs(diff) < rotationSpeed) {
-          this.player.rotation = this.targetRotation;
-        } else {
-          this.player.rotation += Math.sign(diff) * rotationSpeed;
-        }
-      }
-
-      this.player.setVelocity(movementVector.x, movementVector.y);
-      const direction = this.getDirectionFromMovement(movementVector);
-
-      if (direction !== this.currentFacingDirection) {
-        this.currentFacingDirection = direction;
-      }
-
-      if (this.playerAppearance === "franciscan") {
-        this.player.anims.play(this.getWalkAnimationKey(direction), true);
-      }
-    } else {
-      this.player.setVelocity(0, 0);
-      if (this.playerAppearance === "franciscan") {
-        this.player.anims.stop();
-        this.player.setFrame(this.getIdleFrameIndex(this.currentFacingDirection));
-      }
-    }
-
-    const targetOffsetX =
-      movementVector.lengthSq() > 0 ? (movementVector.x / this.movementSpeed) * this.fovOffsetMax : 0;
-    const targetOffsetY =
-      movementVector.lengthSq() > 0 ? (movementVector.y / this.movementSpeed) * this.fovOffsetMax : 0;
-    this.fovOffsetX += (targetOffsetX - this.fovOffsetX) * this.fovOffsetLerp;
-    this.fovOffsetY += (targetOffsetY - this.fovOffsetY) * this.fovOffsetLerp;
+    this.player.update(_time, delta);
 
     this.fovRefreshAccumulator += delta;
 
@@ -630,72 +526,6 @@ export default class GameScene extends Phaser.Scene {
         repeat: -1
       });
     }
-  }
-
-  private applyPlayerAppearance() {
-    if (this.playerAppearance === "circle") {
-      this.player.anims.stop();
-      this.player.setTexture("player");
-      this.player.setFrame(0);
-      this.player.setCircle(14);
-      this.player.body?.setOffset(2, 2);
-      this.player.setPipeline("Light2D");
-      return;
-    }
-
-    this.player.setTexture("franciscan_idle", this.getIdleFrameIndex(this.currentFacingDirection));
-    this.player.setFrame(this.getIdleFrameIndex(this.currentFacingDirection));
-    this.player.body?.setCircle(0);
-    this.player.body?.setSize(32, 32, true);
-    this.player.setPipeline("Light2D");
-  }
-
-  private togglePlayerAppearance() {
-    this.playerAppearance = this.playerAppearance === "circle" ? "franciscan" : "circle";
-    this.applyPlayerAppearance();
-  }
-
-  private getIdleFrameIndex(direction: PlayerDirection) {
-    return playerDirections.indexOf(direction);
-  }
-
-  private getWalkAnimationKey(direction: PlayerDirection) {
-    return `player_walk_${direction}`;
-  }
-
-  private getDirectionFromMovement(movementVector: Phaser.Math.Vector2): PlayerDirection {
-    const horizontal = Math.abs(movementVector.x);
-    const vertical = Math.abs(movementVector.y);
-
-    if (horizontal === 0 && vertical === 0) {
-      return this.currentFacingDirection;
-    }
-
-    if (movementVector.x !== 0 && movementVector.y !== 0) {
-      if (movementVector.x > 0 && movementVector.y > 0) {
-        return "south_east";
-      }
-
-      if (movementVector.x > 0 && movementVector.y < 0) {
-        return "north_east";
-      }
-
-      if (movementVector.x < 0 && movementVector.y > 0) {
-        return "south_west";
-      }
-
-      return "north_west";
-    }
-
-    if (horizontal > vertical) {
-      return movementVector.x > 0 ? "east" : "west";
-    }
-
-    if (vertical > horizontal) {
-      return movementVector.y > 0 ? "south" : "north";
-    }
-
-    return movementVector.x > 0 ? "east" : "west";
   }
 
   private castFireball(targetX: number, targetY: number) {
