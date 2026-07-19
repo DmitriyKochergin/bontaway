@@ -5,14 +5,14 @@ export type MusicStyle = "exploration" | "combat" | "shrine";
 
 // Dorian mode frequencies starting from A (220 Hz)
 const DORIAN_SCALE = [
-  220,    // A (root)
-  247.5,  // B (major 2nd)
-  264,    // C (minor 3rd)
-  293.3,  // D (perfect 4th)
-  330,    // E (perfect 5th)
-  367.5,  // F# (major 6th)
-  396,    // G (minor 7th)
-  440,    // A (octave)
+  220, // A (root)
+  247.5, // B (major 2nd)
+  264, // C (minor 3rd)
+  293.3, // D (perfect 4th)
+  330, // E (perfect 5th)
+  367.5, // F# (major 6th)
+  396, // G (minor 7th)
+  440 // A (octave)
 ];
 
 export class AudioSystem {
@@ -61,33 +61,37 @@ export class AudioSystem {
       return;
     }
 
-    this.createSound("sfx_attack", 0.1, (t) => Math.sin(880 * Math.PI * 2 * t) * Math.exp(-t * 30) * 0.3);
-    this.createSound("sfx_hit", 0.15, (t) => Math.sin(150 * Math.PI * 2 * t) * Math.exp(-t * 20) * 0.4);
-    this.createSound("sfx_pickup", 0.2, (t) => {
+    this.createSound("sfx_attack", 0.1, t => Math.sin(880 * Math.PI * 2 * t) * Math.exp(-t * 30) * 0.3);
+    this.createSound("sfx_hit", 0.15, t => Math.sin(150 * Math.PI * 2 * t) * Math.exp(-t * 20) * 0.4);
+    this.createSound("sfx_pickup", 0.2, t => {
       const frequency = 600 + t * 400;
       return Math.sin(frequency * Math.PI * 2 * t) * Math.exp(-t * 8) * 0.25;
     });
-    this.createSound("sfx_levelup", 0.5, (t) => {
+    this.createSound("sfx_levelup", 0.5, t => {
       const toneA = Math.sin(440 * Math.PI * 2 * t) * (t < 0.15 ? 1 : 0);
       const toneB = Math.sin(554 * Math.PI * 2 * t) * (t >= 0.15 && t < 0.3 ? 1 : 0);
       const toneC = Math.sin(659 * Math.PI * 2 * t) * (t >= 0.3 ? 1 : 0);
       return (toneA + toneB + toneC) * Math.exp(-t * 2) * 0.3;
     });
-    this.createSound("sfx_enemy_death", 0.2, (t) => Math.sin(200 * Math.PI * 2 * t * (1 - t)) * Math.exp(-t * 10) * 0.3);
-    this.createSound("sfx_hurt", 0.15, (t) => (Math.random() * 2 - 1) * Math.exp(-t * 15) * 0.2);
-    this.createSound("sfx_stairs", 0.4, (t) => {
+    this.createSound("sfx_enemy_death", 0.2, t => Math.sin(200 * Math.PI * 2 * t * (1 - t)) * Math.exp(-t * 10) * 0.3);
+    this.createSound("sfx_hurt", 0.15, t => (Math.random() * 2 - 1) * Math.exp(-t * 15) * 0.2);
+    this.createSound("sfx_stairs", 0.4, t => {
       const frequency = 300 + t * 200;
       return Math.sin(frequency * Math.PI * 2 * t) * Math.exp(-t * 3) * 0.25;
     });
-    this.createSound("sfx_potion", 0.3, (t) => Math.sin(500 * Math.PI * 2 * t + Math.sin(8 * Math.PI * 2 * t) * 50) * Math.exp(-t * 5) * 0.2);
-    this.createSound("sfx_whisper", 0.6, (t) => {
+    this.createSound(
+      "sfx_potion",
+      0.3,
+      t => Math.sin(500 * Math.PI * 2 * t + Math.sin(8 * Math.PI * 2 * t) * 50) * Math.exp(-t * 5) * 0.2
+    );
+    this.createSound("sfx_whisper", 0.6, t => {
       const noise = (Math.random() * 2 - 1) * 0.3;
       const toneA = Math.sin(180 * Math.PI * 2 * t) * 0.1;
       const toneB = Math.sin(220 * Math.PI * 2 * t) * 0.08;
       const envelope = Math.sin((Math.PI * t) / 0.6) * Math.exp(-t * 2);
       return (noise + toneA + toneB) * envelope * 0.15;
     });
-    this.createSound("sfx_tablet", 0.25, (t) => {
+    this.createSound("sfx_tablet", 0.25, t => {
       const noise = Math.random() * 2 - 1;
       const tone = Math.sin(120 * Math.PI * 2 * t);
       return (noise * 0.3 + tone * 0.2) * Math.exp(-t * 8) * 0.2;
@@ -441,5 +445,3 @@ export class AudioSystem {
     }
   }
 }
-
-

@@ -27,10 +27,7 @@ export default class MainScene extends BaseScene {
   /** Launch `GameScene` and wire global controls that coordinate pause state. */
   createScene(): void {
     this.scene.launch("GameScene");
-    this.input.keyboard?.addCapture([
-      Phaser.Input.Keyboard.KeyCodes.SPACE,
-      Phaser.Input.Keyboard.KeyCodes.ESC
-    ]);
+    this.input.keyboard?.addCapture([Phaser.Input.Keyboard.KeyCodes.SPACE, Phaser.Input.Keyboard.KeyCodes.ESC]);
     this.bindEscKey();
     this.bindRtwpKeys();
   }
@@ -117,8 +114,3 @@ export default class MainScene extends BaseScene {
     }
   }
 }
-
-
-
-
-

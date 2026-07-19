@@ -79,4 +79,3 @@ class SettingsManagerClass {
 }
 
 export const SettingsManager = new SettingsManagerClass();
-

@@ -45,7 +45,6 @@ export default class GameScene extends BaseScene {
       this.time.delayedCall(1, () => {
         this.cameras.main.setLerp(0.1, 0.1);
       });
-
     });
     this.createScene();
   }
@@ -149,7 +148,6 @@ export default class GameScene extends BaseScene {
 
     this.createFovOverlay();
   }
-
 
   private addWallBlock(
     physicsWalls: Phaser.Physics.Arcade.StaticGroup,
