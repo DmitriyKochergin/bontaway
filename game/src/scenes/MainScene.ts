@@ -68,7 +68,7 @@ export default class MainScene extends BaseScene {
     this.input.keyboard?.on("keydown", this.rtwpKeyHandler);
   }
 
-  private openSettings(): void {
+  public openSettings(): void {
     if (this.scene.isActive("SettingsScene")) {
       return;
     }

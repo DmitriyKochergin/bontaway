@@ -31,8 +31,9 @@ export default class GameScene extends BaseScene {
   private activeProjectiles: Phaser.Types.Physics.Arcade.SpriteWithDynamicBody[] = [];
   private activeExplosions: { x: number; y: number; radius: number }[] = [];
   private keyboardSystem!: KeyboardSystem;
-  // @ts-ignore
+  // @ts-expect-error
   private mobileSystem?: MobileSystem;
+  private settingsButton!: Phaser.GameObjects.Image;
 
   constructor() {
     super("GameScene");
@@ -172,6 +173,7 @@ export default class GameScene extends BaseScene {
     });
 
     this.createFovOverlay();
+    this.createSettingsButton();
   }
 
   private addWallBlock(
@@ -595,5 +597,68 @@ export default class GameScene extends BaseScene {
     this.time.delayedCall(1200, () => {
       particles.destroy();
     });
+  }
+
+  private createSettingsButton(): void {
+    const margin = 30;
+    const x = this.scale.width - margin;
+    const y = margin;
+
+    this.settingsButton = this.add.image(x, y, "gear");
+    this.settingsButton.setScrollFactor(0);
+    this.settingsButton.setDepth(300);
+    this.settingsButton.setInteractive({ useHandCursor: true });
+
+    this.settingsButton.on("pointerover", () => {
+      this.tweens.add({
+        targets: this.settingsButton,
+        scale: 1.25,
+        angle: 45,
+        duration: 150,
+        ease: "Back.easeOut"
+      });
+    });
+
+    this.settingsButton.on("pointerout", () => {
+      this.tweens.add({
+        targets: this.settingsButton,
+        scale: 1.0,
+        angle: 0,
+        duration: 150,
+        ease: "Power2.easeOut"
+      });
+    });
+
+    this.settingsButton.on(
+      "pointerdown",
+      (_pointer: Phaser.Input.Pointer, _localX: number, _localY: number, event: Phaser.Types.Input.EventData) => {
+        if (event) {
+          event.stopPropagation();
+        }
+        this.openSettingsMenu();
+      }
+    );
+
+    const resizeHandler = (gameSize: Phaser.Structs.Size) => {
+      if (this.settingsButton) {
+        this.settingsButton.setPosition(gameSize.width - margin, margin);
+      }
+    };
+
+    this.scale.on("resize", resizeHandler);
+
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      this.scale.off("resize", resizeHandler);
+    });
+  }
+
+  private openSettingsMenu(): void {
+    const mainScene = this.scene.get("MainScene") as unknown as {
+      openSettings?: () => void;
+    };
+    if (mainScene && typeof mainScene.openSettings === "function") {
+      this.audioSystem?.play("sfx_tablet", 0.4);
+      mainScene.openSettings();
+    }
   }
 }

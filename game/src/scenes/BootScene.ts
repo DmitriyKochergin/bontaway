@@ -18,7 +18,8 @@ export default class BootScene extends Phaser.Scene {
       () => this.createWallTexture(),
       () => this.createPlayerTexture(),
       () => this.createObstacleTexture(),
-      () => this.createFireballTexture()
+      () => this.createFireballTexture(),
+      () => this.createGearTexture()
     ];
 
     const runStep = (index: number): void => {
@@ -147,5 +148,45 @@ export default class BootScene extends Phaser.Scene {
     fireball.fillCircle(8, 8, 8);
     fireball.generateTexture("fireball", 16, 16);
     fireball.destroy();
+  }
+
+  private createGearTexture(): void {
+    const size = 32;
+    const half = size / 2;
+    const gear = this.add.graphics();
+
+    gear.fillStyle(0x1a1a1a, 1);
+    gear.lineStyle(2, 0xff6600, 1);
+
+    const teethCount = 8;
+    const outerRadius = 14;
+    const innerRadius = 9;
+    const holeRadius = 4;
+
+    gear.beginPath();
+    for (let i = 0; i < teethCount * 2; i++) {
+      const angle = (i * Math.PI) / teethCount;
+      const radius = i % 2 === 0 ? outerRadius : innerRadius;
+      const x = half + Math.cos(angle) * radius;
+      const y = half + Math.sin(angle) * radius;
+      if (i === 0) {
+        gear.moveTo(x, y);
+      } else {
+        gear.lineTo(x, y);
+      }
+    }
+    gear.closePath();
+    gear.fillPath();
+    gear.strokePath();
+
+    gear.fillStyle(0x0a0a0a, 1);
+    gear.beginPath();
+    gear.arc(half, half, holeRadius, 0, Math.PI * 2);
+    gear.closePath();
+    gear.fillPath();
+    gear.strokePath();
+
+    gear.generateTexture("gear", size, size);
+    gear.destroy();
   }
 }
