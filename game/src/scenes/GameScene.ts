@@ -37,6 +37,15 @@ export default class GameScene extends BaseScene {
     this.setupShutdownCleanup();
     this.events.on(Phaser.Scenes.Events.PAUSE, () => {
       this.player?.setVelocity(0, 0);
+
+      // Keep the camera from shifting on the first frame after resume by temporarily setting smoothing (Lerp) to 0.
+      this.cameras.main.setLerp(0, 0);
+    });
+    this.events.on(Phaser.Scenes.Events.RESUME, () => {
+      this.time.delayedCall(1, () => {
+        this.cameras.main.setLerp(0.1, 0.1);
+      });
+
     });
     this.createScene();
   }
