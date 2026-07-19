@@ -3,6 +3,10 @@ import { Player } from "../entities/Player";
 import { type PhaserRaycasterPlugin, type Raycaster, type RaycasterRay } from "../phaser-raycaster";
 import { BaseScene } from "./BaseScene";
 
+/**
+ * Core gameplay scene.
+ * MainScene owns pause and settings coordination; this scene focuses on dungeon exploration and combat.
+ */
 export default class GameScene extends BaseScene {
   raycasterPlugin!: PhaserRaycasterPlugin;
   private player!: Player;
@@ -24,8 +28,6 @@ export default class GameScene extends BaseScene {
   private physicsWalls!: Phaser.Physics.Arcade.StaticGroup;
   private activeProjectiles: Phaser.Types.Physics.Arcade.SpriteWithDynamicBody[] = [];
   private activeExplosions: { x: number; y: number; radius: number }[] = [];
-  private escKeyHandler?: (event: KeyboardEvent) => void;
-  private rtwpKeyHandler?: (event: KeyboardEvent) => void;
 
   constructor() {
     super("GameScene");
@@ -33,23 +35,14 @@ export default class GameScene extends BaseScene {
 
   create(): void {
     this.setupShutdownCleanup();
-    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
-      if (this.escKeyHandler) {
-        window.removeEventListener("keydown", this.escKeyHandler);
-        this.escKeyHandler = undefined;
-      }
-      if (this.rtwpKeyHandler) {
-        window.removeEventListener("keydown", this.rtwpKeyHandler);
-        this.rtwpKeyHandler = undefined;
-      }
+    this.events.on(Phaser.Scenes.Events.PAUSE, () => {
+      this.player?.setVelocity(0, 0);
     });
     this.createScene();
   }
 
   createScene() {
     this.initAudio("exploration");
-    this.bindEscKey();
-    this.bindRtwpKeys();
 
     this.cameras.main.setBackgroundColor("#000000");
 
@@ -148,73 +141,6 @@ export default class GameScene extends BaseScene {
     this.createFovOverlay();
   }
 
-  private openSettings(): void {
-    if (this.scene.isActive("SettingsScene")) {
-      return;
-    }
-
-    this.pauseGameplay();
-    this.scene.launch("SettingsScene", { audioSystem: this.audioSystem });
-  }
-
-  private bindEscKey(): void {
-    this.escKeyHandler = (event: KeyboardEvent) => {
-      if (event.code !== "Escape" || event.repeat) {
-        return;
-      }
-
-      event.preventDefault();
-
-      if (this.scene.isActive("SettingsScene")) {
-        return;
-      }
-
-      this.openSettings();
-    };
-
-    window.addEventListener("keydown", this.escKeyHandler);
-  }
-
-  private bindRtwpKeys(): void {
-    this.rtwpKeyHandler = (event: KeyboardEvent) => {
-      if (event.code !== "Space" || event.repeat) {
-        return;
-      }
-
-      event.preventDefault();
-
-      if (this.scene.isActive("SettingsScene")) {
-        return;
-      }
-
-      this.toggleRtwpPause();
-    };
-
-    window.addEventListener("keydown", this.rtwpKeyHandler);
-  }
-
-  private toggleRtwpPause(): void {
-    if (this.scene.isPaused()) {
-      this.resumeGameplay();
-      return;
-    }
-
-    this.pauseGameplay();
-  }
-
-  private pauseGameplay(): void {
-    this.player?.setVelocity(0, 0);
-
-    if (!this.scene.isPaused()) {
-      this.scene.pause();
-    }
-  }
-
-  private resumeGameplay(): void {
-    if (this.scene.isPaused()) {
-      this.scene.resume();
-    }
-  }
 
   private addWallBlock(
     physicsWalls: Phaser.Physics.Arcade.StaticGroup,

@@ -6,6 +6,10 @@ type SettingsSceneData = {
   audioSystem?: AudioSystem | null;
 };
 
+/**
+ * Overlay settings scene.
+ * Handles the UI locally and leaves gameplay resume decisions to `MainScene`.
+ */
 export default class SettingsScene extends Phaser.Scene {
   private settingsUI: SettingsUI | null = null;
   private escKey!: Phaser.Input.Keyboard.Key;
@@ -45,7 +49,6 @@ export default class SettingsScene extends Phaser.Scene {
 
     this.isClosing = true;
     this.settingsUI?.hide();
-    this.scene.resume("GameScene");
     this.scene.stop();
   }
 }

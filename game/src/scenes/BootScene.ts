@@ -1,5 +1,9 @@
 import Phaser from "phaser";
 
+/**
+ * Boot scene.
+ * Builds shared textures, then hands control to `MainScene` for gameplay orchestration.
+ */
 export default class BootScene extends Phaser.Scene {
   constructor() {
     super("BootScene");
@@ -24,7 +28,7 @@ export default class BootScene extends Phaser.Scene {
         this.updateLoadingUi(loadingUi, 1);
         this.time.delayedCall(75, () => {
           loadingUi.container.destroy();
-          this.scene.start("GameScene");
+          this.scene.start("MainScene");
         });
         return;
       }

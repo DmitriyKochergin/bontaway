@@ -18,4 +18,8 @@ export abstract class BaseScene extends Phaser.Scene {
       this.audioSystem.startMusic(musicKey);
     }
   }
+
+  public getAudioSystem(): AudioSystem | undefined {
+    return this.audioSystem;
+  }
 }
