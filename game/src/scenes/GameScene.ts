@@ -521,7 +521,22 @@ export default class GameScene extends BaseScene {
       isCleanedUp = true;
       this.activeProjectiles = this.activeProjectiles.filter(p => p !== projectile);
       this.lights.removeLight(spellLight);
-      particles.destroy();
+
+      // Stop emitting and following so existing tail fades out naturally
+      try {
+        particles.stop();
+        particles.stopFollow();
+      } catch (err) {
+        // Safe guard in case particles or scene were already destroyed
+      }
+      this.time.delayedCall(500, () => {
+        try {
+          particles.destroy();
+        } catch (err) {
+          // Safe guard
+        }
+      });
+
       projectile.destroy();
       this.events.off("update", updateListener);
     };
