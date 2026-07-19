@@ -490,7 +490,7 @@ export default class GameScene extends BaseScene {
   }
 
   private castFireball(targetX: number, targetY: number) {
-    this.audioSystem?.play("sfx_attack", 0.35);
+    this.audioSystem?.playFireballCast(0.45);
 
     // Create fireball sprite
     const projectile = this.physics.add.sprite(this.player.x, this.player.y, "fireball");
@@ -528,7 +528,7 @@ export default class GameScene extends BaseScene {
 
     // Destroy fireball and trigger explosion when it hits a wall/obstacle
     this.physics.add.collider(projectile, this.physicsWalls, () => {
-      this.audioSystem?.play("sfx_hit", 0.4);
+      this.audioSystem?.playFireballHit(0.55);
       this.createExplosion(projectile.x, projectile.y);
       cleanUp();
     });
@@ -602,9 +602,8 @@ export default class GameScene extends BaseScene {
   private createSettingsButton(): void {
     const margin = 30;
     const x = this.scale.width - margin;
-    const y = margin;
 
-    this.settingsButton = this.add.image(x, y, "gear");
+    this.settingsButton = this.add.image(x, margin, "gear");
     this.settingsButton.setScrollFactor(0);
     this.settingsButton.setDepth(300);
     this.settingsButton.setInteractive({ useHandCursor: true });

@@ -16,8 +16,13 @@ const DORIAN_SCALE = [
 ];
 
 export class AudioSystem {
+  private readonly scene: Phaser.Scene;
   private audioContext: AudioContext | null = null;
   private readonly soundBuffers = new Map<string, AudioBuffer>();
+  private readonly fireballSounds = {
+    cast: "fireball_cast",
+    hit: "fireball_hit"
+  };
   private readonly unlockHandler = () => {
     if (this.audioContext && this.audioContext.state === "suspended") {
       void this.audioContext.resume();
@@ -39,6 +44,7 @@ export class AudioSystem {
   private sfxVolume = 1;
 
   constructor(_scene: Phaser.Scene) {
+    this.scene = _scene;
     this.masterVolume = SettingsManager.getMasterVolume();
     this.musicVolume = SettingsManager.getMusicVolume();
     this.sfxVolume = SettingsManager.getSFXVolume();
@@ -136,6 +142,14 @@ export class AudioSystem {
     source.connect(gainNode);
     gainNode.connect(this.audioContext.destination);
     source.start();
+  }
+
+  playFireballCast(volume = 0.5): void {
+    this.playFireballSound(this.fireballSounds.cast, volume);
+  }
+
+  playFireballHit(volume = 0.5): void {
+    this.playFireballSound(this.fireballSounds.hit, volume);
   }
 
   startMusic(style: MusicStyle = "exploration"): void {
@@ -363,6 +377,24 @@ export class AudioSystem {
 
   private getEffectiveMusicVolume(): number {
     return this.masterVolume * this.musicVolume;
+  }
+
+  private playFireballSound(key: string, volume: number): void {
+    if (!this.audioContext) {
+      return;
+    }
+
+    const effectiveVolume = Math.max(0, Math.min(1, volume)) * this.masterVolume * this.sfxVolume;
+    if (effectiveVolume <= 0) {
+      return;
+    }
+
+    if (this.scene.cache.audio.exists(key)) {
+      this.scene.sound.play(key, { volume: effectiveVolume });
+      return;
+    }
+
+    this.scene.sound.play(key, { volume: effectiveVolume });
   }
 
   setMasterVolume(value: number): void {

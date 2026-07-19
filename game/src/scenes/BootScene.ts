@@ -13,32 +13,36 @@ export default class BootScene extends Phaser.Scene {
     this.cameras.main.setBackgroundColor("#0a0a0a");
 
     const loadingUi = this.createLoadingUi();
-    const steps = [
-      () => this.createFloorTexture(),
-      () => this.createWallTexture(),
-      () => this.createPlayerTexture(),
-      () => this.createObstacleTexture(),
-      () => this.createFireballTexture(),
-      () => this.createGearTexture()
-    ];
+    this.queueFireballAudio();
 
-    const runStep = (index: number): void => {
-      this.updateLoadingUi(loadingUi, index / steps.length);
+    this.load.on(Phaser.Loader.Events.PROGRESS, (progress: number) => {
+      this.updateLoadingUi(loadingUi, progress);
+    });
 
-      if (index >= steps.length) {
-        this.updateLoadingUi(loadingUi, 1);
-        this.time.delayedCall(75, () => {
-          loadingUi.container.destroy();
-          this.scene.start("MainScene");
-        });
-        return;
-      }
+    this.load.once(Phaser.Loader.Events.COMPLETE, () => {
+      this.buildSharedTextures();
+      loadingUi.container.destroy();
+      this.scene.start("MainScene");
+    });
 
-      steps[index]();
-      this.time.delayedCall(70, () => runStep(index + 1));
-    };
+    this.load.start();
+  }
 
-    runStep(0);
+  private queueFireballAudio(): void {
+    this.load.audio("fireball_cast", "assets/sound/fireball/freesound_community-short-fireball-woosh-6146.mp3");
+    this.load.audio(
+      "fireball_hit",
+      "assets/sound/fireball/cartoon-music-game-sfx-fireball-explosion-impact-2-568074.mp3"
+    );
+  }
+
+  private buildSharedTextures(): void {
+    this.createFloorTexture();
+    this.createWallTexture();
+    this.createPlayerTexture();
+    this.createObstacleTexture();
+    this.createFireballTexture();
+    this.createGearTexture();
   }
 
   private createLoadingUi(): {
