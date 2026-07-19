@@ -1,7 +1,7 @@
 import Phaser from "phaser";
 import { Player } from "../entities/Player";
-import { BaseScene } from "./BaseScene";
 import { type PhaserRaycasterPlugin, type Raycaster, type RaycasterRay } from "../phaser-raycaster";
+import { BaseScene } from "./BaseScene";
 
 export default class GameScene extends BaseScene {
   raycasterPlugin!: PhaserRaycasterPlugin;
@@ -24,6 +24,8 @@ export default class GameScene extends BaseScene {
   private physicsWalls!: Phaser.Physics.Arcade.StaticGroup;
   private activeProjectiles: Phaser.Types.Physics.Arcade.SpriteWithDynamicBody[] = [];
   private activeExplosions: { x: number; y: number; radius: number }[] = [];
+  private escKeyHandler?: (event: KeyboardEvent) => void;
+  private rtwpKeyHandler?: (event: KeyboardEvent) => void;
 
   constructor() {
     super("GameScene");
@@ -31,13 +33,23 @@ export default class GameScene extends BaseScene {
 
   create(): void {
     this.setupShutdownCleanup();
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      if (this.escKeyHandler) {
+        window.removeEventListener("keydown", this.escKeyHandler);
+        this.escKeyHandler = undefined;
+      }
+      if (this.rtwpKeyHandler) {
+        window.removeEventListener("keydown", this.rtwpKeyHandler);
+        this.rtwpKeyHandler = undefined;
+      }
+    });
     this.createScene();
   }
 
   createScene() {
-    this.initSettingsUI();
     this.initAudio("exploration");
-    this.bindSettingsKeys();
+    this.bindEscKey();
+    this.bindRtwpKeys();
 
     this.cameras.main.setBackgroundColor("#000000");
 
@@ -117,7 +129,7 @@ export default class GameScene extends BaseScene {
 
     // Cast fireball on click/pointerdown
     this.input.on("pointerdown", (pointer: Phaser.Input.Pointer) => {
-      if (this.isUIBlocking()) {
+      if (this.scene.isPaused()) {
         return;
       }
 
@@ -134,6 +146,74 @@ export default class GameScene extends BaseScene {
     });
 
     this.createFovOverlay();
+  }
+
+  private openSettings(): void {
+    if (this.scene.isActive("SettingsScene")) {
+      return;
+    }
+
+    this.pauseGameplay();
+    this.scene.launch("SettingsScene", { audioSystem: this.audioSystem });
+  }
+
+  private bindEscKey(): void {
+    this.escKeyHandler = (event: KeyboardEvent) => {
+      if (event.code !== "Escape" || event.repeat) {
+        return;
+      }
+
+      event.preventDefault();
+
+      if (this.scene.isActive("SettingsScene")) {
+        return;
+      }
+
+      this.openSettings();
+    };
+
+    window.addEventListener("keydown", this.escKeyHandler);
+  }
+
+  private bindRtwpKeys(): void {
+    this.rtwpKeyHandler = (event: KeyboardEvent) => {
+      if (event.code !== "Space" || event.repeat) {
+        return;
+      }
+
+      event.preventDefault();
+
+      if (this.scene.isActive("SettingsScene")) {
+        return;
+      }
+
+      this.toggleRtwpPause();
+    };
+
+    window.addEventListener("keydown", this.rtwpKeyHandler);
+  }
+
+  private toggleRtwpPause(): void {
+    if (this.scene.isPaused()) {
+      this.resumeGameplay();
+      return;
+    }
+
+    this.pauseGameplay();
+  }
+
+  private pauseGameplay(): void {
+    this.player?.setVelocity(0, 0);
+
+    if (!this.scene.isPaused()) {
+      this.scene.pause();
+    }
+  }
+
+  private resumeGameplay(): void {
+    if (this.scene.isPaused()) {
+      this.scene.resume();
+    }
   }
 
   private addWallBlock(
@@ -422,7 +502,7 @@ export default class GameScene extends BaseScene {
   update(_time: number, delta: number) {
     if (!this.player || !this.player.body) return;
 
-    if (this.isUIBlocking()) {
+    if (this.scene.isPaused()) {
       this.player.setVelocity(0, 0);
       return;
     }
@@ -447,7 +527,6 @@ export default class GameScene extends BaseScene {
     this.fovRefreshAccumulator = 0;
     this.redrawFovMask();
   }
-
 
   private castFireball(targetX: number, targetY: number) {
     this.audioSystem?.play("sfx_attack", 0.35);
@@ -500,6 +579,8 @@ export default class GameScene extends BaseScene {
 
     // Update light position every frame
     const updateListener = () => {
+      if (this.scene.isPaused()) return;
+
       if (projectile.active) {
         spellLight.x = projectile.x;
         spellLight.y = projectile.y;
@@ -533,6 +614,8 @@ export default class GameScene extends BaseScene {
     const duration = 1000; // 1000 ms (1 second fade out)
 
     const updateLight = (_time: number, delta: number) => {
+      if (this.scene.isPaused()) return;
+
       elapsed += delta;
       const progress = Math.min(elapsed / duration, 1);
 

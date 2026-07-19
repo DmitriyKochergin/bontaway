@@ -17,9 +17,8 @@ export class SettingsUI {
   private scene: Phaser.Scene;
   private audioSystem: AudioSystem | null = null;
   private panel: Phaser.GameObjects.Container | null = null;
-  private isVisible = false;
   private overlay: Phaser.GameObjects.Rectangle | null = null;
-  private keyListener: ((event: KeyboardEvent) => void) | null = null;
+  public onClose: (() => void) | null = null;
 
   private sliders: {
     master: SliderData | null;
@@ -37,11 +36,6 @@ export class SettingsUI {
   constructor(scene: Phaser.Scene, audioSystem?: AudioSystem) {
     this.scene = scene;
     this.audioSystem = audioSystem || null;
-  }
-
-  setAudioSystem(audioSystem: AudioSystem): void {
-    this.audioSystem = audioSystem;
-    this.updateSliderValues();
   }
 
   private updateSliderValues(): void {
@@ -80,8 +74,6 @@ export class SettingsUI {
       this.overlay = null;
     }
 
-    this.isVisible = true;
-
     const cam = this.scene.cameras.main;
     const centerX = cam.scrollX + cam.width / 2;
     const centerY = cam.scrollY + cam.height / 2;
@@ -109,12 +101,6 @@ export class SettingsUI {
       alpha: 1,
       duration: 200,
       ease: "Back.easeOut"
-    });
-
-    this.scene.time.delayedCall(50, () => {
-      if (this.isVisible) {
-        this.setupInput();
-      }
     });
   }
 
@@ -205,7 +191,7 @@ export class SettingsUI {
     closeBtn.on("pointerover", () => closeBtn.setColor("#ff4444"));
     closeBtn.on("pointerout", () => closeBtn.setColor("#666666"));
     closeBtn.on("pointerdown", (_pointer: Phaser.Input.Pointer, _localX: number, _localY: number, event: Event) => {
-      this.hide();
+      this.onClose?.();
       event.stopPropagation();
     });
     this.panel.add(closeBtn);
@@ -302,7 +288,14 @@ export class SettingsUI {
     valueText.setOrigin(1, 0.5);
     container.add(valueText);
 
-    const hitArea = this.scene.add.rectangle(this.TRACK_X + this.SLIDER_WIDTH / 2, 0, this.SLIDER_WIDTH + 20, 24, 0xffffff, 0);
+    const hitArea = this.scene.add.rectangle(
+      this.TRACK_X + this.SLIDER_WIDTH / 2,
+      0,
+      this.SLIDER_WIDTH + 20,
+      24,
+      0xffffff,
+      0
+    );
     hitArea.setInteractive({ useHandCursor: true, draggable: true });
     container.add(hitArea);
 
@@ -356,7 +349,7 @@ export class SettingsUI {
     const controls = [
       ["WASD / Arrows", "Move"],
       ["Left Click", "Attack"],
-      ["Space", "Dodge"],
+      ["Space", "Pause / Resume"],
       ["E", "Inventory"],
       ["L", "Level Up"],
       ["ESC", "Settings"]
@@ -450,19 +443,6 @@ export class SettingsUI {
     this.panel.add(container);
   }
 
-  private setupInput(): void {
-    this.keyListener = (event: KeyboardEvent) => {
-      if (!this.isVisible) return;
-
-      if (event.code === "Escape") {
-        event.preventDefault();
-        this.hide();
-      }
-    };
-
-    this.scene.input.keyboard?.on("keydown", this.keyListener);
-  }
-
   private resetDefaults(): void {
     SettingsManager.resetToDefaults();
     const defaults = SettingsManager.get();
@@ -477,13 +457,6 @@ export class SettingsUI {
   }
 
   hide(): void {
-    this.isVisible = false;
-
-    if (this.keyListener) {
-      this.scene.input.keyboard?.off("keydown", this.keyListener);
-      this.keyListener = null;
-    }
-
     if (this.panel) {
       this.panel.destroy();
       this.panel = null;
@@ -494,18 +467,6 @@ export class SettingsUI {
     }
 
     this.sliders = { master: null, music: null, sfx: null };
-  }
-
-  toggle(): void {
-    if (this.isVisible) {
-      this.hide();
-    } else {
-      this.show();
-    }
-  }
-
-  getIsVisible(): boolean {
-    return this.isVisible;
   }
 
   destroy(): void {
