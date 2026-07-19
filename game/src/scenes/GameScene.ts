@@ -1,6 +1,7 @@
 import Phaser from "phaser";
 import { Player } from "../entities/Player";
 import { type PhaserRaycasterPlugin, type Raycaster, type RaycasterRay } from "../phaser-raycaster";
+import { KeyboardSystem } from "../systems/KeyboardSystem";
 import { BaseScene } from "./BaseScene";
 
 /**
@@ -28,10 +29,7 @@ export default class GameScene extends BaseScene {
   private physicsWalls!: Phaser.Physics.Arcade.StaticGroup;
   private activeProjectiles: Phaser.Types.Physics.Arcade.SpriteWithDynamicBody[] = [];
   private activeExplosions: { x: number; y: number; radius: number }[] = [];
-  private windowKeyDownListener?: (event: KeyboardEvent) => void;
-  private windowKeyUpListener?: (event: KeyboardEvent) => void;
-  private windowBlurListener?: () => void;
-  private activePhysicalKeys = new Set<string>();
+  private keyboardSystem!: KeyboardSystem;
 
   constructor() {
     super("GameScene");
@@ -39,7 +37,7 @@ export default class GameScene extends BaseScene {
 
   create(): void {
     this.setupShutdownCleanup();
-    this.registerPhysicalKeyListeners();
+    this.keyboardSystem = new KeyboardSystem(this);
     this.events.on(Phaser.Scenes.Events.PAUSE, () => {
       this.player?.setVelocity(0, 0);
 
@@ -55,42 +53,9 @@ export default class GameScene extends BaseScene {
     this.createScene();
   }
 
-  private registerPhysicalKeyListeners() {
-    this.windowKeyDownListener = (event: KeyboardEvent) => {
-      this.activePhysicalKeys.add(event.code);
-      this.activePhysicalKeys.add(event.key.toUpperCase());
-    };
-
-    this.windowKeyUpListener = (event: KeyboardEvent) => {
-      this.activePhysicalKeys.delete(event.code);
-      this.activePhysicalKeys.delete(event.key.toUpperCase());
-    };
-
-    this.windowBlurListener = () => {
-      this.activePhysicalKeys.clear();
-    };
-
-    window.addEventListener("keydown", this.windowKeyDownListener);
-    window.addEventListener("keyup", this.windowKeyUpListener);
-    window.addEventListener("blur", this.windowBlurListener);
-
-    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
-      if (this.windowKeyDownListener) {
-        window.removeEventListener("keydown", this.windowKeyDownListener);
-      }
-      if (this.windowKeyUpListener) {
-        window.removeEventListener("keyup", this.windowKeyUpListener);
-      }
-      if (this.windowBlurListener) {
-        window.removeEventListener("blur", this.windowBlurListener);
-      }
-      this.activePhysicalKeys.clear();
-    });
-  }
-
   private syncKeyboardStateOnResume() {
     if (this.player) {
-      this.player.syncKeys(this.activePhysicalKeys);
+      this.keyboardSystem.syncPlayerKeys(this.player);
       this.player.update(0, 16);
     }
   }
