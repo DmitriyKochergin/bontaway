@@ -155,6 +155,11 @@ export class AudioSystem {
     this.currentStyle = style;
     this.isPlayingMusic = true;
     this.currentNoteIndex = 0;
+
+    if (this.getEffectiveMusicVolume() <= 0) {
+      return;
+    }
+
     this.createDrone();
     this.scheduleNextNote();
   }
@@ -208,6 +213,10 @@ export class AudioSystem {
       return;
     }
 
+    if (this.getEffectiveMusicVolume() <= 0) {
+      return;
+    }
+
     this.droneOscillator = this.audioContext.createOscillator();
     this.droneGain = this.audioContext.createGain();
     this.droneOscillator.type = "sine";
@@ -252,6 +261,11 @@ export class AudioSystem {
       return;
     }
 
+    if (this.getEffectiveMusicVolume() <= 0) {
+      this.melodyTimeoutId = null;
+      return;
+    }
+
     this.playMelodyNote();
 
     let minDelay: number;
@@ -274,6 +288,7 @@ export class AudioSystem {
 
     const delay = minDelay + Math.random() * (maxDelay - minDelay);
     this.melodyTimeoutId = window.setTimeout(() => {
+      this.melodyTimeoutId = null;
       this.generateNextNote();
       this.scheduleNextNote();
     }, delay);
@@ -300,7 +315,7 @@ export class AudioSystem {
   }
 
   private playMelodyNote(): void {
-    if (!this.audioContext || this.getEffectiveMusicVolume() === 0) {
+    if (!this.audioContext || this.getEffectiveMusicVolume() <= 0) {
       return;
     }
 
@@ -382,20 +397,43 @@ export class AudioSystem {
 
     const effectiveVolume = this.getEffectiveMusicVolume();
     if (effectiveVolume === 0) {
+      if (this.melodyTimeoutId !== null) {
+        clearTimeout(this.melodyTimeoutId);
+        this.melodyTimeoutId = null;
+      }
+
+      if (this.droneLfo) {
+        this.droneLfo.stop();
+        this.droneLfo = null;
+      }
+
       if (this.droneOscillator) {
         this.droneOscillator.stop();
         this.droneOscillator = null;
-        this.droneGain = null;
       }
+
+      this.droneGain = null;
+
+      if (this.melodyOscillator) {
+        this.melodyOscillator.stop();
+        this.melodyOscillator = null;
+      }
+
+      this.melodyGain = null;
       return;
     }
 
+    let createdDrone = false;
     if (!this.droneOscillator && this.isPlayingMusic) {
       this.createDrone();
-      return;
+      createdDrone = true;
     }
 
-    if (this.droneGain) {
+    if (this.isPlayingMusic && this.melodyTimeoutId === null) {
+      this.scheduleNextNote();
+    }
+
+    if (this.droneGain && !createdDrone) {
       const baseVolume = this.currentStyle === "shrine" ? 0.06 : 0.08;
       const now = this.audioContext.currentTime;
       this.droneGain.gain.cancelScheduledValues(now);
