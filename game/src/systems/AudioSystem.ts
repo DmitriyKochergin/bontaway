@@ -3,7 +3,17 @@ import { SettingsManager } from "./SettingsManager";
 
 export type MusicStyle = "exploration" | "combat" | "shrine";
 
-const DORIAN_SCALE = [220, 247.5, 264, 293.3, 330, 367.5, 396, 440];
+// Dorian mode frequencies starting from A (220 Hz)
+const DORIAN_SCALE = [
+  220,    // A (root)
+  247.5,  // B (major 2nd)
+  264,    // C (minor 3rd)
+  293.3,  // D (perfect 4th)
+  330,    // E (perfect 5th)
+  367.5,  // F# (major 6th)
+  396,    // G (minor 7th)
+  440,    // A (octave)
+];
 
 export class AudioSystem {
   private audioContext: AudioContext | null = null;
