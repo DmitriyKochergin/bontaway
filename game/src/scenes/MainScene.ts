@@ -10,8 +10,6 @@ export default class MainScene extends BaseScene {
   private escKeyHandler?: (event: KeyboardEvent) => void;
   private rtwpKeyHandler?: (event: KeyboardEvent) => void;
   private gameplayPaused = false;
-  private manualPause = false;
-  private settingsPause = false;
 
   constructor() {
     super("MainScene");
@@ -78,8 +76,7 @@ export default class MainScene extends BaseScene {
       return;
     }
 
-    this.settingsPause = true;
-    this.applyGameplayPauseState();
+    this.scene.pause("GameScene");
 
     const gameScene = this.scene.get("GameScene") as unknown as {
       getAudioSystem: () => AudioSystem | undefined;
@@ -88,31 +85,24 @@ export default class MainScene extends BaseScene {
 
     const settingsScene = this.scene.get("SettingsScene");
     settingsScene.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
-      this.settingsPause = false;
       this.applyGameplayPauseState();
     });
   }
 
   private toggleRtwpPause(): void {
-    this.manualPause = !this.manualPause;
+    this.gameplayPaused = !this.gameplayPaused;
     this.applyGameplayPauseState();
   }
 
   private applyGameplayPauseState(): void {
-    const shouldPause = this.manualPause || this.settingsPause;
-
-    if (shouldPause === this.gameplayPaused) {
-      return;
-    }
-
-    this.gameplayPaused = shouldPause;
-
-    if (shouldPause) {
+    if (this.gameplayPaused) {
       this.scene.pause("GameScene");
       return;
     }
 
-    this.scene.resume("GameScene");
+    if (!this.scene.isActive("SettingsScene")) {
+      this.scene.resume("GameScene");
+    }
   }
 
   private removeKeyHandlers(): void {
