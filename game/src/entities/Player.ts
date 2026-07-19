@@ -4,13 +4,14 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   private cursors!: Phaser.Types.Input.Keyboard.CursorKeys;
   private keys: Partial<Record<"W" | "A" | "S" | "D", Phaser.Input.Keyboard.Key>> = {};
   private targetRotation: number = 0;
-  private readonly movementSpeed = 250;
+  public readonly movementSpeed = 250;
   private readonly fovOffsetMax = 10;
   private readonly fovOffsetLerp = 0.18;
 
   public fovOffsetX = 0;
   public fovOffsetY = 0;
   public playerLight!: Phaser.GameObjects.Light;
+  public joystickVector: Phaser.Math.Vector2 | null = null;
 
   constructor(scene: Phaser.Scene, x: number, y: number) {
     super(scene, x, y, "player");
@@ -99,17 +100,24 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
 
     const movementVector = new Phaser.Math.Vector2(0, 0);
 
-    const horizontalInput =
-      (this.cursors.left.isDown || this.keys.A?.isDown ? -1 : 0) +
-      (this.cursors.right.isDown || this.keys.D?.isDown ? 1 : 0);
-    const verticalInput =
-      (this.cursors.up.isDown || this.keys.W?.isDown ? -1 : 0) +
-      (this.cursors.down.isDown || this.keys.S?.isDown ? 1 : 0);
+    if (this.joystickVector && this.joystickVector.lengthSq() > 0) {
+      movementVector.copy(this.joystickVector);
+    } else {
+      const horizontalInput =
+        (this.cursors.left.isDown || this.keys.A?.isDown ? -1 : 0) +
+        (this.cursors.right.isDown || this.keys.D?.isDown ? 1 : 0);
+      const verticalInput =
+        (this.cursors.up.isDown || this.keys.W?.isDown ? -1 : 0) +
+        (this.cursors.down.isDown || this.keys.S?.isDown ? 1 : 0);
 
-    movementVector.set(horizontalInput, verticalInput);
+      movementVector.set(horizontalInput, verticalInput);
+
+      if (movementVector.lengthSq() > 0) {
+        movementVector.normalize().scale(this.movementSpeed);
+      }
+    }
 
     if (movementVector.lengthSq() > 0) {
-      movementVector.normalize().scale(this.movementSpeed);
       this.targetRotation = Math.atan2(movementVector.y, movementVector.x) + Math.PI / 2;
       const diff = Phaser.Math.Angle.Wrap(this.targetRotation - this.rotation);
       const rotationSpeed = 0.01 * delta;

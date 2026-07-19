@@ -2,6 +2,7 @@ import Phaser from "phaser";
 import { Player } from "../entities/Player";
 import { type PhaserRaycasterPlugin, type Raycaster, type RaycasterRay } from "../phaser-raycaster";
 import { KeyboardSystem } from "../systems/KeyboardSystem";
+import { MobileSystem } from "../systems/MobileSystem";
 import { BaseScene } from "./BaseScene";
 
 /**
@@ -30,6 +31,8 @@ export default class GameScene extends BaseScene {
   private activeProjectiles: Phaser.Types.Physics.Arcade.SpriteWithDynamicBody[] = [];
   private activeExplosions: { x: number; y: number; radius: number }[] = [];
   private keyboardSystem!: KeyboardSystem;
+  // @ts-ignore
+  private mobileSystem?: MobileSystem;
 
   constructor() {
     super("GameScene");
@@ -139,14 +142,25 @@ export default class GameScene extends BaseScene {
 
     this.cameras.main.startFollow(this.player, true, 0.1, 0.1);
 
-    // Cast fireball on click/pointerdown
-    this.input.on("pointerdown", (pointer: Phaser.Input.Pointer) => {
-      if (this.scene.isPaused()) {
-        return;
-      }
+    const isMobile =
+      !this.sys.game.device.os.desktop ||
+      /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
 
-      this.castFireball(pointer.worldX, pointer.worldY);
-    });
+    if (isMobile) {
+      // Multi-touch config: allow at least 5 active pointers
+      this.input.addPointer(5);
+
+      // Instantiate Mobile System for touch controls (movement joystick & right-screen face fireballs)
+      this.mobileSystem = new MobileSystem(this, this.player, (x, y) => this.castFireball(x, y));
+    } else {
+      // Desktop behavior: fire fireball directly where clicked
+      this.input.on("pointerdown", (pointer: Phaser.Input.Pointer) => {
+        if (this.scene.isPaused()) {
+          return;
+        }
+        this.castFireball(pointer.worldX, pointer.worldY);
+      });
+    }
 
     const outerRadius = this.tileSize * (this.fovRadiusTiles + this.fovFadeTiles);
     this.fovRay = this.raycaster.createRay({
@@ -451,6 +465,7 @@ export default class GameScene extends BaseScene {
       return;
     }
 
+    this.keyboardSystem.syncPlayerKeys(this.player);
     this.player.update(_time, delta);
 
     this.fovRefreshAccumulator += delta;
