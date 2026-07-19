@@ -29,6 +29,10 @@ export default class MainScene extends BaseScene {
   /** Launch `GameScene` and wire global controls that coordinate pause state. */
   createScene(): void {
     this.scene.launch("GameScene");
+    this.input.keyboard?.addCapture([
+      Phaser.Input.Keyboard.KeyCodes.SPACE,
+      Phaser.Input.Keyboard.KeyCodes.ESC
+    ]);
     this.bindEscKey();
     this.bindRtwpKeys();
   }
@@ -48,7 +52,7 @@ export default class MainScene extends BaseScene {
       this.openSettings();
     };
 
-    window.addEventListener("keydown", this.escKeyHandler);
+    this.input.keyboard?.on("keydown", this.escKeyHandler);
   }
 
   private bindRtwpKeys(): void {
@@ -66,7 +70,7 @@ export default class MainScene extends BaseScene {
       this.toggleRtwpPause();
     };
 
-    window.addEventListener("keydown", this.rtwpKeyHandler);
+    this.input.keyboard?.on("keydown", this.rtwpKeyHandler);
   }
 
   private openSettings(): void {
@@ -113,12 +117,12 @@ export default class MainScene extends BaseScene {
 
   private removeKeyHandlers(): void {
     if (this.escKeyHandler) {
-      window.removeEventListener("keydown", this.escKeyHandler);
+      this.input.keyboard?.off("keydown", this.escKeyHandler);
       this.escKeyHandler = undefined;
     }
 
     if (this.rtwpKeyHandler) {
-      window.removeEventListener("keydown", this.rtwpKeyHandler);
+      this.input.keyboard?.off("keydown", this.rtwpKeyHandler);
       this.rtwpKeyHandler = undefined;
     }
   }
