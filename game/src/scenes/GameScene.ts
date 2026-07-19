@@ -1,9 +1,10 @@
 import Phaser from "phaser";
 import { Player } from "../entities/Player";
 import { type PhaserRaycasterPlugin } from "../phaser-raycaster";
+import { DungeonSystem } from "../systems/DungeonSystem";
+import { FieldOfViewSystem } from "../systems/FieldOfViewSystem";
 import { KeyboardSystem } from "../systems/KeyboardSystem";
 import { MobileSystem } from "../systems/MobileSystem";
-import { FieldOfViewSystem } from "../systems/FieldOfViewSystem";
 import { BaseScene } from "./BaseScene";
 
 /**
@@ -13,12 +14,8 @@ import { BaseScene } from "./BaseScene";
 export default class GameScene extends BaseScene {
   raycasterPlugin!: PhaserRaycasterPlugin;
   private player!: Player;
+  private dungeonSystem!: DungeonSystem;
   private fovSystem!: FieldOfViewSystem;
-  private readonly tempOccluders: Phaser.GameObjects.GameObject[] = [];
-  private readonly tileSize = 32;
-  private readonly dungeonColumns = 96;
-  private readonly dungeonRows = 64;
-  private physicsWalls!: Phaser.Physics.Arcade.StaticGroup;
   private keyboardSystem!: KeyboardSystem;
   // @ts-expect-error
   private mobileSystem?: MobileSystem;
@@ -62,76 +59,23 @@ export default class GameScene extends BaseScene {
     this.lights.enable();
     this.lights.setAmbientColor(0x111122); // Dark blue night/dungeon environment
 
-    const tileSize = this.tileSize;
-    const dungeon = this.buildDungeonLayout();
-    const mapWidth = this.dungeonColumns * tileSize;
-    const mapHeight = this.dungeonRows * tileSize;
+    this.dungeonSystem = new DungeonSystem(this);
 
-    this.physics.world.setBounds(0, 0, mapWidth, mapHeight);
-
-    for (let row = 0; row < this.dungeonRows; row++) {
-      for (let column = 0; column < this.dungeonColumns; column++) {
-        if (!dungeon.walkable[row][column]) {
-          continue;
-        }
-
-        const floorImage = this.add
-          .image(column * tileSize + tileSize / 2, row * tileSize + tileSize / 2, "floor")
-          .setDepth(0);
-        floorImage.setPipeline("Light2D"); // Floor responds to light
-      }
-    }
-
-    const physicsWalls = this.physics.add.staticGroup();
-    this.physicsWalls = physicsWalls;
-    const wallCells = this.buildWallCells(dungeon.walkable);
-
-    for (const wallCell of wallCells) {
-      const [column, row] = wallCell.split(",").map(Number);
-      this.addWallBlock(
-        physicsWalls,
-        column * tileSize + tileSize / 2,
-        row * tileSize + tileSize / 2,
-        column,
-        row,
-        dungeon.walkable
-      );
-    }
-
-    const obstaclePlacements = [
-      { x: 13.5 * tileSize, y: 16.5 * tileSize, width: 32, height: 32 },
-      { x: 24.5 * tileSize, y: 16.5 * tileSize, width: 32, height: 32 },
-      { x: 27.5 * tileSize, y: 6.5 * tileSize, width: 32, height: 32 },
-      { x: 36.5 * tileSize, y: 13.5 * tileSize, width: 32, height: 32 },
-      { x: 10.5 * tileSize, y: 27.5 * tileSize, width: 32, height: 32 },
-      { x: 39.5 * tileSize, y: 26.5 * tileSize, width: 32, height: 32 },
-      { x: 6.5 * tileSize, y: 9.5 * tileSize, width: 32, height: 32 },
-      { x: 31.5 * tileSize, y: 21.5 * tileSize, width: 32, height: 32 }
-    ];
-
-    for (const obstaclePlacement of obstaclePlacements) {
-      this.addObstacle(
-        physicsWalls,
-        obstaclePlacement.x,
-        obstaclePlacement.y,
-        obstaclePlacement.width,
-        obstaclePlacement.height
-      );
-    }
+    this.physics.world.setBounds(0, 0, this.dungeonSystem.getMapWidth(), this.dungeonSystem.getMapHeight());
 
     // Player
-    this.player = new Player(this, dungeon.spawnX, dungeon.spawnY);
+    this.player = new Player(this, this.dungeonSystem.getSpawnX(), this.dungeonSystem.getSpawnY());
 
     this.fovSystem = new FieldOfViewSystem(
       this,
       this.player,
       this.raycasterPlugin,
-      mapWidth,
-      mapHeight,
-      this.tempOccluders
+      this.dungeonSystem.getMapWidth(),
+      this.dungeonSystem.getMapHeight(),
+      this.dungeonSystem.getOccluders()
     );
 
-    this.physics.add.collider(this.player, physicsWalls);
+    this.physics.add.collider(this.player, this.dungeonSystem.getPhysicsWalls());
 
     this.cameras.main.startFollow(this.player, true, 0.1, 0.1);
 
@@ -156,170 +100,6 @@ export default class GameScene extends BaseScene {
     }
 
     this.createSettingsButton();
-  }
-
-  private addWallBlock(
-    physicsWalls: Phaser.Physics.Arcade.StaticGroup,
-    x: number,
-    y: number,
-    column: number,
-    row: number,
-    walkable: boolean[][]
-  ) {
-    const wallBlock = this.physics.add.staticImage(x, y, "wall");
-    wallBlock.setPipeline("Light2D"); // Wall responds to light
-    wallBlock.setDepth(200);
-    wallBlock.refreshBody();
-
-    const body = wallBlock.body as Phaser.Physics.Arcade.StaticBody;
-    body.checkCollision.left = this.isWalkable(walkable, column - 1, row);
-    body.checkCollision.right = this.isWalkable(walkable, column + 1, row);
-    body.checkCollision.up = this.isWalkable(walkable, column, row - 1);
-    body.checkCollision.down = this.isWalkable(walkable, column, row + 1);
-
-    physicsWalls.add(wallBlock);
-    this.tempOccluders.push(wallBlock);
-  }
-
-  private isWalkable(walkable: boolean[][], column: number, row: number) {
-    return row >= 0 && row < this.dungeonRows && column >= 0 && column < this.dungeonColumns && walkable[row][column];
-  }
-
-  private buildDungeonLayout() {
-    const walkable = Array.from({ length: this.dungeonRows }, () => Array(this.dungeonColumns).fill(false));
-
-    const carveRoom = (left: number, top: number, width: number, height: number) => {
-      for (let row = top; row < top + height; row++) {
-        for (let column = left; column < left + width; column++) {
-          this.markWalkable(walkable, column, row);
-        }
-      }
-    };
-
-    const carveHorizontalPassage = (left: number, right: number, row: number, height = 3) => {
-      const top = row - Math.floor(height / 2);
-      for (let passageRow = top; passageRow < top + height; passageRow++) {
-        for (let column = left; column <= right; column++) {
-          this.markWalkable(walkable, column, passageRow);
-        }
-      }
-    };
-
-    const carveVerticalPassage = (column: number, top: number, bottom: number, width = 3) => {
-      const left = column - Math.floor(width / 2);
-      for (let passageColumn = left; passageColumn < left + width; passageColumn++) {
-        for (let row = top; row <= bottom; row++) {
-          this.markWalkable(walkable, passageColumn, row);
-        }
-      }
-    };
-
-    carveRoom(17, 12, 14, 9);
-    carveRoom(4, 13, 7, 6);
-    carveRoom(35, 10, 8, 7);
-    carveRoom(19, 3, 9, 5);
-    carveRoom(18, 24, 10, 6);
-    carveRoom(7, 5, 6, 5);
-    carveRoom(36, 24, 6, 5);
-    carveRoom(49, 7, 11, 7);
-    carveRoom(53, 21, 12, 8);
-    carveRoom(41, 35, 14, 8);
-    carveRoom(9, 34, 10, 8);
-    carveRoom(27, 40, 9, 6);
-    carveRoom(68, 8, 10, 8);
-    carveRoom(77, 22, 12, 8);
-    carveRoom(72, 36, 14, 9);
-    carveRoom(58, 47, 11, 7);
-    carveRoom(83, 45, 8, 6);
-    carveRoom(19, 50, 12, 7);
-
-    carveHorizontalPassage(10, 16, 15);
-    carveHorizontalPassage(30, 34, 13);
-    carveVerticalPassage(23, 8, 12);
-    carveVerticalPassage(23, 20, 24);
-    carveHorizontalPassage(12, 18, 7);
-    carveVerticalPassage(39, 17, 23);
-    carveHorizontalPassage(40, 52, 10);
-    carveVerticalPassage(58, 12, 25);
-    carveHorizontalPassage(48, 61, 25);
-    carveVerticalPassage(48, 25, 39);
-    carveHorizontalPassage(14, 30, 38);
-    carveVerticalPassage(31, 32, 44);
-    carveHorizontalPassage(56, 73, 11);
-    carveVerticalPassage(74, 11, 27);
-    carveHorizontalPassage(66, 86, 25);
-    carveVerticalPassage(85, 25, 41);
-    carveHorizontalPassage(60, 79, 40);
-    carveVerticalPassage(60, 40, 52);
-    carveHorizontalPassage(22, 34, 53);
-    carveVerticalPassage(34, 48, 58);
-    carveHorizontalPassage(74, 89, 48);
-
-    return {
-      walkable,
-      spawnX: 23 * this.tileSize + this.tileSize / 2,
-      spawnY: 16 * this.tileSize + this.tileSize / 2
-    };
-  }
-
-  private markWalkable(walkable: boolean[][], column: number, row: number) {
-    if (row < 0 || row >= this.dungeonRows || column < 0 || column >= this.dungeonColumns) {
-      return;
-    }
-
-    walkable[row][column] = true;
-  }
-
-  private buildWallCells(walkable: boolean[][]): Set<string> {
-    const wallCells = new Set<string>();
-    const directions = [
-      [1, 0],
-      [-1, 0],
-      [0, 1],
-      [0, -1]
-    ];
-
-    for (let row = 0; row < this.dungeonRows; row++) {
-      for (let column = 0; column < this.dungeonColumns; column++) {
-        if (walkable[row][column]) {
-          continue;
-        }
-
-        for (const [dx, dy] of directions) {
-          const neighborColumn = column + dx;
-          const neighborRow = row + dy;
-
-          if (
-            neighborRow >= 0 &&
-            neighborRow < this.dungeonRows &&
-            neighborColumn >= 0 &&
-            neighborColumn < this.dungeonColumns &&
-            walkable[neighborRow][neighborColumn]
-          ) {
-            wallCells.add(`${column},${row}`);
-            break;
-          }
-        }
-      }
-    }
-
-    return wallCells;
-  }
-
-  private addObstacle(
-    physicsWalls: Phaser.Physics.Arcade.StaticGroup,
-    x: number,
-    y: number,
-    width: number,
-    height: number
-  ) {
-    const obstacle = this.physics.add.staticImage(x, y, "obstacle");
-    obstacle.setPipeline("Light2D"); // Obstacle responds to light
-    obstacle.setDisplaySize(width, height);
-    obstacle.refreshBody();
-    obstacle.setDepth(200);
-    physicsWalls.add(obstacle);
-    this.tempOccluders.push(obstacle);
   }
 
   update(_time: number, delta: number) {
@@ -389,7 +169,7 @@ export default class GameScene extends BaseScene {
     };
 
     // Destroy fireball and trigger explosion when it hits a wall/obstacle
-    this.physics.add.collider(projectile, this.physicsWalls, () => {
+    this.physics.add.collider(projectile, this.dungeonSystem.getPhysicsWalls(), () => {
       this.audioSystem?.playFireballHit(0.55);
       this.createExplosion(projectile.x, projectile.y);
       cleanUp();
