@@ -122,8 +122,8 @@ export default class BootScene extends Phaser.Scene {
     player.fillStyle(0x777777);
     player.fillCircle(16, 16, 14);
     player.fillStyle(0x111111, 0.9);
-    player.fillRoundedRect(9, 8, 5, 9, 3);
-    player.fillRoundedRect(18, 8, 5, 9, 3);
+    player.fillRoundedRect(9, 8, 5, 9, 2.5);
+    player.fillRoundedRect(18, 8, 5, 9, 2.5);
     player.generateTexture("player", 32, 32);
     player.destroy();
   }
