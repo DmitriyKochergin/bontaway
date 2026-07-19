@@ -26,7 +26,7 @@ export default class GameScene extends BaseScene {
   private activeExplosions: { x: number; y: number; radius: number }[] = [];
 
   constructor() {
-    super("MainScene");
+    super("GameScene");
   }
 
   create(): void {

@@ -24,7 +24,7 @@ export default class BootScene extends Phaser.Scene {
         this.updateLoadingUi(loadingUi, 1);
         this.time.delayedCall(75, () => {
           loadingUi.container.destroy();
-          this.scene.start("MainScene");
+          this.scene.start("GameScene");
         });
         return;
       }
