@@ -1,6 +1,6 @@
 import Phaser from "phaser";
-import { BaseScene } from "./BaseScene";
 import { type AudioSystem } from "../systems/AudioSystem";
+import { BaseScene } from "./BaseScene";
 
 /**
  * Supervisor scene.

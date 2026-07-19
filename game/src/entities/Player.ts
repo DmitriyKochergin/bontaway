@@ -43,6 +43,51 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     this.setPipeline("Light2D");
   }
 
+  public syncKeys(activePhysicalKeys: Set<string>) {
+    const checkPressed = (keysList: string[]) => {
+      return keysList.some(k => activePhysicalKeys.has(k) || activePhysicalKeys.has(k.toUpperCase()));
+    };
+
+    if (this.keys.W) {
+      const isDown = checkPressed(["KeyW", "w", "W"]);
+      this.keys.W.isDown = isDown;
+      this.keys.W.isUp = !isDown;
+    }
+    if (this.keys.A) {
+      const isDown = checkPressed(["KeyA", "a", "A"]);
+      this.keys.A.isDown = isDown;
+      this.keys.A.isUp = !isDown;
+    }
+    if (this.keys.S) {
+      const isDown = checkPressed(["KeyS", "s", "S"]);
+      this.keys.S.isDown = isDown;
+      this.keys.S.isUp = !isDown;
+    }
+    if (this.keys.D) {
+      const isDown = checkPressed(["KeyD", "d", "D"]);
+      this.keys.D.isDown = isDown;
+      this.keys.D.isUp = !isDown;
+    }
+
+    if (this.cursors) {
+      const isUpPressed = checkPressed(["ArrowUp"]);
+      this.cursors.up.isDown = isUpPressed;
+      this.cursors.up.isUp = !isUpPressed;
+
+      const isDownPressed = checkPressed(["ArrowDown"]);
+      this.cursors.down.isDown = isDownPressed;
+      this.cursors.down.isUp = !isDownPressed;
+
+      const isLeftPressed = checkPressed(["ArrowLeft"]);
+      this.cursors.left.isDown = isLeftPressed;
+      this.cursors.left.isUp = !isLeftPressed;
+
+      const isRightPressed = checkPressed(["ArrowRight"]);
+      this.cursors.right.isDown = isRightPressed;
+      this.cursors.right.isUp = !isRightPressed;
+    }
+  }
+
   update(_time: number, delta: number) {
     if (!this.body) return;
 
