@@ -27,7 +27,7 @@ export class SettingsUI {
   } = { master: null, music: null, sfx: null };
 
   private readonly PANEL_WIDTH = 380;
-  private readonly PANEL_HEIGHT = 400;
+  private readonly PANEL_HEIGHT = 420;
   private readonly SLIDER_WIDTH = 120;
   private readonly TRACK_X = 0;
   private readonly OVERLAY_DEPTH = 990;
@@ -121,7 +121,7 @@ export class SettingsUI {
     this.createHeader(halfW, halfH);
     this.createVolumeSection(halfW, halfH);
     this.createControlsSection(halfW, halfH);
-    this.createResetButton(halfH);
+    this.createActionButtons(halfH);
   }
 
   private drawCornerAccents(halfW: number, halfH: number): void {
@@ -380,27 +380,68 @@ export class SettingsUI {
     }
   }
 
-  private createResetButton(halfH: number): void {
-    if (!this.panel) return;
-
+  private createActionButtons(halfH: number): void {
     const btnWidth = 120;
     const btnHeight = 32;
     const y = halfH - 30;
 
-    const container = this.scene.add.container(0, y);
+    // Reset button on the left (x = -90)
+    this.createPanelButton(
+      "RESET",
+      -90,
+      y,
+      btnWidth,
+      btnHeight,
+      0x4a1a1a, // normal BG (crimson)
+      0x884444, // normal Stroke
+      0x5a2a2a, // hover BG
+      0xaa6666, // hover Stroke
+      () => this.resetDefaults()
+    );
+
+    // Close button on the right (x = 90)
+    this.createPanelButton(
+      "CLOSE",
+      90,
+      y,
+      btnWidth,
+      btnHeight,
+      0x1a1a1a, // normal BG (obsidian)
+      0x444444, // normal Stroke
+      0x2a2a2a, // hover BG
+      0x666666, // hover Stroke
+      () => this.onClose?.()
+    );
+  }
+
+  private createPanelButton(
+    label: string,
+    x: number,
+    y: number,
+    width: number,
+    height: number,
+    normalBg: number,
+    normalStroke: number,
+    hoverBg: number,
+    hoverStroke: number,
+    onClick: () => void
+  ): void {
+    if (!this.panel) return;
+
+    const container = this.scene.add.container(x, y);
 
     const bg = this.scene.add.graphics();
-    bg.fillStyle(0x4a1a1a, 0.9);
-    bg.fillRoundedRect(-btnWidth / 2, -btnHeight / 2, btnWidth, btnHeight, 4);
-    bg.lineStyle(1, 0x884444, 0.6);
-    bg.strokeRoundedRect(-btnWidth / 2, -btnHeight / 2, btnWidth, btnHeight, 4);
+    bg.fillStyle(normalBg, 0.9);
+    bg.fillRoundedRect(-width / 2, -height / 2, width, height, 4);
+    bg.lineStyle(1, normalStroke, 0.6);
+    bg.strokeRoundedRect(-width / 2, -height / 2, width, height, 4);
     container.add(bg);
 
     const corners = this.scene.add.graphics();
     corners.lineStyle(1, 0xff6600, 0.7);
     const cs = 6;
-    const hw = btnWidth / 2;
-    const hh = btnHeight / 2;
+    const hw = width / 2;
+    const hh = height / 2;
     corners.beginPath();
     corners.moveTo(-hw, -hh + cs);
     corners.lineTo(-hw, -hh);
@@ -413,7 +454,7 @@ export class SettingsUI {
     corners.strokePath();
     container.add(corners);
 
-    const text = this.scene.add.text(0, 0, "RESET", {
+    const text = this.scene.add.text(0, 0, label, {
       fontSize: "12px",
       fontFamily: "Roboto Mono, Courier New, monospace",
       color: "#ffffff"
@@ -421,23 +462,23 @@ export class SettingsUI {
     text.setOrigin(0.5, 0.5);
     container.add(text);
 
-    const hitArea = this.scene.add.rectangle(0, 0, btnWidth, btnHeight, 0xffffff, 0);
+    const hitArea = this.scene.add.rectangle(0, 0, width, height, 0xffffff, 0);
     hitArea.setInteractive({ useHandCursor: true });
     hitArea.on("pointerover", () => {
       bg.clear();
-      bg.fillStyle(0x5a2a2a, 0.9);
-      bg.fillRoundedRect(-btnWidth / 2, -btnHeight / 2, btnWidth, btnHeight, 4);
-      bg.lineStyle(1, 0xaa6666, 0.8);
-      bg.strokeRoundedRect(-btnWidth / 2, -btnHeight / 2, btnWidth, btnHeight, 4);
+      bg.fillStyle(hoverBg, 0.9);
+      bg.fillRoundedRect(-width / 2, -height / 2, width, height, 4);
+      bg.lineStyle(1, hoverStroke, 0.8);
+      bg.strokeRoundedRect(-width / 2, -height / 2, width, height, 4);
     });
     hitArea.on("pointerout", () => {
       bg.clear();
-      bg.fillStyle(0x4a1a1a, 0.9);
-      bg.fillRoundedRect(-btnWidth / 2, -btnHeight / 2, btnWidth, btnHeight, 4);
-      bg.lineStyle(1, 0x884444, 0.6);
-      bg.strokeRoundedRect(-btnWidth / 2, -btnHeight / 2, btnWidth, btnHeight, 4);
+      bg.fillStyle(normalBg, 0.9);
+      bg.fillRoundedRect(-width / 2, -height / 2, width, height, 4);
+      bg.lineStyle(1, normalStroke, 0.6);
+      bg.strokeRoundedRect(-width / 2, -height / 2, width, height, 4);
     });
-    hitArea.on("pointerdown", () => this.resetDefaults());
+    hitArea.on("pointerdown", () => onClick());
     container.add(hitArea);
 
     this.panel.add(container);
