@@ -12,4 +12,6 @@
 11) рандомні звуки, закриття дверей, крики, стукіт, скрипи, шурхіт, кроки, падіння предметів, або в якійсь кімнаті серцебиття звук наростає.
 12) intro sounds
 13) коли гравець бігає і стріляє файрболами постійно, то згодом якийсь голос каже тихше, ти чого шумиш, хочеш щоб вони прийшли?
+Some voice over the door (door tile in wall), voice - is text next to this door. In order to not doing voices - some mumbling like a speach without exact language.
+Hey, there!      Yes, you.     Are you nuts?! stop firing, you are attracting them!
 14) додати двері, тоді скрипи дверей будуть більш доречними.
