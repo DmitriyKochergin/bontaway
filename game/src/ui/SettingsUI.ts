@@ -181,7 +181,7 @@ export class SettingsUI {
     title.setOrigin(0, 0.5);
     this.panel.add(title);
 
-    const closeBtn = this.scene.add.text(halfW - 25, -halfH + 35, "✕", {
+    const closeBtn = this.scene.add.text(halfW - 30, -halfH + 35, "✕", {
       fontSize: "16px",
       fontFamily: "Roboto Mono, Courier New, monospace",
       color: "#666666"
