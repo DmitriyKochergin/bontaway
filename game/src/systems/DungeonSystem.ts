@@ -232,7 +232,6 @@ export class DungeonSystem {
       [0, -1]
       /*
       DO NOT add corner tiles as this makes dungeon less creepy and safer, which is not the way.
-      ,
       [1, 1],
       [1, -1],
       [-1, 1],
