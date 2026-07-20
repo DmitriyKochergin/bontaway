@@ -1,6 +1,7 @@
 import Phaser from "phaser";
 import { type AudioSystem } from "../systems/AudioSystem";
 import { BaseScene } from "./BaseScene";
+import { SettingsButton } from "../ui/SettingsButton";
 
 /**
  * Supervisor scene.
@@ -10,7 +11,7 @@ export default class MainScene extends BaseScene {
   private escKeyHandler?: (event: KeyboardEvent) => void;
   private rtwpKeyHandler?: (event: KeyboardEvent) => void;
   private gameplayPaused = false;
-  private settingsButton!: Phaser.GameObjects.Image;
+  private settingsButton?: SettingsButton;
 
   constructor() {
     super("MainScene");
@@ -20,6 +21,8 @@ export default class MainScene extends BaseScene {
     this.setupShutdownCleanup();
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       this.removeKeyHandlers();
+      this.settingsButton?.destroy();
+      this.settingsButton = undefined;
     });
 
     this.createScene();
@@ -31,7 +34,14 @@ export default class MainScene extends BaseScene {
     this.input.keyboard?.addCapture([Phaser.Input.Keyboard.KeyCodes.SPACE, Phaser.Input.Keyboard.KeyCodes.ESC]);
     this.bindEscKey();
     this.bindRtwpKeys();
-    this.createSettingsButton();
+    this.settingsButton = new SettingsButton(this, () => {
+      const gameScene = this.scene.get("GameScene") as unknown as {
+        getAudioSystem: () => AudioSystem | undefined;
+      };
+      gameScene.getAudioSystem()?.play("sfx_tablet", 0.4);
+      this.toggleSettings();
+    });
+    this.settingsButton.create();
     this.scene.bringToTop();
   }
 
@@ -124,61 +134,5 @@ export default class MainScene extends BaseScene {
       this.input.keyboard?.off("keydown", this.rtwpKeyHandler);
       this.rtwpKeyHandler = undefined;
     }
-  }
-
-  private createSettingsButton(): void {
-    const margin = 30;
-    const x = this.scale.width - margin;
-
-    this.settingsButton = this.add.image(x, margin, "gear");
-    this.settingsButton.setScrollFactor(0);
-    this.settingsButton.setDepth(300);
-    this.settingsButton.setInteractive({ useHandCursor: true });
-
-    this.settingsButton.on("pointerover", () => {
-      this.tweens.add({
-        targets: this.settingsButton,
-        scale: 1.25,
-        angle: 45,
-        duration: 150,
-        ease: "Back.easeOut"
-      });
-    });
-
-    this.settingsButton.on("pointerout", () => {
-      this.tweens.add({
-        targets: this.settingsButton,
-        scale: 1.0,
-        angle: 0,
-        duration: 150,
-        ease: "Power2.easeOut"
-      });
-    });
-
-    this.settingsButton.on(
-      "pointerdown",
-      (_pointer: Phaser.Input.Pointer, _localX: number, _localY: number, event: Phaser.Types.Input.EventData) => {
-        if (event) {
-          event.stopPropagation();
-        }
-        const gameScene = this.scene.get("GameScene") as unknown as {
-          getAudioSystem: () => AudioSystem | undefined;
-        };
-        gameScene.getAudioSystem()?.play("sfx_tablet", 0.4);
-        this.toggleSettings();
-      }
-    );
-
-    const resizeHandler = (gameSize: Phaser.Structs.Size) => {
-      if (this.settingsButton) {
-        this.settingsButton.setPosition(gameSize.width - margin, margin);
-      }
-    };
-
-    this.scale.on("resize", resizeHandler);
-
-    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
-      this.scale.off("resize", resizeHandler);
-    });
   }
 }
