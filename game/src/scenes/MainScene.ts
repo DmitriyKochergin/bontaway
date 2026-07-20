@@ -101,7 +101,10 @@ export default class MainScene extends BaseScene {
 
   private toggleSettings(): void {
     if (this.scene.isActive("SettingsScene")) {
-      this.scene.stop("SettingsScene");
+      const settingsScene = this.scene.get("SettingsScene") as unknown as {
+        requestClose: () => void;
+      };
+      settingsScene.requestClose();
       return;
     }
 

@@ -18,6 +18,9 @@ export class SettingsUI {
   private audioSystem: AudioSystem | null = null;
   private panel: Phaser.GameObjects.Container | null = null;
   private overlay: Phaser.GameObjects.Rectangle | null = null;
+  private closeTween: Phaser.Tweens.Tween | null = null;
+  private panelRestY = 0;
+  private isClosing = false;
   public onClose: (() => void) | null = null;
 
   private sliders: {
@@ -65,6 +68,8 @@ export class SettingsUI {
   }
 
   show(): void {
+    this.isClosing = false;
+
     if (this.panel) {
       this.panel.destroy();
       this.panel = null;
@@ -77,6 +82,7 @@ export class SettingsUI {
     const cam = this.scene.cameras.main;
     const centerX = cam.scrollX + cam.width / 2;
     const centerY = cam.scrollY + cam.height / 2;
+    this.panelRestY = centerY;
 
     this.overlay = this.scene.add.rectangle(centerX, centerY, cam.width * 3, cam.height * 3, 0x000000, 0);
     this.overlay.setDepth(this.OVERLAY_DEPTH);
@@ -191,7 +197,7 @@ export class SettingsUI {
     closeBtn.on("pointerover", () => closeBtn.setColor("#ff4444"));
     closeBtn.on("pointerout", () => closeBtn.setColor("#666666"));
     closeBtn.on("pointerdown", (_pointer: Phaser.Input.Pointer, _localX: number, _localY: number, event: Event) => {
-      this.onClose?.();
+      this.close();
       event.stopPropagation();
     });
     this.panel.add(closeBtn);
@@ -410,7 +416,7 @@ export class SettingsUI {
       0x444444, // normal Stroke
       0x2a2a2a, // hover BG
       0x666666, // hover Stroke
-      () => this.onClose?.()
+      () => this.close()
     );
   }
 
@@ -497,7 +503,51 @@ export class SettingsUI {
     this.updateSliderValues();
   }
 
+  close(): void {
+    if (this.isClosing) {
+      return;
+    }
+
+    this.isClosing = true;
+
+    if (!this.panel || !this.overlay) {
+      this.hide();
+      this.onClose?.();
+      return;
+    }
+
+    this.closeTween?.stop();
+    this.scene.tweens.killTweensOf(this.overlay);
+    this.scene.tweens.killTweensOf(this.panel);
+
+    const cam = this.scene.cameras.main;
+    const panelCloseY = this.panelRestY + cam.height;
+
+    this.scene.tweens.add({
+      targets: this.overlay,
+      fillAlpha: 0,
+      duration: 140,
+      ease: "Sine.easeIn"
+    });
+
+    this.closeTween = this.scene.tweens.add({
+      targets: this.panel,
+      y: panelCloseY,
+      alpha: 0,
+      duration: 180,
+      ease: "Back.easeIn",
+      onComplete: () => {
+        this.closeTween = null;
+        this.hide();
+        this.onClose?.();
+      }
+    });
+  }
+
   hide(): void {
+    this.closeTween?.stop();
+    this.closeTween = null;
+
     if (this.panel) {
       this.panel.destroy();
       this.panel = null;
@@ -508,6 +558,7 @@ export class SettingsUI {
     }
 
     this.sliders = { master: null, music: null, sfx: null };
+    this.isClosing = false;
   }
 
   destroy(): void {

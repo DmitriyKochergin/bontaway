@@ -25,7 +25,11 @@ export default class SettingsScene extends Phaser.Scene {
     this.audioSystem = data.audioSystem ?? null;
 
     this.settingsUI = new SettingsUI(this, this.audioSystem ?? undefined);
-    this.settingsUI.onClose = () => this.closeSettings();
+    this.settingsUI.onClose = () => {
+      this.settingsUI?.destroy();
+      this.settingsUI = null;
+      this.scene.stop();
+    };
     this.settingsUI.show();
 
     this.escKey = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.ESC);
@@ -38,17 +42,22 @@ export default class SettingsScene extends Phaser.Scene {
 
   update(): void {
     if (Phaser.Input.Keyboard.JustDown(this.escKey)) {
-      this.closeSettings();
+      this.requestClose();
     }
   }
 
-  private closeSettings(): void {
+  requestClose(): void {
     if (this.isClosing) {
       return;
     }
 
     this.isClosing = true;
-    this.settingsUI?.hide();
-    this.scene.stop();
+
+    if (!this.settingsUI) {
+      this.scene.stop();
+      return;
+    }
+
+    this.settingsUI.close();
   }
 }
