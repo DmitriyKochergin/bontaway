@@ -11,7 +11,9 @@ export const gameConfig: Phaser.Types.Core.GameConfig = {
   height: window.innerHeight,
   parent: "game-container",
   backgroundColor: "#1a1a2e",
-  pixelArt: true,
+  pixelArt: true, // disables smoothing, but performance drops
+  // antialias: true, // enables smoothing for Canvas/WebGL
+  // antialiasGL: true,
   render: {
     maxLights: 100
   },

@@ -25,6 +25,8 @@ export default class MainScene extends BaseScene {
       this.settingsButton = undefined;
     });
 
+    this.input?.mouse?.disableContextMenu();
+
     this.createScene();
   }
 
