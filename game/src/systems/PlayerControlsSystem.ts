@@ -1,6 +1,6 @@
 import Phaser from "phaser";
 import { type Player } from "../entities/Player";
-import { DesktopControlsSystem } from "./DesktopControlsSystem";
+import { PlayerKeysSyncSystem } from "./PlayerKeysSyncSystem";
 import { MobileControlsSystem } from "./MobileControlsSystem";
 
 type AttackHandler = (x: number, y: number) => void;
@@ -9,7 +9,7 @@ export class PlayerControlsSystem {
   private readonly scene: Phaser.Scene;
   private readonly player: Player;
   private readonly attack: AttackHandler;
-  private readonly keyboardSystem: DesktopControlsSystem;
+  private readonly keyboardSystem: PlayerKeysSyncSystem;
   private mobileSystem?: MobileControlsSystem;
   private desktopPointerDownListener?: (pointer: Phaser.Input.Pointer) => void;
 
@@ -18,7 +18,7 @@ export class PlayerControlsSystem {
     this.player = player;
     this.attack = attack;
 
-    this.keyboardSystem = new DesktopControlsSystem(scene);
+    this.keyboardSystem = new PlayerKeysSyncSystem(scene);
     this.setupPointerControls();
 
     this.scene.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
