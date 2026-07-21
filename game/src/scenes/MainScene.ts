@@ -11,6 +11,8 @@ export default class MainScene extends BaseScene {
   private escKeyHandler?: (event: KeyboardEvent) => void;
   private rtwpKeyHandler?: (event: KeyboardEvent) => void;
   private tabKeyHandler?: (event: KeyboardEvent) => void;
+  private pausedLabel?: Phaser.GameObjects.Text;
+  private pausedLabelResizeHandler?: (gameSize: Phaser.Structs.Size) => void;
   private gameplayPaused = false;
   private settingsButton?: SettingsButton;
 
@@ -22,6 +24,7 @@ export default class MainScene extends BaseScene {
     this.setupShutdownCleanup();
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       this.removeKeyHandlers();
+      this.removePausedLabel();
       this.settingsButton?.destroy();
       this.settingsButton = undefined;
     });
@@ -50,6 +53,7 @@ export default class MainScene extends BaseScene {
       this.toggleSettings();
     });
     this.settingsButton.create();
+    this.createPausedLabel();
     this.scene.bringToTop();
   }
 
@@ -140,6 +144,7 @@ export default class MainScene extends BaseScene {
   private toggleRtwpPause(): void {
     this.gameplayPaused = !this.gameplayPaused;
     this.applyGameplayPauseState();
+    this.updatePausedLabel();
   }
 
   private applyGameplayPauseState(): void {
@@ -151,6 +156,44 @@ export default class MainScene extends BaseScene {
     if (!this.scene.isActive("SettingsScene")) {
       this.scene.resume("GameScene");
     }
+  }
+
+  private createPausedLabel(): void {
+    this.removePausedLabel();
+
+    this.pausedLabel = this.add.text(0, 0, "PAUSED", {
+      fontSize: "20px",
+      fontStyle: "bold",
+      fontFamily: "Roboto Mono, Courier New, monospace",
+      color: "#ff6600",
+      stroke: "#000000",
+      strokeThickness: 3
+    });
+    this.pausedLabel.setScrollFactor(0);
+    this.pausedLabel.setDepth(300);
+    this.pausedLabel.setOrigin(0.5, 0.5);
+
+    this.pausedLabelResizeHandler = (gameSize: Phaser.Structs.Size) => {
+      this.pausedLabel?.setPosition(gameSize.width - 50, 78);
+    };
+
+    this.scale.on("resize", this.pausedLabelResizeHandler);
+    this.pausedLabelResizeHandler(this.scale.gameSize);
+    this.updatePausedLabel();
+  }
+
+  private updatePausedLabel(): void {
+    this.pausedLabel?.setVisible(this.gameplayPaused);
+  }
+
+  private removePausedLabel(): void {
+    if (this.pausedLabelResizeHandler) {
+      this.scale.off("resize", this.pausedLabelResizeHandler);
+      this.pausedLabelResizeHandler = undefined;
+    }
+
+    this.pausedLabel?.destroy();
+    this.pausedLabel = undefined;
   }
 
   private removeKeyHandlers(): void {
