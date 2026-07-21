@@ -5,6 +5,7 @@ import { DungeonSystem } from "../systems/DungeonSystem";
 import { FieldOfViewSystem } from "../systems/FieldOfViewSystem";
 import { KeyboardSystem } from "../systems/KeyboardSystem";
 import { MobileSystem } from "../systems/MobileSystem";
+import { WeaponSystem } from "../systems/WeaponSystem";
 import { BaseScene } from "./BaseScene";
 
 /**
@@ -17,6 +18,7 @@ export default class GameScene extends BaseScene {
   private dungeonSystem!: DungeonSystem;
   private fovSystem!: FieldOfViewSystem;
   private keyboardSystem!: KeyboardSystem;
+  private weaponSystem!: WeaponSystem;
   // @ts-expect-error
   private mobileSystem?: MobileSystem;
 
@@ -74,6 +76,8 @@ export default class GameScene extends BaseScene {
       this.dungeonSystem.getOccluders()
     );
 
+    this.weaponSystem = new WeaponSystem(this, this.player, this.dungeonSystem, this.fovSystem, this.audioSystem);
+
     this.physics.add.collider(this.player, this.dungeonSystem.getPhysicsWalls());
 
     this.cameras.main.startFollow(this.player, true, 0.1, 0.1);
@@ -87,14 +91,14 @@ export default class GameScene extends BaseScene {
       this.input.addPointer(5);
 
       // Instantiate Mobile System for touch controls (movement joystick & right-screen face fireballs)
-      this.mobileSystem = new MobileSystem(this, this.player, (x, y) => this.castFireball(x, y));
+      this.mobileSystem = new MobileSystem(this, this.player, (x, y) => this.weaponSystem.castFireball(x, y));
     } else {
       // Desktop behavior: fire fireball directly where clicked
       this.input.on("pointerdown", (pointer: Phaser.Input.Pointer) => {
         if (this.scene.isPaused()) {
           return;
         }
-        this.castFireball(pointer.worldX, pointer.worldY);
+        this.weaponSystem.castFireball(pointer.worldX, pointer.worldY);
       });
     }
   }
@@ -113,129 +117,5 @@ export default class GameScene extends BaseScene {
     this.fovSystem.update(delta);
   }
 
-  private castFireball(targetX: number, targetY: number) {
-    this.audioSystem?.playFireballCast(0.45);
-
-    // Create fireball sprite
-    const projectile = this.physics.add.sprite(this.player.x, this.player.y, "fireball");
-    projectile.setPipeline("Light2D");
-    projectile.setDepth(250);
-
-    this.fovSystem.addProjectile(projectile);
-
-    // Add light that flies with the fireball
-    const spellLight = this.lights.addLight(projectile.x, projectile.y, 150, 0xff5500, 3);
-
-    // Particles (fire trail)
-    const particles = this.add.particles(0, 0, "fireball", {
-      speed: 20,
-      scale: { start: 1, end: 0 },
-      blendMode: "ADD",
-      lifespan: 300
-    });
-    particles.setDepth(240);
-    particles.startFollow(projectile);
-
-    // Move to target coordinates
-    this.physics.moveTo(projectile, targetX, targetY, 300);
-
-    let isCleanedUp = false;
-    const cleanUp = () => {
-      if (isCleanedUp) return;
-      isCleanedUp = true;
-      this.fovSystem.removeProjectile(projectile);
-      this.lights.removeLight(spellLight);
-
-      // Stop emitting and following so existing tail fades out naturally
-      try {
-        particles.stop();
-        particles.stopFollow();
-      } catch (err) {
-        // Safe guard in case particles or scene were already destroyed
-      }
-      this.time.delayedCall(500, () => {
-        try {
-          particles.destroy();
-        } catch (err) {
-          // Safe guard
-        }
-      });
-
-      projectile.destroy();
-      this.events.off("update", updateListener);
-    };
-
-    // Destroy fireball and trigger explosion when it hits a wall/obstacle
-    this.physics.add.collider(projectile, this.dungeonSystem.getPhysicsWalls(), () => {
-      this.audioSystem?.playFireballHit(0.55);
-      this.createExplosion(projectile.x, projectile.y);
-      cleanUp();
-    });
-
-    // Destroy and cleanup after 10 seconds (or upon wall/obstacle collision)
-    this.time.delayedCall(10000, () => {
-      cleanUp();
-    });
-
-    // Update light position every frame
-    const updateListener = () => {
-      if (this.scene.isPaused()) return;
-
-      if (projectile.active) {
-        spellLight.x = projectile.x;
-        spellLight.y = projectile.y;
-      } else {
-        cleanUp();
-      }
-    };
-    this.events.on("update", updateListener);
-  }
-
-  private createExplosion(x: number, y: number) {
-    // Create an expanding explosion light (matching fireball's orange color)
-    const explosionLight = this.lights.addLight(x, y, 50, 0xff5500, 10);
-
-    const explosionObj = { x, y, radius: 50 };
-    this.fovSystem.addExplosion(explosionObj);
-
-    // Explosion particles (longer lifespan to match the slower fade out)
-    const particles = this.add.particles(x, y, "fireball", {
-      speed: { min: 30, max: 120 },
-      angle: { min: 0, max: 360 },
-      scale: { start: 2, end: 0 },
-      blendMode: "ADD",
-      lifespan: { min: 600, max: 700 },
-      maxParticles: 25
-    });
-    particles.setDepth(260);
-
-    // Animate the light expansion and fading (longer duration for a slower fade out)
-    let elapsed = 0;
-    const duration = 1000; // 1000 ms (1 second fade out)
-
-    const updateLight = (_time: number, delta: number) => {
-      if (this.scene.isPaused()) return;
-
-      elapsed += delta;
-      const progress = Math.min(elapsed / duration, 1);
-
-      explosionLight.radius = 150 + progress * 250; // Expands to 400 radius
-      explosionLight.intensity = 10 * (1 - progress);
-      explosionObj.radius = explosionLight.radius;
-
-      if (progress >= 1) {
-        this.lights.removeLight(explosionLight);
-        this.events.off("update", updateLight);
-        this.fovSystem.removeExplosion(explosionObj);
-      }
-    };
-
-    this.events.on("update", updateLight);
-
-    // Destroy particle emitter system when all particles fade
-    this.time.delayedCall(1200, () => {
-      particles.destroy();
-    });
-  }
 
 }
