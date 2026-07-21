@@ -5,11 +5,13 @@ export class DevModeOverlay {
   private scene: Phaser.Scene;
   private dungeonSystem: DungeonSystem;
   private container?: Phaser.GameObjects.Container;
+  private fpsLabel?: Phaser.GameObjects.Text;
   private topLabels: Phaser.GameObjects.Text[] = [];
   private bottomLabels: Phaser.GameObjects.Text[] = [];
   private leftLabels: Phaser.GameObjects.Text[] = [];
   private rightLabels: Phaser.GameObjects.Text[] = [];
   private visible = false;
+  private readonly hudInset = 16;
 
   constructor(scene: Phaser.Scene, dungeonSystem: DungeonSystem) {
     this.scene = scene;
@@ -46,6 +48,8 @@ export class DevModeOverlay {
       return;
     }
 
+    this.updateFpsLabel();
+
     const camera = this.scene.cameras.main;
     const tileSize = this.dungeonSystem.getTileSize();
     const worldView = camera.worldView;
@@ -62,6 +66,7 @@ export class DevModeOverlay {
     this.visible = false;
     this.container?.destroy(true);
     this.container = undefined;
+    this.fpsLabel = undefined;
     this.topLabels = [];
     this.bottomLabels = [];
     this.leftLabels = [];
@@ -86,19 +91,23 @@ export class DevModeOverlay {
     this.bottomLabels = this.createLabelStrip(columnsOnScreen);
     this.leftLabels = this.createLabelStrip(rowsOnScreen);
     this.rightLabels = this.createLabelStrip(rowsOnScreen);
+    this.fpsLabel = this.createLabel("FPS: 0");
 
-    for (const label of [...this.topLabels, ...this.bottomLabels, ...this.leftLabels, ...this.rightLabels]) {
+    for (const label of [this.fpsLabel, ...this.topLabels, ...this.bottomLabels, ...this.leftLabels, ...this.rightLabels]) {
       label.setScrollFactor(0);
       this.container.add(label);
     }
+
+    this.fpsLabel.setOrigin(0, 0);
+    this.fpsLabel.setPosition(this.hudInset, this.hudInset);
   }
 
   private createLabelStrip(count: number): Phaser.GameObjects.Text[] {
     return Array.from({ length: count }, () => this.createLabel());
   }
 
-  private createLabel(): Phaser.GameObjects.Text {
-    const label = this.scene.add.text(0, 0, "", {
+  private createLabel(value = ""): Phaser.GameObjects.Text {
+    const label = this.scene.add.text(0, 0, value, {
       fontSize: "13px",
       fontFamily: "Roboto Mono, Courier New, monospace",
       color: "#9efc9e",
@@ -108,6 +117,14 @@ export class DevModeOverlay {
 
     label.setOrigin(0.5, 0.5);
     return label;
+  }
+
+  private updateFpsLabel(): void {
+    if (!this.fpsLabel) {
+      return;
+    }
+
+    this.fpsLabel.setText(`FPS: ${Math.round(this.scene.game.loop.actualFps)}`);
   }
 
   private updateHorizontalAxisLabels(
