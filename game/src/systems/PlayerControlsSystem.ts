@@ -3,18 +3,18 @@ import { type Player } from "../entities/Player";
 import { PlayerKeysSyncSystem } from "./PlayerKeysSyncSystem";
 import { MobileControlsSystem } from "./MobileControlsSystem";
 
-type AttackHandler = (x: number, y: number) => void;
+type LeftClickHandler = (x: number, y: number) => void;
 
 export class PlayerControlsSystem {
   private readonly scene: Phaser.Scene;
   private readonly player: Player;
-  private readonly leftMouseClickHandler: AttackHandler;
+  private readonly leftMouseClickHandler: LeftClickHandler;
   private readonly keyboardSystem: PlayerKeysSyncSystem;
   private mobileSystem?: MobileControlsSystem;
   private desktopPointerDownListener?: (pointer: Phaser.Input.Pointer) => void;
   private isTeleporting = false;
 
-  constructor(scene: Phaser.Scene, player: Player, leftMouseClickHandler: AttackHandler) {
+  constructor(scene: Phaser.Scene, player: Player, leftMouseClickHandler: LeftClickHandler) {
     this.scene = scene;
     this.player = player;
     this.leftMouseClickHandler = leftMouseClickHandler;
