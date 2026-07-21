@@ -10,6 +10,7 @@ import { SettingsButton } from "../ui/SettingsButton";
 export default class MainScene extends BaseScene {
   private escKeyHandler?: (event: KeyboardEvent) => void;
   private rtwpKeyHandler?: (event: KeyboardEvent) => void;
+  private tabKeyHandler?: (event: KeyboardEvent) => void;
   private gameplayPaused = false;
   private settingsButton?: SettingsButton;
 
@@ -33,9 +34,14 @@ export default class MainScene extends BaseScene {
   /** Launch `GameScene` and wire global controls that coordinate pause state. */
   createScene(): void {
     this.scene.launch("GameScene");
-    this.input.keyboard?.addCapture([Phaser.Input.Keyboard.KeyCodes.SPACE, Phaser.Input.Keyboard.KeyCodes.ESC]);
+    this.input.keyboard?.addCapture([
+      Phaser.Input.Keyboard.KeyCodes.SPACE,
+      Phaser.Input.Keyboard.KeyCodes.ESC,
+      Phaser.Input.Keyboard.KeyCodes.TAB
+    ]);
     this.bindEscKey();
     this.bindRtwpKeys();
+    this.bindDevModeKey();
     this.settingsButton = new SettingsButton(this, () => {
       const gameScene = this.scene.get("GameScene") as unknown as {
         getAudioSystem: () => AudioSystem | undefined;
@@ -81,6 +87,24 @@ export default class MainScene extends BaseScene {
     };
 
     this.input.keyboard?.on("keydown", this.rtwpKeyHandler);
+  }
+
+  private bindDevModeKey(): void {
+    this.tabKeyHandler = (event: KeyboardEvent) => {
+      if (event.code !== "Tab" || event.repeat) {
+        return;
+      }
+
+      event.preventDefault();
+
+      if (this.scene.isActive("SettingsScene")) {
+        return;
+      }
+
+      this.scene.get("GameScene").events.emit("toggle-dev-mode");
+    };
+
+    this.input.keyboard?.on("keydown", this.tabKeyHandler);
   }
 
   public openSettings(): void {
@@ -138,6 +162,11 @@ export default class MainScene extends BaseScene {
     if (this.rtwpKeyHandler) {
       this.input.keyboard?.off("keydown", this.rtwpKeyHandler);
       this.rtwpKeyHandler = undefined;
+    }
+
+    if (this.tabKeyHandler) {
+      this.input.keyboard?.off("keydown", this.tabKeyHandler);
+      this.tabKeyHandler = undefined;
     }
   }
 }

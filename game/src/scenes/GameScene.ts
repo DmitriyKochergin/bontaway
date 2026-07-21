@@ -2,6 +2,7 @@ import Phaser from "phaser";
 import { Player } from "../entities/Player";
 import { type PhaserRaycasterPlugin } from "../phaser-raycaster";
 import { DungeonSystem } from "../systems/DungeonSystem";
+import { DevModeOverlay } from "../systems/DevModeOverlay";
 import { FieldOfViewSystem } from "../systems/FieldOfViewSystem";
 import { PlayerControlsSystem } from "../systems/PlayerControlsSystem";
 import { WeaponSystem } from "../systems/WeaponSystem";
@@ -18,6 +19,8 @@ export default class GameScene extends BaseScene {
   private fovSystem!: FieldOfViewSystem;
   private playerControlSystem!: PlayerControlsSystem;
   private weaponSystem!: WeaponSystem;
+  private devModeEnabled = false;
+  private devModeOverlay?: DevModeOverlay;
 
   constructor() {
     super("GameScene");
@@ -25,6 +28,13 @@ export default class GameScene extends BaseScene {
 
   create(): void {
     this.setupShutdownCleanup();
+    this.events.on("toggle-dev-mode", this.toggleDevMode, this);
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      this.events.off("toggle-dev-mode", this.toggleDevMode, this);
+      this.devModeOverlay?.destroy();
+      this.devModeOverlay = undefined;
+      this.devModeEnabled = false;
+    });
     this.events.on(Phaser.Scenes.Events.PAUSE, () => {
       this.player?.setVelocity(0, 0);
 
@@ -80,6 +90,19 @@ export default class GameScene extends BaseScene {
     this.cameras.main.startFollow(this.player, true, 0.1, 0.1);
   }
 
+  private toggleDevMode(): void {
+    this.devModeEnabled = !this.devModeEnabled;
+
+    this.devModeOverlay ??= new DevModeOverlay(this, this.dungeonSystem);
+
+    if (this.devModeEnabled) {
+      this.devModeOverlay.show();
+      return;
+    }
+
+    this.devModeOverlay.hide();
+  }
+
   update(_time: number, delta: number) {
     if (!this.player || !this.player.body) return;
 
@@ -92,6 +115,7 @@ export default class GameScene extends BaseScene {
     this.player.update(_time, delta);
 
     this.fovSystem.update(delta);
+    this.devModeOverlay?.update();
   }
 
 
