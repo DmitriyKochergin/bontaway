@@ -1,10 +1,11 @@
 import Phaser from "phaser";
 import { type Player } from "../entities/Player";
 
-export class MobileSystem {
+export class MobileControlsSystem {
   private scene: Phaser.Scene;
   private player: Player;
   private onRightHalfClick: (x: number, y: number) => void;
+  private destroyed = false;
 
   private joystickOuter!: Phaser.GameObjects.Arc;
   private joystickInner!: Phaser.GameObjects.Arc;
@@ -108,6 +109,11 @@ export class MobileSystem {
   }
 
   public destroy() {
+    if (this.destroyed) {
+      return;
+    }
+
+    this.destroyed = true;
     this.scene.input.off("pointerdown", this.onPointerDownRef);
     this.scene.input.off("pointermove", this.onPointerMoveRef);
     this.scene.input.off("pointerup", this.onPointerUpRef);

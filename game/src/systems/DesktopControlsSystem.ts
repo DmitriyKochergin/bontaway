@@ -1,7 +1,7 @@
 import Phaser from "phaser";
 import { type Player } from "../entities/Player";
 
-export class KeyboardSystem {
+export class DesktopControlsSystem {
   private windowKeyDownListener?: (event: KeyboardEvent) => void;
   private windowKeyUpListener?: (event: KeyboardEvent) => void;
   private windowBlurListener?: () => void;

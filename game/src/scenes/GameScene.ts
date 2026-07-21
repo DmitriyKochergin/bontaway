@@ -3,8 +3,7 @@ import { Player } from "../entities/Player";
 import { type PhaserRaycasterPlugin } from "../phaser-raycaster";
 import { DungeonSystem } from "../systems/DungeonSystem";
 import { FieldOfViewSystem } from "../systems/FieldOfViewSystem";
-import { KeyboardSystem } from "../systems/KeyboardSystem";
-import { MobileSystem } from "../systems/MobileSystem";
+import { PlayerControlsSystem } from "../systems/PlayerControlsSystem";
 import { WeaponSystem } from "../systems/WeaponSystem";
 import { BaseScene } from "./BaseScene";
 
@@ -17,10 +16,8 @@ export default class GameScene extends BaseScene {
   private player!: Player;
   private dungeonSystem!: DungeonSystem;
   private fovSystem!: FieldOfViewSystem;
-  private keyboardSystem!: KeyboardSystem;
+  private playerControlSystem!: PlayerControlsSystem;
   private weaponSystem!: WeaponSystem;
-  // @ts-expect-error
-  private mobileSystem?: MobileSystem;
 
   constructor() {
     super("GameScene");
@@ -28,7 +25,6 @@ export default class GameScene extends BaseScene {
 
   create(): void {
     this.setupShutdownCleanup();
-    this.keyboardSystem = new KeyboardSystem(this);
     this.events.on(Phaser.Scenes.Events.PAUSE, () => {
       this.player?.setVelocity(0, 0);
 
@@ -45,8 +41,8 @@ export default class GameScene extends BaseScene {
   }
 
   private syncKeyboardStateOnResume() {
-    if (this.player) {
-      this.keyboardSystem.syncPlayerKeys(this.player);
+    if (this.player && this.playerControlSystem) {
+      this.playerControlSystem.syncPlayerKeys();
       this.player.update(0, 16);
     }
   }
@@ -77,30 +73,11 @@ export default class GameScene extends BaseScene {
     );
 
     this.weaponSystem = new WeaponSystem(this, this.player, this.dungeonSystem, this.fovSystem, this.audioSystem);
+    this.playerControlSystem = new PlayerControlsSystem(this, this.player, (x, y) => this.weaponSystem.castFireball(x, y));
 
     this.physics.add.collider(this.player, this.dungeonSystem.getPhysicsWalls());
 
     this.cameras.main.startFollow(this.player, true, 0.1, 0.1);
-
-    const isMobile =
-      !this.sys.game.device.os.desktop ||
-      /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-
-    if (isMobile) {
-      // Multi-touch config: allow at least 5 active pointers
-      this.input.addPointer(5);
-
-      // Instantiate Mobile System for touch controls (movement joystick & right-screen face fireballs)
-      this.mobileSystem = new MobileSystem(this, this.player, (x, y) => this.weaponSystem.castFireball(x, y));
-    } else {
-      // Desktop behavior: fire fireball directly where clicked
-      this.input.on("pointerdown", (pointer: Phaser.Input.Pointer) => {
-        if (this.scene.isPaused()) {
-          return;
-        }
-        this.weaponSystem.castFireball(pointer.worldX, pointer.worldY);
-      });
-    }
   }
 
   update(_time: number, delta: number) {
@@ -111,7 +88,7 @@ export default class GameScene extends BaseScene {
       return;
     }
 
-    this.keyboardSystem.syncPlayerKeys(this.player);
+    this.playerControlSystem.syncPlayerKeys();
     this.player.update(_time, delta);
 
     this.fovSystem.update(delta);
