@@ -3,20 +3,20 @@ import { type Player } from "../entities/Player";
 import { DesktopControlsSystem } from "./DesktopControlsSystem";
 import { MobileControlsSystem } from "./MobileControlsSystem";
 
-type CastFireballHandler = (x: number, y: number) => void;
+type AttackHandler = (x: number, y: number) => void;
 
 export class PlayerControlsSystem {
   private readonly scene: Phaser.Scene;
   private readonly player: Player;
-  private readonly castFireball: CastFireballHandler;
+  private readonly attack: AttackHandler;
   private readonly keyboardSystem: DesktopControlsSystem;
   private mobileSystem?: MobileControlsSystem;
   private desktopPointerDownListener?: (pointer: Phaser.Input.Pointer) => void;
 
-  constructor(scene: Phaser.Scene, player: Player, castFireball: CastFireballHandler) {
+  constructor(scene: Phaser.Scene, player: Player, attack: AttackHandler) {
     this.scene = scene;
     this.player = player;
-    this.castFireball = castFireball;
+    this.attack = attack;
 
     this.keyboardSystem = new DesktopControlsSystem(scene);
     this.setupPointerControls();
@@ -33,7 +33,7 @@ export class PlayerControlsSystem {
 
     if (isMobile) {
       this.scene.input.addPointer(5);
-      this.mobileSystem = new MobileControlsSystem(this.scene, this.player, this.castFireball);
+      this.mobileSystem = new MobileControlsSystem(this.scene, this.player, this.attack);
       return;
     }
 
@@ -42,7 +42,7 @@ export class PlayerControlsSystem {
         return;
       }
 
-      this.castFireball(pointer.worldX, pointer.worldY);
+      this.attack(pointer.worldX, pointer.worldY);
     };
 
     this.scene.input.on("pointerdown", this.desktopPointerDownListener);
