@@ -5,6 +5,7 @@ import { DungeonSystem } from "../systems/DungeonSystem";
 import { DevModeOverlay } from "../systems/DevModeOverlay";
 import { FieldOfViewSystem } from "../systems/FieldOfViewSystem";
 import { PlayerControlsSystem } from "../systems/PlayerControlsSystem";
+import { PlayerTeleport } from "../systems/PlayerTeleport";
 import { WeaponSystem } from "../systems/WeaponSystem";
 import { BaseScene } from "./BaseScene";
 
@@ -17,6 +18,7 @@ export default class GameScene extends BaseScene {
   private player!: Player;
   private dungeonSystem!: DungeonSystem;
   private fovSystem!: FieldOfViewSystem;
+  private playerTeleport!: PlayerTeleport;
   private playerControlSystem!: PlayerControlsSystem;
   private weaponSystem!: WeaponSystem;
   private devModeEnabled = false;
@@ -33,6 +35,7 @@ export default class GameScene extends BaseScene {
       this.events.off("toggle-dev-mode", this.toggleDevMode, this);
       this.devModeOverlay?.destroy();
       this.devModeOverlay = undefined;
+      this.playerTeleport?.destroy();
       this.devModeEnabled = false;
     });
     this.events.on(Phaser.Scenes.Events.PAUSE, () => {
@@ -83,7 +86,13 @@ export default class GameScene extends BaseScene {
     );
 
     this.weaponSystem = new WeaponSystem(this, this.player, this.dungeonSystem, this.fovSystem, this.audioSystem);
-    this.playerControlSystem = new PlayerControlsSystem(this, this.player, (x, y) => this.weaponSystem.castFireball(x, y));
+    this.playerTeleport = new PlayerTeleport(this, this.player, () => this.devModeEnabled);
+    this.playerControlSystem = new PlayerControlsSystem(
+      this,
+      this.player,
+      (x, y) => this.weaponSystem.castFireball(x, y),
+        (x, y) => this.playerTeleport.teleport(x, y),
+    );
 
     this.physics.add.collider(this.player, this.dungeonSystem.getPhysicsWalls());
 
@@ -101,6 +110,10 @@ export default class GameScene extends BaseScene {
     }
 
     this.devModeOverlay.hide();
+  }
+
+  public isDevModeEnabled(): boolean {
+    return this.devModeEnabled;
   }
 
   update(_time: number, delta: number) {
