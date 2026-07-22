@@ -39,6 +39,7 @@ export default class BootScene extends Phaser.Scene {
   private buildSharedTextures(): void {
     this.createFloorTexture();
     this.createWallTexture();
+    this.createDoorTextures();
     this.createPlayerTexture();
     this.createObstacleTexture();
     this.createFireballTexture();
@@ -120,6 +121,55 @@ export default class BootScene extends Phaser.Scene {
     wall.strokePath();
     wall.generateTexture("wall", 32, 32);
     wall.destroy();
+  }
+
+  private createDoorTextures(): void {
+    const doorVariants = [{ textureKey: "door_1", fillColor: 0x876812, frameColor: 0x7a5616, handleColor: 0x3b290c }];
+
+    for (const variant of doorVariants) {
+      this.createDoorTexture(variant.textureKey, variant.fillColor, variant.frameColor, variant.handleColor);
+    }
+  }
+
+  private createDoorTexture(textureKey: string, fillColor: number, frameColor: number, handleColor: number): void {
+    const door = this.add.graphics();
+
+    const innerWidth = 30;
+    const innerHeight = 30;
+    const innerX = 1;
+    const innerY = 1;
+
+    door.fillStyle(fillColor);
+    door.fillRoundedRect(innerX, innerY, innerWidth, innerHeight, 3);
+
+    door.lineStyle(1, frameColor, 0.7);
+    door.strokeRoundedRect(innerX, innerY, innerWidth, innerHeight, 2);
+
+    // door vertical lines ------------------------
+    door.fillStyle(0xffffff, 0.18);
+    door.fillRect(innerX + 2, innerY + 2, 3, innerHeight - 4);
+
+    door.fillStyle(0x000000, 0.12);
+    door.fillRect(innerX + innerWidth - 5, innerY + 2, 3, innerHeight - 4);
+
+    // door.lineStyle(1, 0x3b2b10, 0.55);
+    // door.moveTo(innerX + innerWidth / 2 - 4, innerY + 2);
+    // door.lineTo(innerX + innerWidth / 2 - 4, innerY + innerHeight - 2);
+    // door.moveTo(innerX + innerWidth / 2 + 4, innerY + 2);
+    // door.lineTo(innerX + innerWidth / 2 + 4, innerY + innerHeight - 2);
+    // door.strokePath();
+    // END door vertical lines --------------------
+
+    // door handle --------------------
+    door.fillStyle(handleColor);
+    // circle handle
+    // door.fillCircle(innerX + innerWidth - 7, innerY + innerHeight / 2, 2.5);
+    door.fillStyle(0x37270c, 0.85);
+    door.fillRect(innerX + innerWidth - 11, innerY + innerHeight / 2 - 1, 7, 3);
+    // END handle --------------------
+
+    door.generateTexture(textureKey, 32, 32);
+    door.destroy();
   }
 
   private createPlayerTexture(): void {

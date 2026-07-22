@@ -5,6 +5,7 @@ export class DungeonSystem {
   private readonly tileSize = 32;
   private readonly dungeonColumns = 96;
   private readonly dungeonRows = 64;
+  private readonly doorPlacements = [{ column: 16, row: 18, textureKey: "door_1" }] as const;
 
   private walkable!: boolean[][];
   private physicsWalls!: Phaser.Physics.Arcade.StaticGroup;
@@ -28,10 +29,6 @@ export class DungeonSystem {
 
   public getDungeonRows(): number {
     return this.dungeonRows;
-  }
-
-  public getWalkable(): boolean[][] {
-    return this.walkable;
   }
 
   public getPhysicsWalls(): Phaser.Physics.Arcade.StaticGroup {
@@ -89,9 +86,19 @@ export class DungeonSystem {
     // Render walls
     this.physicsWalls = this.scene.physics.add.staticGroup();
     const wallCells = this.buildWallCells(this.walkable);
+    const doorTexturesByCell = new Map(
+      this.doorPlacements.map(placement => [`${placement.column},${placement.row}`, placement.textureKey])
+    );
 
     for (const wallCell of wallCells) {
       const [column, row] = wallCell.split(",").map(Number);
+      const doorTextureKey = doorTexturesByCell.get(wallCell);
+
+      if (doorTextureKey) {
+        this.addDoorBlock(column * tileSize + tileSize / 2, row * tileSize + tileSize / 2, column, row, doorTextureKey);
+        continue;
+      }
+
       this.addWallBlock(column * tileSize + tileSize / 2, row * tileSize + tileSize / 2, column, row);
     }
 
@@ -126,6 +133,22 @@ export class DungeonSystem {
 
     this.physicsWalls.add(wallBlock);
     this.occluders.push(wallBlock);
+  }
+
+  private addDoorBlock(x: number, y: number, column: number, row: number, textureKey: string) {
+    const doorBlock = this.scene.physics.add.staticImage(x, y, textureKey);
+    doorBlock.setPipeline("Light2D");
+    doorBlock.setDepth(200);
+    doorBlock.refreshBody();
+
+    const body = doorBlock.body as Phaser.Physics.Arcade.StaticBody;
+    body.checkCollision.left = this.isWalkable(column - 1, row);
+    body.checkCollision.right = this.isWalkable(column + 1, row);
+    body.checkCollision.up = this.isWalkable(column, row - 1);
+    body.checkCollision.down = this.isWalkable(column, row + 1);
+
+    this.physicsWalls.add(doorBlock);
+    this.occluders.push(doorBlock);
   }
 
   private addObstacle(x: number, y: number, width: number, height: number) {
