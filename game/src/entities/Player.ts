@@ -4,7 +4,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   private cursors!: Phaser.Types.Input.Keyboard.CursorKeys;
   private keys: Partial<Record<"W" | "A" | "S" | "D", Phaser.Input.Keyboard.Key>> = {};
   private targetRotation: number = 0;
-  public readonly movementSpeed = 250;
+  public readonly movementSpeed = 150;
   private readonly fovOffsetMax = 10;
   private readonly fovOffsetLerp = 0.18;
 
