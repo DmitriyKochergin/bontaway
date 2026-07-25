@@ -12,6 +12,8 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   public fovOffsetY = 0;
   public playerLight!: Phaser.GameObjects.Light;
   public joystickVector: Phaser.Math.Vector2 | null = null;
+  private nextBlinkTime = 0;
+  private isBlinking = false;
 
   constructor(scene: Phaser.Scene, x: number, y: number) {
     super(scene, x, y, "player");
@@ -33,6 +35,21 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     }
 
     this.applyPlayerAppearance();
+
+    this.on(Phaser.Animations.Events.ANIMATION_COMPLETE, (anim: Phaser.Animations.Animation) => {
+      if (anim.key === "player_blink") {
+        this.isBlinking = false;
+        this.setFrame(0);
+      }
+    });
+
+    this.scheduleNextBlink(scene.time?.now || 0);
+  }
+
+  private scheduleNextBlink(currentTime: number): void {
+    const isDoubleBlink = Math.random() < 0.2;
+    const delay = isDoubleBlink ? Phaser.Math.Between(400, 650) : Phaser.Math.Between(2500, 6000);
+    this.nextBlinkTime = currentTime + delay;
   }
 
   public applyPlayerAppearance() {
@@ -42,6 +59,10 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     this.setCircle(14);
     this.body?.setOffset(2, 2);
     this.setPipeline("Light2D");
+    this.isBlinking = false;
+    if (this.scene) {
+      this.scheduleNextBlink(this.scene.time?.now || 0);
+    }
   }
 
   public syncKeys(activePhysicalKeys: Set<string>) {
@@ -89,8 +110,14 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     }
   }
 
-  update(_time: number, delta: number) {
+  update(time: number, delta: number) {
     if (!this.body) return;
+
+    if (time >= this.nextBlinkTime && !this.isBlinking) {
+      this.isBlinking = true;
+      this.anims.play("player_blink");
+      this.scheduleNextBlink(time);
+    }
 
     // Update light position to track player
     if (this.playerLight) {

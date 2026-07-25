@@ -1,7 +1,7 @@
 import Phaser from "phaser";
 import { type AudioSystem } from "../systems/AudioSystem";
-import { BaseScene } from "./BaseScene";
 import { SettingsButton } from "../ui/SettingsButton";
+import { BaseScene } from "./BaseScene";
 
 /**
  * Supervisor scene.

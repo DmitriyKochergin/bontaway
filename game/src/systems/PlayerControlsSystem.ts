@@ -1,7 +1,7 @@
 import Phaser from "phaser";
 import { type Player } from "../entities/Player";
-import { PlayerKeysSyncSystem } from "./PlayerKeysSyncSystem";
 import { MobileControlsSystem } from "./MobileControlsSystem";
+import { PlayerKeysSyncSystem } from "./PlayerKeysSyncSystem";
 
 type LeftClickHandler = (x: number, y: number) => void;
 type RightClickHandler = (x: number, y: number) => void;
@@ -63,7 +63,6 @@ export class PlayerControlsSystem {
     this.scene.input.on("pointerdown", this.desktopPointerDownListener);
   }
 
-
   public syncPlayerKeys() {
     this.keyboardSystem.syncPlayerKeys(this.player);
   }
@@ -82,5 +81,3 @@ export class PlayerControlsSystem {
     this.keyboardSystem.destroy();
   }
 }
-
-

@@ -93,7 +93,13 @@ export class DevModeOverlay {
     this.rightLabels = this.createLabelStrip(rowsOnScreen);
     this.fpsLabel = this.createLabel("FPS: 0");
 
-    for (const label of [this.fpsLabel, ...this.topLabels, ...this.bottomLabels, ...this.leftLabels, ...this.rightLabels]) {
+    for (const label of [
+      this.fpsLabel,
+      ...this.topLabels,
+      ...this.bottomLabels,
+      ...this.leftLabels,
+      ...this.rightLabels
+    ]) {
       label.setScrollFactor(0);
       this.container.add(label);
     }

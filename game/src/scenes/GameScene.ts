@@ -1,8 +1,8 @@
 import Phaser from "phaser";
 import { Player } from "../entities/Player";
 import { type PhaserRaycasterPlugin } from "../phaser-raycaster";
-import { DungeonSystem } from "../systems/DungeonSystem";
 import { DevModeOverlay } from "../systems/DevModeOverlay";
+import { DungeonSystem } from "../systems/DungeonSystem";
 import { FieldOfViewSystem } from "../systems/FieldOfViewSystem";
 import { PlayerControlsSystem } from "../systems/PlayerControlsSystem";
 import { PlayerTeleport } from "../systems/PlayerTeleport";
@@ -91,7 +91,7 @@ export default class GameScene extends BaseScene {
       this,
       this.player,
       (x, y) => this.weaponSystem.castFireball(x, y),
-        (x, y) => this.playerTeleport.teleport(x, y),
+      (x, y) => this.playerTeleport.teleport(x, y)
     );
 
     this.physics.add.collider(this.player, this.dungeonSystem.getPhysicsWalls());
@@ -130,6 +130,4 @@ export default class GameScene extends BaseScene {
     this.fovSystem.update(delta);
     this.devModeOverlay?.update();
   }
-
-
 }

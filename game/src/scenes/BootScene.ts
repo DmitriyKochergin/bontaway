@@ -174,13 +174,42 @@ export default class BootScene extends Phaser.Scene {
 
   private createPlayerTexture(): void {
     const player = this.add.graphics();
-    player.fillStyle(0x777777);
-    player.fillCircle(16, 16, 14);
-    player.fillStyle(0x111111, 0.9);
-    player.fillRoundedRect(9, 8, 5, 9, 2.5);
-    player.fillRoundedRect(18, 8, 5, 9, 2.5);
-    player.generateTexture("player", 32, 32);
+
+    const frames = [
+      { y: 8, h: 9, r: 2.5 }, // Frame 0: Open
+      { y: 10, h: 5, r: 2.0 }, // Frame 1: Half closed
+      { y: 12, h: 1.5, r: 0.75 }, // Frame 2: Closed slit
+      { y: 10, h: 5, r: 2.0 } // Frame 3: Half open
+    ];
+
+    for (let i = 0; i < frames.length; i++) {
+      const frame = frames[i];
+      const offsetX = i * 32;
+
+      player.fillStyle(0x777777);
+      player.fillCircle(offsetX + 16, 16, 14);
+
+      player.fillStyle(0x111111, 0.9);
+      player.fillRoundedRect(offsetX + 9, frame.y, 5, frame.h, frame.r);
+      player.fillRoundedRect(offsetX + 18, frame.y, 5, frame.h, frame.r);
+    }
+
+    player.generateTexture("player", 128, 32);
     player.destroy();
+
+    const playerTex = this.textures.get("player");
+    for (let i = 0; i < frames.length; i++) {
+      playerTex.add(i, 0, i * 32, 0, 32, 32);
+    }
+
+    if (!this.anims.exists("player_blink")) {
+      this.anims.create({
+        key: "player_blink",
+        frames: this.anims.generateFrameNumbers("player", { start: 0, end: 3 }),
+        frameRate: 15,
+        repeat: 0
+      });
+    }
   }
 
   private createObstacleTexture(): void {
