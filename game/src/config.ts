@@ -1,8 +1,8 @@
 import Phaser from "phaser";
 import PhaserRaycaster from "./phaser-raycaster";
-import BootScene from "./scenes/BootScene";
 import GameScene from "./scenes/GameScene";
 import MainScene from "./scenes/MainScene";
+import PreloadScene from "./scenes/PreloadScene";
 import SettingsScene from "./scenes/SettingsScene";
 
 export const gameConfig: Phaser.Types.Core.GameConfig = {
@@ -25,7 +25,7 @@ export const gameConfig: Phaser.Types.Core.GameConfig = {
       debug: false
     }
   },
-  scene: [BootScene, MainScene, GameScene, SettingsScene],
+  scene: [PreloadScene, MainScene, GameScene, SettingsScene],
   plugins: {
     scene: [
       {

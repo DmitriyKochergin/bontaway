@@ -4,7 +4,7 @@ import Phaser from "phaser";
  * Boot scene.
  * Builds shared textures, then hands control to `MainScene` for gameplay orchestration.
  */
-export default class BootScene extends Phaser.Scene {
+export default class PreloadScene extends Phaser.Scene {
   constructor() {
     super("BootScene");
   }
