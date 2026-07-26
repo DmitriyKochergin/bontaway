@@ -1,6 +1,6 @@
 import Phaser from "phaser";
 // @ts-expect-error - package export target is broken in this workspace, so import the installed ESM file directly.
-import PhaserRaycasterRuntime from "../node_modules/phaser-raycaster/src/main-esm.js";
+import PhaserRaycasterRuntime from "../../node_modules/phaser-raycaster/src/main-esm.js";
 
 export type RaycasterPoint = { x: number; y: number };
 
