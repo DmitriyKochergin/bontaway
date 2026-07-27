@@ -12,7 +12,6 @@ export class GameHUD {
 
   private hudContainer!: Phaser.GameObjects.Container;
   private backgroundGraphics!: Phaser.GameObjects.Graphics;
-  private glowGraphics!: Phaser.GameObjects.Graphics;
 
   // Weapon/Spell slots (only fireball is active for now)
   private slots: Array<{
@@ -48,10 +47,6 @@ export class GameHUD {
     this.hudContainer = this.scene.add.container(0, 0);
     this.hudContainer.setScrollFactor(0);
     this.hudContainer.setDepth(400); // Overlay on top of gameplay and fov
-
-    // Glow effect for selected active item (lava heat style)
-    this.glowGraphics = this.scene.add.graphics();
-    this.hudContainer.add(this.glowGraphics);
 
     // Stone plate background graphics
     this.backgroundGraphics = this.scene.add.graphics();
@@ -340,33 +335,9 @@ export class GameHUD {
   }
 
   /**
-   * Run-time updater to feed dynamic graphics like an active orange lava glow around selected tile.
+   * Run-time updater for HUD animations and status (deprecated, no current tasks).
    */
-  public update(_delta: number): void {
-    const glow = this.glowGraphics;
-    glow.clear();
-
-    const selectedSlotIndex = this.currentSelection;
-    if (selectedSlotIndex < this.slots.length) {
-      const slot = this.slots[selectedSlotIndex];
-      if (slot && slot.isActive) {
-        // Redraw subtle orange fire/lava glow bleeding underneath the tile
-        const startX = this.panelPadding + this.slotSize / 2;
-        const slotX = startX + selectedSlotIndex * (this.slotSize + this.slotPadding);
-        const centerY = this.panelHeight / 2;
-
-        const pad = 6;
-        glow.fillStyle(0xff4400, 0.18); // steady warm outline
-        glow.fillRoundedRect(
-          slotX - this.slotSize / 2 - pad,
-          centerY - this.slotSize / 2 - pad,
-          this.slotSize + pad * 2,
-          this.slotSize + pad * 2,
-          4
-        );
-      }
-    }
-  }
+  public update(_delta?: number): void {}
 
   public destroy(): void {
     if (this.resizeHandler) {
@@ -374,7 +345,6 @@ export class GameHUD {
     }
     this.hudContainer.destroy();
     this.backgroundGraphics.destroy();
-    this.glowGraphics.destroy();
     this.slots = [];
   }
 }
