@@ -1,5 +1,7 @@
 import Phaser from "phaser";
 import { Player } from "../entities/Player";
+import { NPC } from "../entities/NPC";
+import { getLevelDefinition } from "../levels";
 import { DevModeOverlay } from "../systems/DevModeOverlay";
 import { DungeonSystem } from "../systems/DungeonSystem";
 import { FieldOfViewSystem } from "../systems/FieldOfViewSystem";
@@ -26,6 +28,8 @@ export default class GameScene extends BaseScene {
   private devModeEnabled = false;
   private devModeOverlay?: DevModeOverlay;
   private levelId = "arena";
+  private npcs: NPC[] = [];
+  private npcGroup!: Phaser.Physics.Arcade.StaticGroup;
 
   constructor() {
     super("GameScene");
@@ -46,6 +50,8 @@ export default class GameScene extends BaseScene {
     this.events.on("toggle-dev-mode", this.toggleDevMode, this);
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       this.events.off("toggle-dev-mode", this.toggleDevMode, this);
+      this.npcs.forEach(npc => npc.destroy());
+      this.npcs = [];
       this.devModeOverlay?.destroy();
       this.devModeOverlay = undefined;
       this.playerTeleport?.destroy();
@@ -111,6 +117,9 @@ export default class GameScene extends BaseScene {
 
     this.physics.add.collider(this.player, this.dungeonSystem.getPhysicsWalls());
 
+    this.spawnNPCs();
+    this.physics.add.collider(this.player, this.npcGroup);
+
     this.cameras.main.startFollow(this.player, true, 0.1, 0.1);
 
     this.gameHUD = new GameHUD(this, this.audioSystem);
@@ -145,8 +154,36 @@ export default class GameScene extends BaseScene {
     this.playerControlSystem.syncPlayerKeys();
     this.player.update(_time, delta);
 
+    // Update standing NPCs in real-time
+    for (const npc of this.npcs) {
+      if (npc.active) {
+        npc.update(this.player.x, this.player.y, _time, delta);
+      }
+    }
+
     this.fovSystem.update(delta);
     this.gameHUD?.update(delta);
     this.devModeOverlay?.update();
+  }
+
+  private spawnNPCs(): void {
+    this.npcGroup = this.physics.add.staticGroup();
+    this.npcs = [];
+
+    const levelDef = getLevelDefinition(this.levelId);
+    if (!levelDef || !levelDef.npcPlacements) {
+      return;
+    }
+
+    const tileSize = this.dungeonSystem.getTileSize();
+
+    for (const p of levelDef.npcPlacements) {
+      const x = p.tileX * tileSize;
+      const y = p.tileY * tileSize;
+
+      const npc = new NPC(this, x, y, p.type, p.name, p.dialogue);
+      this.npcGroup.add(npc);
+      this.npcs.push(npc);
+    }
   }
 }

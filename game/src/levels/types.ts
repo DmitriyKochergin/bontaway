@@ -11,6 +11,14 @@ export interface ObstaclePlacement {
   height: number;
 }
 
+export interface NpcPlacement {
+  tileX: number;
+  tileY: number;
+  type: "scholar" | "guard" | "wanderer" | "merchant";
+  name: string;
+  dialogue: string[];
+}
+
 export interface LevelLayout {
   walkable: boolean[][];
   spawnX: number;
@@ -24,6 +32,7 @@ export interface LevelDefinition {
   rows: number;
   doorPlacements: DoorPlacement[];
   obstaclePlacements: ObstaclePlacement[];
+  npcPlacements?: NpcPlacement[];
   generateLayout: (tileSize: number) => LevelLayout;
 }
 

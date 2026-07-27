@@ -41,6 +41,7 @@ export default class PreloadScene extends Phaser.Scene {
     this.createWallTexture();
     this.createDoorTextures();
     this.createPlayerTexture();
+    this.createNpcTextures();
     this.createObstacleTexture();
     this.createFireballTexture();
     this.createFireballTileTexture();
@@ -210,6 +211,61 @@ export default class PreloadScene extends Phaser.Scene {
         frameRate: 15,
         repeat: 0
       });
+    }
+  }
+
+  private createNpcTextures(): void {
+    const npcTypes = [
+      { key: "npc_scholar", bodyColor: 0x3b3a6d, eyeColor: 0xffd700, eyeSize: 4.5, eyeSpread: 4 },
+      { key: "npc_guard", bodyColor: 0x555c65, eyeColor: 0x00f0ff, eyeSize: 4.0, eyeSpread: 5 },
+      { key: "npc_wanderer", bodyColor: 0x111111, eyeColor: 0xff2222, eyeSize: 3.5, eyeSpread: 3 },
+      { key: "npc_merchant", bodyColor: 0x8c5d31, eyeColor: 0x7cfc00, eyeSize: 4.5, eyeSpread: 4 }
+    ];
+
+    for (const type of npcTypes) {
+      if (this.textures.exists(type.key)) {
+        continue;
+      }
+
+      const npc = this.add.graphics();
+      const frames = [
+        { y: 8, h: 9, r: 2.5 },      // Frame 0: Open
+        { y: 10, h: 5, r: 2.0 },     // Frame 1: Half closed
+        { y: 12, h: 1.5, r: 0.75 },  // Frame 2: Closed slit
+        { y: 10, h: 5, r: 2.0 }      // Frame 3: Half open
+      ];
+
+      for (let i = 0; i < frames.length; i++) {
+        const frame = frames[i];
+        const offsetX = i * 32;
+
+        npc.fillStyle(type.bodyColor);
+        npc.fillCircle(offsetX + 16, 16, 14);
+
+        npc.lineStyle(1.5, 0x111111, 0.8);
+        npc.strokeCircle(offsetX + 16, 16, 14);
+
+        npc.fillStyle(type.eyeColor, 0.9);
+        npc.fillRoundedRect(offsetX + 16 - type.eyeSpread - 1.5, frame.y, 5, frame.h, frame.r);
+        npc.fillRoundedRect(offsetX + 16 + type.eyeSpread - 3.5, frame.y, 5, frame.h, frame.r);
+      }
+
+      npc.generateTexture(type.key, 128, 32);
+      npc.destroy();
+
+      const npcTex = this.textures.get(type.key);
+      for (let i = 0; i < frames.length; i++) {
+        npcTex.add(i, 0, i * 32, 0, 32, 32);
+      }
+
+      if (!this.anims.exists(`${type.key}_blink`)) {
+        this.anims.create({
+          key: `${type.key}_blink`,
+          frames: this.anims.generateFrameNumbers(type.key, { start: 0, end: 3 }),
+          frameRate: 15,
+          repeat: 0
+        });
+      }
     }
   }
 
