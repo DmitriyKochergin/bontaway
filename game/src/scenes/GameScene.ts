@@ -25,7 +25,7 @@ export default class GameScene extends BaseScene {
   private gameHUD?: GameHUD;
   private devModeEnabled = false;
   private devModeOverlay?: DevModeOverlay;
-  private levelId = "dungeon";
+  private levelId = "arena";
 
   constructor() {
     super("GameScene");
