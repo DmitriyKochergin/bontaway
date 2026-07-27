@@ -26,7 +26,6 @@ export class GameHUD {
 
   private resizeHandler!: (gameSize: Phaser.Structs.Size) => void;
   private currentSelection = 0; // Fireball is index 0
-  private pulseTimer = 0;
 
   // Dimensions
   private readonly slotSize = 64;
@@ -343,10 +342,7 @@ export class GameHUD {
   /**
    * Run-time updater to feed dynamic graphics like an active orange lava glow around selected tile.
    */
-  public update(delta: number): void {
-    this.pulseTimer += delta * 0.003;
-    const alphaIntensity = 0.5 + Math.sin(this.pulseTimer) * 0.3; // oscillate between 0.2 and 0.8
-
+  public update(_delta: number): void {
     const glow = this.glowGraphics;
     glow.clear();
 
@@ -360,7 +356,7 @@ export class GameHUD {
         const centerY = this.panelHeight / 2;
 
         const pad = 6;
-        glow.fillStyle(0xff4400, alphaIntensity * 0.35);
+        glow.fillStyle(0xff4400, 0.18); // steady warm outline
         glow.fillRoundedRect(
           slotX - this.slotSize / 2 - pad,
           centerY - this.slotSize / 2 - pad,
