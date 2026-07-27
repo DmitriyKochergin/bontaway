@@ -25,9 +25,20 @@ export default class GameScene extends BaseScene {
   private gameHUD?: GameHUD;
   private devModeEnabled = false;
   private devModeOverlay?: DevModeOverlay;
+  private levelId = "dungeon";
 
   constructor() {
     super("GameScene");
+  }
+
+  init(data?: { levelId?: string }): void {
+    if (data?.levelId) {
+      this.levelId = data.levelId;
+    }
+  }
+
+  public getLevelId(): string {
+    return this.levelId;
   }
 
   create(): void {
@@ -73,7 +84,7 @@ export default class GameScene extends BaseScene {
     this.lights.enable();
     this.lights.setAmbientColor(0x111122); // Dark blue night/dungeon environment
 
-    this.dungeonSystem = new DungeonSystem(this);
+    this.dungeonSystem = new DungeonSystem(this, this.levelId);
 
     this.physics.world.setBounds(0, 0, this.dungeonSystem.getMapWidth(), this.dungeonSystem.getMapHeight());
 

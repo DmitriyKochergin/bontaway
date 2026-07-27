@@ -1,5 +1,6 @@
 import Phaser from "phaser";
 import { type AudioSystem } from "../systems/AudioSystem";
+import { getLevels } from "../levels";
 
 /**
  * Game HUD for Bontaway.
@@ -12,6 +13,16 @@ export class GameHUD {
 
   private hudContainer!: Phaser.GameObjects.Container;
   private backgroundGraphics!: Phaser.GameObjects.Graphics;
+
+  // Level Selection Panel Properties
+  private levelContainer!: Phaser.GameObjects.Container;
+  private levelBackgroundRect!: Phaser.GameObjects.Graphics;
+  private levelItems: Array<{
+    container: Phaser.GameObjects.Container;
+    bg: Phaser.GameObjects.Graphics;
+    text: Phaser.GameObjects.Text;
+    levelId: string;
+  }> = [];
 
   // Weapon/Spell slots (only fireball is active for now)
   private slots: Array<{
@@ -54,6 +65,9 @@ export class GameHUD {
 
     // Build the weapon slots
     this.createSlots();
+
+    // Build Level Selection
+    this.createLevelSelection();
 
     // Position initial layout and configure window resize handler
     this.reposition(this.scene.scale.gameSize);
@@ -317,6 +331,13 @@ export class GameHUD {
     this.hudContainer.setPosition(x, y);
 
     this.drawMainPanel();
+
+    if (this.levelContainer) {
+      const levelX = 20;
+      const levelY = gameSize.height - 100 - 14;
+      this.levelContainer.setPosition(levelX, levelY);
+      this.drawLevelSelectionPanel();
+    }
   }
 
   /**
@@ -422,12 +443,179 @@ export class GameHUD {
    */
   public update(_delta?: number): void {}
 
+  private createLevelSelection(): void {
+    this.levelContainer = this.scene.add.container(0, 0);
+    this.levelContainer.setScrollFactor(0);
+    this.levelContainer.setDepth(400);
+
+    this.levelBackgroundRect = this.scene.add.graphics();
+    this.levelContainer.add(this.levelBackgroundRect);
+
+    // Header Text
+    const headerText = this.scene.add.text(12, 10, "LOCATIONS", {
+      fontSize: "11px",
+      fontFamily: "Cinzel, Georgia, serif",
+      color: "#ffd59a",
+      stroke: "#000000",
+      strokeThickness: 2,
+      fontStyle: "bold"
+    });
+    this.levelContainer.add(headerText);
+
+    // List of levels
+    interface LevelScene {
+      getLevelId?(): string;
+    }
+    const availableLevels = getLevels();
+    const levelScene = this.scene as unknown as LevelScene;
+    const currentLevelId = levelScene.getLevelId?.() || "dungeon";
+
+    const itemHeight = 24;
+    const itemPadding = 8;
+    const startY = 30;
+
+    availableLevels.forEach((level, index) => {
+      const itemY = startY + index * (itemHeight + itemPadding);
+
+      const itemContainer = this.scene.add.container(10, itemY);
+      this.levelContainer.add(itemContainer);
+
+      const isSelected = level.id === currentLevelId;
+
+      // Item background / frame
+      const itemBg = this.scene.add.graphics();
+      itemContainer.add(itemBg);
+
+      // Label text
+      const nameText = this.scene.add.text(22, itemHeight / 2, level.name.toUpperCase(), {
+        fontSize: "10px",
+        fontFamily: "Roboto Mono, Courier New, monospace",
+        color: isSelected ? "#ff9900" : "#a8a8a8",
+        fontStyle: isSelected ? "bold" : "normal"
+      });
+      nameText.setOrigin(0, 0.5);
+      itemContainer.add(nameText);
+
+      // Simple bullet indicator
+      const bullet = this.scene.add.text(10, itemHeight / 2 - 1, "❖", {
+        fontSize: "10px",
+        color: isSelected ? "#ffbb33" : "#444444"
+      });
+      bullet.setOrigin(0.5, 0.5);
+      itemContainer.add(bullet);
+
+      // Hover / Click interaction zones
+      const interactionZone = this.scene.add.zone(0, 0, 120, itemHeight).setOrigin(0, 0);
+      interactionZone.setInteractive({ useHandCursor: true });
+      itemContainer.add(interactionZone);
+
+      // Draw the initial stone frame of the button
+      this.drawStoneFrame(itemBg, 0, 0, 120, itemHeight, isSelected, false);
+
+      interactionZone.on("pointerover", () => {
+        this.audioSystem?.play("sfx_pickup", 0.3);
+        nameText.setColor("#ffd59a");
+        this.drawStoneFrame(itemBg, 0, 0, 120, itemHeight, true, false);
+      });
+
+      interactionZone.on("pointerout", () => {
+        nameText.setColor(isSelected ? "#ff9900" : "#a8a8a8");
+        this.drawStoneFrame(itemBg, 0, 0, 120, itemHeight, isSelected, false);
+      });
+
+      interactionZone.on(
+        "pointerdown",
+        (_p: Phaser.Input.Pointer, _lx: number, _ly: number, event: Phaser.Types.Input.EventData) => {
+          event.stopPropagation();
+          if (level.id !== currentLevelId) {
+            this.audioSystem?.play("sfx_tablet", 0.6);
+            // Restart scene with new level ID
+            this.scene.scene.restart({ levelId: level.id });
+          }
+        }
+      );
+
+      this.levelItems.push({
+        container: itemContainer,
+        bg: itemBg,
+        text: nameText,
+        levelId: level.id
+      });
+    });
+  }
+
+  private drawLevelSelectionPanel(): void {
+    const g = this.levelBackgroundRect;
+    g.clear();
+
+    const w = 140;
+    const h = 100;
+
+    // 1. Fill base dark obsidian / slate texture
+    g.fillStyle(0x1c1d1f, 0.95);
+    g.fillRoundedRect(0, 0, w, h, 6);
+
+    // 2. Slate horizontal fracture layered textures (simulating split rock slabs)
+    const slateLayers = 4;
+    for (let i = 1; i < slateLayers; i++) {
+      const yPos = (h / slateLayers) * i;
+      g.fillStyle(0x121314, 0.35);
+      g.fillRect(3, yPos, w - 6, 2);
+      g.fillStyle(0x313437, 0.08);
+      g.fillRect(3, yPos + 2, w - 6, 1);
+    }
+
+    // 3. Procedural chiseled fleck noise (completely deterministic via constant seed)
+    let seed = 888;
+    const pseudoRandom = () => {
+      const x = Math.sin(seed++) * 10000;
+      return x - Math.floor(x);
+    };
+
+    for (let i = 0; i < 20; i++) {
+      const fx = Math.floor(pseudoRandom() * (w - 12)) + 6;
+      const fy = Math.floor(pseudoRandom() * (h - 12)) + 6;
+      const fw = Math.floor(pseudoRandom() * 4) + 2;
+      const fh = Math.floor(pseudoRandom() * 2) + 1;
+      const isDark = pseudoRandom() > 0.45;
+      g.fillStyle(isDark ? 0x0a0b0c : 0x5a5f64, isDark ? 0.3 : 0.12);
+      g.fillRect(fx, fy, fw, fh);
+    }
+
+    // 5. Chiseled beveled stone edge structure (Raised outline)
+    g.lineStyle(2, 0x6e7275, 0.85); // Raised edge highlight (top and sides)
+    g.beginPath();
+    g.moveTo(0, h);
+    g.lineTo(0, 3);
+    g.lineTo(3, 0);
+    g.lineTo(w - 3, 0);
+    g.lineTo(w, 3);
+    g.lineTo(w, h);
+    g.strokePath();
+
+    g.lineStyle(2, 0x0c0d0e, 0.95); // Base shadow bottom
+    g.lineBetween(0, h, w, h);
+
+    // 6. Carved inner line track
+    g.lineStyle(1.5, 0x111213, 0.7);
+    g.strokeRoundedRect(5, 5, w - 10, h - 10, 4);
+  }
+
   public destroy(): void {
     if (this.resizeHandler) {
       this.scene.scale.off("resize", this.resizeHandler);
     }
     this.hudContainer.destroy();
     this.backgroundGraphics.destroy();
+
+    if (this.levelContainer) {
+      this.levelContainer.destroy();
+    }
+    if (this.levelBackgroundRect) {
+      this.levelBackgroundRect.destroy();
+    }
+
     this.slots = [];
+    this.levelItems = [];
   }
 }
