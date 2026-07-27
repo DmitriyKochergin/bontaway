@@ -1,12 +1,13 @@
 import Phaser from "phaser";
 import { Player } from "../entities/Player";
-import { type PhaserRaycasterPlugin } from "../phaser-raycaster";
 import { DevModeOverlay } from "../systems/DevModeOverlay";
 import { DungeonSystem } from "../systems/DungeonSystem";
 import { FieldOfViewSystem } from "../systems/FieldOfViewSystem";
 import { PlayerControlsSystem } from "../systems/PlayerControlsSystem";
 import { PlayerTeleport } from "../systems/PlayerTeleport";
 import { WeaponSystem } from "../systems/WeaponSystem";
+import { type PhaserRaycasterPlugin } from "../types/phaser-raycaster";
+import { GameHUD } from "../ui/GameHUD";
 import { BaseScene } from "./BaseScene";
 
 /**
@@ -21,6 +22,7 @@ export default class GameScene extends BaseScene {
   private playerTeleport!: PlayerTeleport;
   private playerControlSystem!: PlayerControlsSystem;
   private weaponSystem!: WeaponSystem;
+  private gameHUD?: GameHUD;
   private devModeEnabled = false;
   private devModeOverlay?: DevModeOverlay;
 
@@ -36,6 +38,8 @@ export default class GameScene extends BaseScene {
       this.devModeOverlay?.destroy();
       this.devModeOverlay = undefined;
       this.playerTeleport?.destroy();
+      this.gameHUD?.destroy();
+      this.gameHUD = undefined;
       this.devModeEnabled = false;
     });
     this.events.on(Phaser.Scenes.Events.PAUSE, () => {
@@ -97,6 +101,9 @@ export default class GameScene extends BaseScene {
     this.physics.add.collider(this.player, this.dungeonSystem.getPhysicsWalls());
 
     this.cameras.main.startFollow(this.player, true, 0.1, 0.1);
+
+    this.gameHUD = new GameHUD(this, this.audioSystem);
+    this.gameHUD.create();
   }
 
   private toggleDevMode(): void {
@@ -128,6 +135,7 @@ export default class GameScene extends BaseScene {
     this.player.update(_time, delta);
 
     this.fovSystem.update(delta);
+    this.gameHUD?.update(delta);
     this.devModeOverlay?.update();
   }
 }

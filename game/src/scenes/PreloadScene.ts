@@ -43,6 +43,7 @@ export default class PreloadScene extends Phaser.Scene {
     this.createPlayerTexture();
     this.createObstacleTexture();
     this.createFireballTexture();
+    this.createFireballTileTexture();
     this.createGearTexture();
   }
 
@@ -231,6 +232,54 @@ export default class PreloadScene extends Phaser.Scene {
     fireball.fillCircle(8, 8, 8);
     fireball.generateTexture("fireball", 16, 16);
     fireball.destroy();
+  }
+
+  private createFireballTileTexture(): void {
+    const graphics = this.add.graphics();
+
+    const pixelData = [
+      "......XXXXXX....",
+      "....XXDDDDRRXX..",
+      "...XDDDRRRROOXX.",
+      "..XDRRRROOOYYYXX",
+      ".XDRRROOOYYYYWWX",
+      "XDRRROOYYYYWWWWX",
+      "XDRROOYYYWWWWWWX",
+      "XDRROOYYYWWWWWWX",
+      "XDRROOYYYYWWWWXX",
+      ".XDRROOYYYYWWXX.",
+      ".XDDDRROYYYYWX..",
+      "..XXDDDRROOXX...",
+      "....XXDDDRXX....",
+      "......XXXX......",
+      "................",
+      "................"
+    ];
+
+    const colorMap: Record<string, number> = {
+      X: 0x190800, // charred outline
+      D: 0x6d1100, // deep dark red
+      R: 0xc21f00, // vibrant burning red
+      O: 0xe65c00, // intense orange
+      Y: 0xffad00, // golden yellow
+      W: 0xfff2b2 // flame core
+    };
+
+    const pixelSize = 2; // Each map character becomes a 2x2 screen pixel, resulting in 32x32 texture
+
+    for (let r = 0; r < pixelData.length; r++) {
+      const row = pixelData[r];
+      for (let c = 0; c < row.length; c++) {
+        const char = row[c];
+        if (char !== "." && colorMap[char] !== undefined) {
+          graphics.fillStyle(colorMap[char], 1);
+          graphics.fillRect(c * pixelSize, r * pixelSize, pixelSize, pixelSize);
+        }
+      }
+    }
+
+    graphics.generateTexture("fireball_tile", 32, 32);
+    graphics.destroy();
   }
 
   private createGearTexture(): void {
