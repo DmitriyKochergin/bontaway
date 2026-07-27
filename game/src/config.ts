@@ -6,12 +6,12 @@ import SettingsScene from "./scenes/SettingsScene";
 import PhaserRaycaster from "./types/phaser-raycaster";
 
 export const gameConfig: Phaser.Types.Core.GameConfig = {
-  type: Phaser.AUTO,
+  type: Phaser.WEBGL,
   width: window.innerWidth,
   height: window.innerHeight,
   parent: "game-container",
   backgroundColor: "#1a1a2e",
-  pixelArt: true, // disables smoothing, but performance drops
+  pixelArt: true, // disables smoothing, but performance is better
   // antialias: true, // enables smoothing for Canvas/WebGL
   // antialiasGL: true,
   render: {
