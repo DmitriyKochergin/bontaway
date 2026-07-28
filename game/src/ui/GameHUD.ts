@@ -1,6 +1,6 @@
 import Phaser from "phaser";
-import { type AudioSystem } from "../systems/AudioSystem";
 import { getLevels } from "../levels";
+import { type AudioSystem } from "../systems/AudioSystem";
 
 /**
  * Game HUD for Bontaway.
@@ -105,7 +105,7 @@ export class GameHUD {
       // Slot 1 is Fireball (our only weapon options tile for now)
       if (index === 0) {
         // Load the attached fireball tile image
-        icon = this.scene.add.image(0, -2, "fireball_tile");
+        icon = this.scene.add.image(0, 4, "fireball_tile");
 
         // Scale to fit beautifully inside the 64x64 frame with 4px border margins on all sides (making it 52px max)
         const maxIconDim = this.slotSize - 12;
@@ -119,17 +119,6 @@ export class GameHUD {
 
         icon.setInteractive({ useHandCursor: true });
         slotContainer.add(icon);
-
-        // Spell label text underneath the slot
-        labelText = this.scene.add.text(0, this.slotSize / 2 - 2, "FIREBALL", {
-          fontSize: "8px",
-          fontFamily: "Cinzel, Georgia, serif",
-          color: "#ffd59a",
-          stroke: "#000000",
-          strokeThickness: 2
-        });
-        labelText.setOrigin(0.5, 1);
-        slotContainer.add(labelText);
 
         // Pointer interactions with the weapon slot tile click/hover
         const originalScale = icon.scale;
