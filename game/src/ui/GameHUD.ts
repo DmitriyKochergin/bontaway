@@ -45,7 +45,10 @@ export class GameHUD {
     keyText: Phaser.GameObjects.Text;
     labelText?: Phaser.GameObjects.Text;
     isActive: boolean;
+    baseScale: number;
   }> = [];
+
+  private keySelectHandler?: (event: KeyboardEvent) => void;
 
   private resizeHandler!: (gameSize: Phaser.Structs.Size) => void;
   private currentSelection = 0; // Fireball is index 0
@@ -100,6 +103,15 @@ export class GameHUD {
     this.reposition(this.scene.scale.gameSize);
     this.resizeHandler = (gameSize: Phaser.Structs.Size) => this.reposition(gameSize);
     this.scene.scale.on("resize", this.resizeHandler);
+
+    // Number keys 1..N select the matching weapon slot.
+    this.keySelectHandler = (event: KeyboardEvent) => {
+      const slotNumber = Number.parseInt(event.key, 10);
+      if (slotNumber >= 1 && slotNumber <= this.numSlots) {
+        this.activateSlot(slotNumber - 1);
+      }
+    };
+    this.scene.input.keyboard?.on("keydown", this.keySelectHandler);
   }
 
   private createSlots(): void {
@@ -146,7 +158,6 @@ export class GameHUD {
         slotContainer.add(icon);
 
         // Pointer interactions with the weapon slot tile click/hover
-        const originalScale = icon.scale;
         const slotHalf = this.slotSize / 2;
 
         // Hover: just highlight the slot border (like the level buttons). No sound, no scale.
@@ -159,20 +170,12 @@ export class GameHUD {
           this.redrawSlots();
         });
 
-        // Selection happens on pointer down: play the click sound and pulse the tile bigger.
+        // Selection happens on pointer down (mirrors the number-key shortcut).
         icon.on(
           "pointerdown",
           (_p: Phaser.Input.Pointer, _lx: number, _ly: number, event: Phaser.Types.Input.EventData) => {
             event.stopPropagation();
-            this.controller.getAudioSystem()?.play("sfx_pickup", 0.4);
-            this.scene.tweens.add({
-              targets: icon,
-              scale: originalScale * 1.15,
-              duration: 100,
-              yoyo: true,
-              ease: "Quad.easeOut"
-            });
-            this.selectSlot(0);
+            this.activateSlot(0);
           }
         );
       } else {
@@ -191,11 +194,38 @@ export class GameHUD {
         icon,
         keyText,
         labelText,
-        isActive: index === 0
+        isActive: index === 0,
+        baseScale: icon ? icon.scale : 1
       });
     }
 
     this.redrawSlots();
+  }
+
+  /**
+   * Select a weapon slot from user input (pointer tile or number key).
+   * Plays the click sound, pulses the tile, and marks the slot selected.
+   * Locked/inactive slots are ignored.
+   */
+  private activateSlot(index: number): void {
+    const slot = this.slots[index];
+    if (!slot || !slot.isActive) {
+      return;
+    }
+
+    this.controller.getAudioSystem()?.play("sfx_pickup", 0.4);
+
+    if (slot.icon) {
+      this.scene.tweens.add({
+        targets: slot.icon,
+        scale: slot.baseScale * 1.15,
+        duration: 100,
+        yoyo: true,
+        ease: "Quad.easeOut"
+      });
+    }
+
+    this.selectSlot(index);
   }
 
   private selectSlot(index: number): void {
@@ -203,8 +233,6 @@ export class GameHUD {
       return;
     }
 
-    // Play tactile stone click sound
-    this.controller.getAudioSystem()?.play("sfx_tablet", 0.5);
     this.currentSelection = index;
     this.redrawSlots();
   }
@@ -624,6 +652,10 @@ export class GameHUD {
   public destroy(): void {
     if (this.resizeHandler) {
       this.scene.scale.off("resize", this.resizeHandler);
+    }
+    if (this.keySelectHandler) {
+      this.scene.input.keyboard?.off("keydown", this.keySelectHandler);
+      this.keySelectHandler = undefined;
     }
     this.settingsButton?.destroy();
     this.settingsButton = undefined;
