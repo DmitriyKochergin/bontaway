@@ -1,7 +1,6 @@
 import Phaser from "phaser";
 import { type AudioSystem } from "../systems/AudioSystem";
 import { GameHUD, type GameHudController } from "../ui/GameHUD";
-import { SettingsButton } from "../ui/SettingsButton";
 import { BaseScene } from "./BaseScene";
 
 /**
@@ -16,7 +15,6 @@ export default class MainScene extends BaseScene {
   private pausedLabel?: Phaser.GameObjects.Text;
   private pausedLabelResizeHandler?: (gameSize: Phaser.Structs.Size) => void;
   private gameplayPaused = false;
-  private settingsButton?: SettingsButton;
   private gameHUD?: GameHUD;
 
   constructor() {
@@ -28,8 +26,6 @@ export default class MainScene extends BaseScene {
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       this.removeKeyHandlers();
       this.removePausedLabel();
-      this.settingsButton?.destroy();
-      this.settingsButton = undefined;
       this.scene.get("GameScene")?.events.off(Phaser.Scenes.Events.CREATE, this.rebuildHud, this);
       this.gameHUD?.destroy();
       this.gameHUD = undefined;
@@ -53,14 +49,6 @@ export default class MainScene extends BaseScene {
     this.bindEscKey();
     this.bindRtwpKeys();
     this.bindDevModeKey();
-    this.settingsButton = new SettingsButton(this, () => {
-      const gameScene = this.scene.get("GameScene") as unknown as {
-        getAudioSystem: () => AudioSystem | undefined;
-      };
-      gameScene.getAudioSystem()?.play("sfx_tablet", 0.4);
-      this.toggleSettings();
-    });
-    this.settingsButton.create();
     this.createPausedLabel();
     this.scene.bringToTop();
   }
@@ -69,7 +57,7 @@ export default class MainScene extends BaseScene {
   private rebuildHud(): void {
     this.gameHUD?.destroy();
     const gameScene = this.scene.get("GameScene") as unknown as GameHudController;
-    this.gameHUD = new GameHUD(this, gameScene);
+    this.gameHUD = new GameHUD(this, gameScene, () => this.toggleSettings());
     this.gameHUD.create();
     this.scene.bringToTop();
   }

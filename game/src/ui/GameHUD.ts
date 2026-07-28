@@ -1,6 +1,7 @@
 import Phaser from "phaser";
 import { getLevels } from "../levels";
 import { type AudioSystem } from "../systems/AudioSystem";
+import { SettingsButton } from "./SettingsButton";
 
 /**
  * Bridge to the gameplay scene the HUD controls.
@@ -20,6 +21,8 @@ export interface GameHudController {
 export class GameHUD {
   private scene: Phaser.Scene;
   private controller: GameHudController;
+  private onOpenSettings: () => void;
+  private settingsButton?: SettingsButton;
 
   private hudContainer!: Phaser.GameObjects.Container;
   private backgroundGraphics!: Phaser.GameObjects.Graphics;
@@ -55,9 +58,10 @@ export class GameHUD {
   private readonly panelHeight = 84;
   private readonly panelWidth: number;
 
-  constructor(scene: Phaser.Scene, controller: GameHudController) {
+  constructor(scene: Phaser.Scene, controller: GameHudController, onOpenSettings: () => void) {
     this.scene = scene;
     this.controller = controller;
+    this.onOpenSettings = onOpenSettings;
 
     // Calculate total width of the stone plate
     this.panelWidth = this.numSlots * this.slotSize + (this.numSlots - 1) * this.slotPadding + this.panelPadding * 2;
@@ -84,6 +88,13 @@ export class GameHUD {
 
     // Build Level Selection
     this.createLevelSelection();
+
+    // Settings gear (top-right), owned by the HUD.
+    this.settingsButton = new SettingsButton(this.scene, () => {
+      this.controller.getAudioSystem()?.play("sfx_tablet", 0.4);
+      this.onOpenSettings();
+    });
+    this.settingsButton.create();
 
     // Position initial layout and configure window resize handler
     this.reposition(this.scene.scale.gameSize);
@@ -609,6 +620,8 @@ export class GameHUD {
     if (this.resizeHandler) {
       this.scene.scale.off("resize", this.resizeHandler);
     }
+    this.settingsButton?.destroy();
+    this.settingsButton = undefined;
     this.hudContainer.destroy();
     this.backgroundGraphics.destroy();
 
