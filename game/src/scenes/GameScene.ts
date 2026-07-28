@@ -6,7 +6,6 @@ import { DevModeOverlay } from "../systems/DevModeOverlay";
 import { DungeonSystem } from "../systems/DungeonSystem";
 import { FieldOfViewSystem } from "../systems/FieldOfViewSystem";
 import { PlayerControlsSystem } from "../systems/PlayerControlsSystem";
-import { PlayerTeleport } from "../systems/PlayerTeleport";
 import { WeaponSystem } from "../systems/WeaponSystem";
 import { type PhaserRaycasterPlugin } from "../types/phaser-raycaster";
 import { BaseScene } from "./BaseScene";
@@ -20,7 +19,6 @@ export default class GameScene extends BaseScene {
   private player!: Player;
   private dungeonSystem!: DungeonSystem;
   private fovSystem!: FieldOfViewSystem;
-  private playerTeleport!: PlayerTeleport;
   private playerControlSystem!: PlayerControlsSystem;
   private weaponSystem!: WeaponSystem;
   private devModeEnabled = false;
@@ -57,7 +55,6 @@ export default class GameScene extends BaseScene {
       this.npcs = [];
       this.devModeOverlay?.destroy();
       this.devModeOverlay = undefined;
-      this.playerTeleport?.destroy();
       this.devModeEnabled = false;
     });
     this.events.on(Phaser.Scenes.Events.PAUSE, () => {
@@ -108,12 +105,11 @@ export default class GameScene extends BaseScene {
     );
 
     this.weaponSystem = new WeaponSystem(this, this.player, this.dungeonSystem, this.fovSystem, this.audioSystem);
-    this.playerTeleport = new PlayerTeleport(this, this.player, () => this.devModeEnabled);
     this.playerControlSystem = new PlayerControlsSystem(
       this,
       this.player,
-      (x, y) => this.weaponSystem.castFireball(x, y),
-      (x, y) => this.playerTeleport.teleport(x, y),
+      (x, y) => this.castSelectedPrimaryWeapon(x, y),
+      (x, y) => this.castSelectedSecondaryWeapon(x, y),
       pointer => this.isPointerOverHud(pointer)
     );
 
@@ -149,6 +145,32 @@ export default class GameScene extends BaseScene {
     }
 
     this.devModeOverlay.hide();
+  }
+
+  private getSelectedWeaponSlot(): number {
+    const mainScene = this.scene.get("MainScene") as unknown as {
+      getSelectedWeaponSlot?: () => number;
+    };
+
+    return mainScene.getSelectedWeaponSlot?.() ?? 0;
+  }
+
+  private castSelectedPrimaryWeapon(targetX: number, targetY: number): void {
+    if (this.getSelectedWeaponSlot() === 1) {
+      this.weaponSystem.castRay(targetX, targetY);
+      return;
+    }
+
+    this.weaponSystem.castFireball(targetX, targetY);
+  }
+
+  private castSelectedSecondaryWeapon(targetX: number, targetY: number): void {
+    if (this.getSelectedWeaponSlot() === 1) {
+      this.weaponSystem.castSphere(targetX, targetY);
+      return;
+    }
+
+    this.weaponSystem.castFireball(targetX, targetY);
   }
 
   public isDevModeEnabled(): boolean {

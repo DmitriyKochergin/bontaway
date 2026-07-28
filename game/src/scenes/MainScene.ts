@@ -62,6 +62,10 @@ export default class MainScene extends BaseScene {
     this.scene.bringToTop();
   }
 
+  public getSelectedWeaponSlot(): number {
+    return this.gameHUD?.getSelectedWeaponSlot() ?? 0;
+  }
+
   private bindEscKey(): void {
     this.escKeyHandler = (event: KeyboardEvent) => {
       if (event.code !== "Escape" || event.repeat) {

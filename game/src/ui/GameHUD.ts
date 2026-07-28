@@ -37,13 +37,12 @@ export class GameHUD {
     levelId: string;
   }> = [];
 
-  // Weapon/Spell slots (only fireball is active for now)
+  // Weapon/Spell slots (fireball + blue weapon)
   private slots: Array<{
     container: Phaser.GameObjects.Container;
     frame: Phaser.GameObjects.Graphics;
     icon?: Phaser.GameObjects.Image;
     keyText: Phaser.GameObjects.Text;
-    labelText?: Phaser.GameObjects.Text;
     isActive: boolean;
     baseScale: number;
   }> = [];
@@ -51,12 +50,12 @@ export class GameHUD {
   private keySelectHandler?: (event: KeyboardEvent) => void;
 
   private resizeHandler!: (gameSize: Phaser.Structs.Size) => void;
-  private currentSelection = 0; // Fireball is index 0
+  private currentSelection = 0; // Fireball is index 0, blue weapon is index 1
 
   // Dimensions
   private readonly slotSize = 64;
   private readonly slotPadding = 12;
-  private readonly numSlots = 3;
+  private readonly numSlots = 2;
   private readonly panelPadding = 10;
   private readonly panelHeight = 84;
   private readonly panelWidth: number;
@@ -114,6 +113,10 @@ export class GameHUD {
     this.scene.input.keyboard?.on("keydown", this.keySelectHandler);
   }
 
+  public getSelectedWeaponSlot(): number {
+    return this.currentSelection;
+  }
+
   private createSlots(): void {
     const startX = this.panelPadding + this.slotSize / 2;
     const centerY = this.panelHeight / 2;
@@ -136,65 +139,48 @@ export class GameHUD {
       });
       slotContainer.add(keyText);
 
+      const slotDefinitions = [{ texture: "fireball_tile" }, { texture: "weapon-blue-sphere" }] as const;
+
+      const slotDefinition = slotDefinitions[index];
       let icon: Phaser.GameObjects.Image | undefined;
-      let labelText: Phaser.GameObjects.Text | undefined;
+      icon = this.scene.add.image(0, index === 0 ? 3 : 0, slotDefinition.texture);
 
-      // Slot 1 is Fireball (our only weapon options tile for now)
-      if (index === 0) {
-        // Load the attached fireball tile image
-        icon = this.scene.add.image(0, 4, "fireball_tile");
-
-        // Scale to fit beautifully inside the 64x64 frame with 4px border margins on all sides (making it 52px max)
-        const maxIconDim = this.slotSize - 12;
-        if (icon.width > 0) {
-          const scale = maxIconDim / Math.max(icon.width, icon.height);
-          icon.setScale(scale);
-        } else {
-          // Fallback if texture not fully loaded during scene draw
-          icon.setDisplaySize(maxIconDim, maxIconDim);
-        }
-
-        icon.setInteractive({ useHandCursor: true });
-        slotContainer.add(icon);
-
-        // Pointer interactions with the weapon slot tile click/hover
-        const slotHalf = this.slotSize / 2;
-
-        // Hover: just highlight the slot border (like the level buttons). No sound, no scale.
-        icon.on("pointerover", () => {
-          frameGraphics.clear();
-          this.drawStoneFrame(frameGraphics, -slotHalf, -slotHalf, this.slotSize, this.slotSize, true, false);
-        });
-
-        icon.on("pointerout", () => {
-          this.redrawSlots();
-        });
-
-        // Selection happens on pointer down (mirrors the number-key shortcut).
-        icon.on(
-          "pointerdown",
-          (_p: Phaser.Input.Pointer, _lx: number, _ly: number, event: Phaser.Types.Input.EventData) => {
-            event.stopPropagation();
-            this.activateSlot(0);
-          }
-        );
+      const maxIconDim = this.slotSize - 12;
+      if (icon.width > 0) {
+        const scale = maxIconDim / Math.max(icon.width, icon.height);
+        icon.setScale(scale);
       } else {
-        // Empty locked slot - draw subtle runic symbol in the middle
-        const rune = this.scene.add.text(0, -2, "⛤", {
-          fontSize: "18px",
-          color: "#181a1b"
-        });
-        rune.setOrigin(0.5, 0.5);
-        slotContainer.add(rune);
+        icon.setDisplaySize(maxIconDim, maxIconDim);
       }
+
+      icon.setInteractive({ useHandCursor: true });
+      slotContainer.add(icon);
+
+      const slotHalf = this.slotSize / 2;
+
+      icon.on("pointerover", () => {
+        frameGraphics.clear();
+        this.drawStoneFrame(frameGraphics, -slotHalf, -slotHalf, this.slotSize, this.slotSize, true, false);
+      });
+
+      icon.on("pointerout", () => {
+        this.redrawSlots();
+      });
+
+      icon.on(
+        "pointerdown",
+        (_p: Phaser.Input.Pointer, _lx: number, _ly: number, event: Phaser.Types.Input.EventData) => {
+          event.stopPropagation();
+          this.activateSlot(index);
+        }
+      );
 
       this.slots.push({
         container: slotContainer,
         frame: frameGraphics,
         icon,
         keyText,
-        labelText,
-        isActive: index === 0,
+        isActive: true,
         baseScale: icon ? icon.scale : 1
       });
     }
@@ -255,9 +241,6 @@ export class GameHUD {
         // Render Active Slot
         this.drawStoneFrame(g, -half, -half, this.slotSize, this.slotSize, isSelected, false);
         slot.keyText.setColor(isSelected ? "#ff7700" : "#888888");
-        if (slot.labelText) {
-          slot.labelText.setColor(isSelected ? "#ffaa00" : "#a8a8a8");
-        }
       }
     }
   }
