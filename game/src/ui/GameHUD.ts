@@ -530,11 +530,15 @@ export class GameHUD {
       interactionZone.on("pointerover", () => {
         this.controller.getAudioSystem()?.play("sfx_pickup", 0.3);
         nameText.setColor("#ffd59a");
+        // Clear first: drawStoneFrame paints the selection border outside the fill,
+        // so without clearing it would persist after pointerout.
+        itemBg.clear();
         this.drawStoneFrame(itemBg, 0, 0, 120, itemHeight, true, false);
       });
 
       interactionZone.on("pointerout", () => {
         nameText.setColor(isSelected ? "#ff9900" : "#a8a8a8");
+        itemBg.clear();
         this.drawStoneFrame(itemBg, 0, 0, 120, itemHeight, isSelected, false);
       });
 
