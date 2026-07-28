@@ -147,31 +147,31 @@ export class GameHUD {
 
         // Pointer interactions with the weapon slot tile click/hover
         const originalScale = icon.scale;
+        const slotHalf = this.slotSize / 2;
 
+        // Hover: just highlight the slot border (like the level buttons). No sound, no scale.
         icon.on("pointerover", () => {
-          this.controller.getAudioSystem()?.play("sfx_pickup", 0.3);
-          this.scene.tweens.add({
-            targets: icon,
-            scale: originalScale * 1.15,
-            duration: 100,
-            ease: "Quad.easeOut"
-          });
+          frameGraphics.clear();
+          this.drawStoneFrame(frameGraphics, -slotHalf, -slotHalf, this.slotSize, this.slotSize, true, false);
         });
 
         icon.on("pointerout", () => {
-          this.scene.tweens.add({
-            targets: icon,
-            scale: originalScale,
-            duration: 120,
-            ease: "Quad.easeIn"
-          });
+          this.redrawSlots();
         });
 
-        // Use pointerdown with propagation stop, preventing shooting fireball at HUD coordinates
+        // Selection happens on pointer down: play the click sound and pulse the tile bigger.
         icon.on(
           "pointerdown",
           (_p: Phaser.Input.Pointer, _lx: number, _ly: number, event: Phaser.Types.Input.EventData) => {
             event.stopPropagation();
+            this.controller.getAudioSystem()?.play("sfx_pickup", 0.4);
+            this.scene.tweens.add({
+              targets: icon,
+              scale: originalScale * 1.15,
+              duration: 100,
+              yoyo: true,
+              ease: "Quad.easeOut"
+            });
             this.selectSlot(0);
           }
         );
@@ -528,7 +528,6 @@ export class GameHUD {
       this.drawStoneFrame(itemBg, 0, 0, 120, itemHeight, isSelected, false);
 
       interactionZone.on("pointerover", () => {
-        this.controller.getAudioSystem()?.play("sfx_pickup", 0.3);
         nameText.setColor("#ffd59a");
         // Clear first: drawStoneFrame paints the selection border outside the fill,
         // so without clearing it would persist after pointerout.
@@ -547,9 +546,11 @@ export class GameHUD {
         (_p: Phaser.Input.Pointer, _lx: number, _ly: number, event: Phaser.Types.Input.EventData) => {
           event.stopPropagation();
           if (level.id !== currentLevelId) {
-            this.controller.getAudioSystem()?.play("sfx_tablet", 0.6);
-            // Restart the gameplay scene with the newly chosen level.
-            this.controller.restartLevel(level.id);
+            this.controller.getAudioSystem()?.play("sfx_pickup", 0.4);
+            // Defer the restart: GameScene's AudioSystem closes its AudioContext on
+            // shutdown, which would cut the selection sound. Wait for it to finish.
+            // Scheduled on this.scene (MainScene), which survives the GameScene restart.
+            this.scene.time.delayedCall(220, () => this.controller.restartLevel(level.id));
           }
         }
       );
