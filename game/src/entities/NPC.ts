@@ -10,20 +10,16 @@ export class NPC extends Phaser.Physics.Arcade.Sprite {
   private isBlinking = false;
   private nextBlinkTime = 0;
 
+  // Eye-follow: NPC body rotates to face the player while in activation radius, eases back to rest otherwise
+  private targetRotation = 0;
+
   // Floating text / dialogue components
   private speechContainer: Phaser.GameObjects.Container | null = null;
   private bubbleBackground: Phaser.GameObjects.Graphics | null = null;
   private bubbleText: Phaser.GameObjects.Text | null = null;
   private playerInRange = false;
 
-  constructor(
-    scene: Phaser.Scene,
-    x: number,
-    y: number,
-    npcType: NpcType,
-    npcName: string,
-    dialogueLines: string[]
-  ) {
+  constructor(scene: Phaser.Scene, x: number, y: number, npcType: NpcType, npcName: string, dialogueLines: string[]) {
     const textureKey = `npc_${npcType}`;
     super(scene, x, y, textureKey);
 
@@ -147,6 +143,7 @@ export class NPC extends Phaser.Physics.Arcade.Sprite {
     const distance = Phaser.Math.Distance.Between(this.x, this.y, playerX, playerY);
     const triggerRadius = 110;
     const exitRadius = 140;
+    const rotationSpeed = 0.007;
 
     if (!this.playerInRange && distance <= triggerRadius) {
       this.playerInRange = true;
@@ -155,6 +152,15 @@ export class NPC extends Phaser.Physics.Arcade.Sprite {
       this.playerInRange = false;
       this.hideDialogue();
     }
+
+    if (this.playerInRange) {
+      // Sprite art faces "up" (north); Angle.Between measures from east, so correct by +90 degrees
+      this.targetRotation = Phaser.Math.Angle.Between(this.x, this.y, playerX, playerY) + Math.PI / 2;
+    } else {
+      this.targetRotation = 0;
+    }
+
+    this.rotation = Phaser.Math.Angle.RotateTo(this.rotation, this.targetRotation, rotationSpeed * _delta);
   }
 
   private showDialogue(): void {
@@ -198,6 +204,3 @@ export class NPC extends Phaser.Physics.Arcade.Sprite {
     super.destroy(fromScene);
   }
 }
-
-
-
