@@ -5,12 +5,14 @@ import { PlayerKeysSyncSystem } from "./PlayerKeysSyncSystem";
 
 type LeftClickHandler = (x: number, y: number) => void;
 type RightClickHandler = (x: number, y: number) => void;
+type PointerBlockedPredicate = (pointer: Phaser.Input.Pointer) => boolean;
 
 export class PlayerControlsSystem {
   private readonly scene: Phaser.Scene;
   private readonly player: Player;
   private readonly leftMouseClickHandler: LeftClickHandler;
   private readonly rightMouseClickHandler: RightClickHandler;
+  private readonly isPointerBlocked?: PointerBlockedPredicate;
   private readonly keyboardSystem: PlayerKeysSyncSystem;
   private mobileSystem?: MobileControlsSystem;
   private desktopPointerDownListener?: (pointer: Phaser.Input.Pointer) => void;
@@ -19,12 +21,14 @@ export class PlayerControlsSystem {
     scene: Phaser.Scene,
     player: Player,
     leftMouseClickHandler: LeftClickHandler,
-    rightMouseClickHandler: RightClickHandler
+    rightMouseClickHandler: RightClickHandler,
+    isPointerBlocked?: PointerBlockedPredicate
   ) {
     this.scene = scene;
     this.player = player;
     this.leftMouseClickHandler = leftMouseClickHandler;
     this.rightMouseClickHandler = rightMouseClickHandler;
+    this.isPointerBlocked = isPointerBlocked;
 
     this.keyboardSystem = new PlayerKeysSyncSystem(scene);
     this.setupPointerControls();
@@ -50,13 +54,23 @@ export class PlayerControlsSystem {
         return;
       }
 
+      // Ignore clicks that land on HUD controls (rendered on a sibling scene).
+      if (this.isPointerBlocked?.(pointer)) {
+        return;
+      }
+
+      // Resolve world coords against THIS scene's camera. `pointer.worldX/Y` is shared
+      // across scenes and gets overwritten by the top scene's (static) camera, so it
+      // would ignore this scene's scroll and misplace the target.
+      const worldPoint = this.scene.cameras.main.getWorldPoint(pointer.x, pointer.y);
+
       if (pointer.rightButtonDown()) {
-        this.rightMouseClickHandler(pointer.worldX, pointer.worldY);
+        this.rightMouseClickHandler(worldPoint.x, worldPoint.y);
         return;
       }
 
       if (pointer.leftButtonDown()) {
-        this.leftMouseClickHandler(pointer.worldX, pointer.worldY);
+        this.leftMouseClickHandler(worldPoint.x, worldPoint.y);
       }
     };
 

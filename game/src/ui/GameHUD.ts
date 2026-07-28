@@ -3,13 +3,23 @@ import { getLevels } from "../levels";
 import { type AudioSystem } from "../systems/AudioSystem";
 
 /**
+ * Bridge to the gameplay scene the HUD controls.
+ * Lets the HUD render on a separate (supervisor) scene while still driving level/audio state.
+ */
+export interface GameHudController {
+  getLevelId(): string;
+  restartLevel(levelId: string): void;
+  getAudioSystem(): AudioSystem | undefined;
+}
+
+/**
  * Game HUD for Bontaway.
  * Displays available weapon options (slots/tiles) at the bottom.
  * Styled to look hand-carved, ancient stone (3D slate bevels, chiseled cracks, lava glow).
  */
 export class GameHUD {
   private scene: Phaser.Scene;
-  private audioSystem?: AudioSystem;
+  private controller: GameHudController;
 
   private hudContainer!: Phaser.GameObjects.Container;
   private backgroundGraphics!: Phaser.GameObjects.Graphics;
@@ -45,9 +55,9 @@ export class GameHUD {
   private readonly panelHeight = 84;
   private readonly panelWidth: number;
 
-  constructor(scene: Phaser.Scene, audioSystem?: AudioSystem) {
+  constructor(scene: Phaser.Scene, controller: GameHudController) {
     this.scene = scene;
-    this.audioSystem = audioSystem;
+    this.controller = controller;
 
     // Calculate total width of the stone plate
     this.panelWidth = this.numSlots * this.slotSize + (this.numSlots - 1) * this.slotPadding + this.panelPadding * 2;
@@ -63,6 +73,12 @@ export class GameHUD {
     this.backgroundGraphics = this.scene.add.graphics();
     this.hudContainer.add(this.backgroundGraphics);
 
+    // Full-plate input blocker: swallows clicks anywhere on the panel, not just on
+    // buttons. Added before the slots so slots stay on top and keep their own input.
+    const panelBlocker = this.scene.add.zone(0, 0, this.panelWidth, this.panelHeight).setOrigin(0, 0);
+    panelBlocker.setInteractive();
+    this.hudContainer.add(panelBlocker);
+
     // Build the weapon slots
     this.createSlots();
 
@@ -73,8 +89,6 @@ export class GameHUD {
     this.reposition(this.scene.scale.gameSize);
     this.resizeHandler = (gameSize: Phaser.Structs.Size) => this.reposition(gameSize);
     this.scene.scale.on("resize", this.resizeHandler);
-
-    this.scene.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.destroy());
   }
 
   private createSlots(): void {
@@ -124,7 +138,7 @@ export class GameHUD {
         const originalScale = icon.scale;
 
         icon.on("pointerover", () => {
-          this.audioSystem?.play("sfx_pickup", 0.3);
+          this.controller.getAudioSystem()?.play("sfx_pickup", 0.3);
           this.scene.tweens.add({
             targets: icon,
             scale: originalScale * 1.15,
@@ -179,7 +193,7 @@ export class GameHUD {
     }
 
     // Play tactile stone click sound
-    this.audioSystem?.play("sfx_tablet", 0.5);
+    this.controller.getAudioSystem()?.play("sfx_tablet", 0.5);
     this.currentSelection = index;
     this.redrawSlots();
   }
@@ -440,6 +454,11 @@ export class GameHUD {
     this.levelBackgroundRect = this.scene.add.graphics();
     this.levelContainer.add(this.levelBackgroundRect);
 
+    // Full-panel input blocker (matches drawLevelSelectionPanel dimensions).
+    const levelBlocker = this.scene.add.zone(0, 0, 140, 100).setOrigin(0, 0);
+    levelBlocker.setInteractive();
+    this.levelContainer.add(levelBlocker);
+
     // Header Text
     const headerText = this.scene.add.text(12, 10, "LOCATIONS", {
       fontSize: "11px",
@@ -452,12 +471,8 @@ export class GameHUD {
     this.levelContainer.add(headerText);
 
     // List of levels
-    interface LevelScene {
-      getLevelId?(): string;
-    }
     const availableLevels = getLevels();
-    const levelScene = this.scene as unknown as LevelScene;
-    const currentLevelId = levelScene.getLevelId?.() || "dungeon";
+    const currentLevelId = this.controller.getLevelId();
 
     const itemHeight = 24;
     const itemPadding = 8;
@@ -502,7 +517,7 @@ export class GameHUD {
       this.drawStoneFrame(itemBg, 0, 0, 120, itemHeight, isSelected, false);
 
       interactionZone.on("pointerover", () => {
-        this.audioSystem?.play("sfx_pickup", 0.3);
+        this.controller.getAudioSystem()?.play("sfx_pickup", 0.3);
         nameText.setColor("#ffd59a");
         this.drawStoneFrame(itemBg, 0, 0, 120, itemHeight, true, false);
       });
@@ -517,9 +532,9 @@ export class GameHUD {
         (_p: Phaser.Input.Pointer, _lx: number, _ly: number, event: Phaser.Types.Input.EventData) => {
           event.stopPropagation();
           if (level.id !== currentLevelId) {
-            this.audioSystem?.play("sfx_tablet", 0.6);
-            // Restart scene with new level ID
-            this.scene.scene.restart({ levelId: level.id });
+            this.controller.getAudioSystem()?.play("sfx_tablet", 0.6);
+            // Restart the gameplay scene with the newly chosen level.
+            this.controller.restartLevel(level.id);
           }
         }
       );

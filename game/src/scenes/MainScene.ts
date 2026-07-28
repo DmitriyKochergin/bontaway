@@ -1,11 +1,13 @@
 import Phaser from "phaser";
 import { type AudioSystem } from "../systems/AudioSystem";
+import { GameHUD, type GameHudController } from "../ui/GameHUD";
 import { SettingsButton } from "../ui/SettingsButton";
 import { BaseScene } from "./BaseScene";
 
 /**
  * Supervisor scene.
- * Launches gameplay, owns pause and settings controls, and keeps `GameScene` and `SettingsScene` in sync.
+ * Launches gameplay, owns pause and settings controls, renders the HUD, and keeps
+ * `GameScene` and `SettingsScene` in sync.
  */
 export default class MainScene extends BaseScene {
   private escKeyHandler?: (event: KeyboardEvent) => void;
@@ -15,6 +17,7 @@ export default class MainScene extends BaseScene {
   private pausedLabelResizeHandler?: (gameSize: Phaser.Structs.Size) => void;
   private gameplayPaused = false;
   private settingsButton?: SettingsButton;
+  private gameHUD?: GameHUD;
 
   constructor() {
     super("MainScene");
@@ -27,6 +30,9 @@ export default class MainScene extends BaseScene {
       this.removePausedLabel();
       this.settingsButton?.destroy();
       this.settingsButton = undefined;
+      this.scene.get("GameScene")?.events.off(Phaser.Scenes.Events.CREATE, this.rebuildHud, this);
+      this.gameHUD?.destroy();
+      this.gameHUD = undefined;
     });
 
     this.input?.mouse?.disableContextMenu();
@@ -37,6 +43,8 @@ export default class MainScene extends BaseScene {
   /** Launch `GameScene` and wire global controls that coordinate pause state. */
   createScene(): void {
     this.scene.launch("GameScene");
+    // Rebuild the HUD whenever GameScene (re)creates, e.g. after a level switch.
+    this.scene.get("GameScene").events.on(Phaser.Scenes.Events.CREATE, this.rebuildHud, this);
     this.input.keyboard?.addCapture([
       Phaser.Input.Keyboard.KeyCodes.SPACE,
       Phaser.Input.Keyboard.KeyCodes.ESC,
@@ -54,6 +62,15 @@ export default class MainScene extends BaseScene {
     });
     this.settingsButton.create();
     this.createPausedLabel();
+    this.scene.bringToTop();
+  }
+
+  /** (Re)create the HUD bound to the current GameScene instance. */
+  private rebuildHud(): void {
+    this.gameHUD?.destroy();
+    const gameScene = this.scene.get("GameScene") as unknown as GameHudController;
+    this.gameHUD = new GameHUD(this, gameScene);
+    this.gameHUD.create();
     this.scene.bringToTop();
   }
 

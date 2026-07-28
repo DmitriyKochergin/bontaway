@@ -9,7 +9,6 @@ import { PlayerControlsSystem } from "../systems/PlayerControlsSystem";
 import { PlayerTeleport } from "../systems/PlayerTeleport";
 import { WeaponSystem } from "../systems/WeaponSystem";
 import { type PhaserRaycasterPlugin } from "../types/phaser-raycaster";
-import { GameHUD } from "../ui/GameHUD";
 import { BaseScene } from "./BaseScene";
 
 /**
@@ -24,7 +23,6 @@ export default class GameScene extends BaseScene {
   private playerTeleport!: PlayerTeleport;
   private playerControlSystem!: PlayerControlsSystem;
   private weaponSystem!: WeaponSystem;
-  private gameHUD?: GameHUD;
   private devModeEnabled = false;
   private devModeOverlay?: DevModeOverlay;
   private levelId = "arena";
@@ -45,6 +43,11 @@ export default class GameScene extends BaseScene {
     return this.levelId;
   }
 
+  /** Restart gameplay on a different level. Invoked by the HUD, which now lives on MainScene. */
+  public restartLevel(levelId: string): void {
+    this.scene.restart({ levelId });
+  }
+
   create(): void {
     this.setupShutdownCleanup();
     this.events.on("toggle-dev-mode", this.toggleDevMode, this);
@@ -55,8 +58,6 @@ export default class GameScene extends BaseScene {
       this.devModeOverlay?.destroy();
       this.devModeOverlay = undefined;
       this.playerTeleport?.destroy();
-      this.gameHUD?.destroy();
-      this.gameHUD = undefined;
       this.devModeEnabled = false;
     });
     this.events.on(Phaser.Scenes.Events.PAUSE, () => {
@@ -112,7 +113,8 @@ export default class GameScene extends BaseScene {
       this,
       this.player,
       (x, y) => this.weaponSystem.castFireball(x, y),
-      (x, y) => this.playerTeleport.teleport(x, y)
+      (x, y) => this.playerTeleport.teleport(x, y),
+      pointer => this.isPointerOverHud(pointer)
     );
 
     this.physics.add.collider(this.player, this.dungeonSystem.getPhysicsWalls());
@@ -121,9 +123,19 @@ export default class GameScene extends BaseScene {
     this.physics.add.collider(this.player, this.npcGroup);
 
     this.cameras.main.startFollow(this.player, true, 0.1, 0.1);
+  }
 
-    this.gameHUD = new GameHUD(this, this.audioSystem);
-    this.gameHUD.create();
+  /**
+   * True when the pointer is over an interactive HUD element on the supervisor (MainScene).
+   * The HUD renders on a sibling scene, so its buttons cannot stop this scene's cast via
+   * event propagation; this cross-scene hit test replaces that guard.
+   */
+  private isPointerOverHud(pointer: Phaser.Input.Pointer): boolean {
+    const mainScene = this.scene.get("MainScene");
+    if (!mainScene?.input) {
+      return false;
+    }
+    return mainScene.input.hitTestPointer(pointer).length > 0;
   }
 
   private toggleDevMode(): void {
@@ -162,7 +174,6 @@ export default class GameScene extends BaseScene {
     }
 
     this.fovSystem.update(delta);
-    this.gameHUD?.update(delta);
     this.devModeOverlay?.update();
   }
 
