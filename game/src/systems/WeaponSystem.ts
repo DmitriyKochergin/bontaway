@@ -270,11 +270,15 @@ export class WeaponSystem {
     );
 
     const particles = this.scene.add.particles(0, 0, WEAPON_TEXTURES.spark, {
-      speed: kind === "ray" ? { min: 25, max: 90 } : { min: 18, max: 70 },
-      scale: kind === "ray" ? { start: 0.35, end: 0 } : { start: 0.55, end: 0 },
-      alpha: { start: kind === "ray" ? 0.75 : 0.85, end: 0 },
-      lifespan: kind === "ray" ? { min: 100, max: 160 } : { min: 140, max: 240 },
-      quantity: kind === "ray" ? 1 : 2,
+      speed: kind === "ray" ? { min: 25, max: 90 } : { min: 45, max: 165 },
+      angle: kind === "ray" ? undefined : { min: 0, max: 360 },
+      scale: kind === "ray" ? { start: 0.35, end: 0 } : { start: 0.6, end: 0 },
+      alpha: { start: kind === "ray" ? 0.75 : 0.95, end: 0 },
+      lifespan: kind === "ray" ? { min: 100, max: 160 } : { min: 120, max: 320 },
+      quantity: kind === "ray" ? 1 : 4,
+      frequency: kind === "ray" ? -1 : 20,
+      rotate: kind === "ray" ? undefined : { min: 0, max: 360 },
+      emitting: kind === "ray",
       blendMode: "ADD"
     });
     particles.setDepth(kind === "ray" ? 246 : 248);
@@ -444,15 +448,25 @@ export class WeaponSystem {
       return;
     }
 
-    const pulse = 0.5 + Math.sin(elapsed * 0.02) * 0.5;
-    state.light.radius = 170 + pulse * 35;
-    state.light.intensity = 4.8 + pulse * 1.4;
+    const pulse = 0.5 + Math.sin(elapsed * 0.007) * 0.5;
+    const flicker = 0.5 + Math.sin(elapsed * 0.035) * 0.5;
+    state.light.radius = 170 + pulse * 45;
+    state.light.intensity = 4.8 + pulse * 1.4 + flicker * 0.8;
 
     graphics.clear();
 
-    const boltCount = 5;
+    const originX = state.sprite.body ? state.sprite.body.center.x : state.sprite.x;
+    const originY = state.sprite.body ? state.sprite.body.center.y : state.sprite.y;
+
+    // Pulsing electric core halo.
+    graphics.fillStyle(0x2d77ff, 0.16 + pulse * 0.12);
+    graphics.fillCircle(originX, originY, 22 + pulse * 8);
+    graphics.fillStyle(0xd9f7ff, 0.28 + flicker * 0.22);
+    graphics.fillCircle(originX, originY, 7 + flicker * 3);
+
+    const boltCount = 8;
     for (let boltIndex = 0; boltIndex < boltCount; boltIndex++) {
-      this.drawLightningBolt(graphics, state.sprite.x, state.sprite.y, elapsed, boltIndex);
+      this.drawLightningBolt(graphics, originX, originY, elapsed, boltIndex);
     }
   }
 
@@ -463,24 +477,46 @@ export class WeaponSystem {
     elapsed: number,
     boltIndex: number
   ): void {
-    const angle = elapsed * 0.014 + boltIndex * 1.2566370614;
-    const baseRadius = 18 + (boltIndex % 3) * 3;
-    const startX = originX + Math.cos(angle) * 6;
-    const startY = originY + Math.sin(angle) * 6;
-    const midX = originX + Math.cos(angle + 0.4) * baseRadius + Phaser.Math.Between(-4, 4);
-    const midY = originY + Math.sin(angle + 0.4) * baseRadius + Phaser.Math.Between(-4, 4);
-    const endX = originX + Math.cos(angle + 0.9) * (baseRadius + 10) + Phaser.Math.Between(-6, 6);
-    const endY = originY + Math.sin(angle + 0.9) * (baseRadius + 10) + Phaser.Math.Between(-6, 6);
+    const angle = elapsed * 0.014 + boltIndex * 0.7853981633974483;
+    const reach = 12 + (boltIndex % 3) * 4 + Math.sin(elapsed * 0.03 + boltIndex) * 3;
+    const segments = 5;
 
-    graphics.lineStyle(2, boltIndex % 2 === 0 ? 0xecffff : 0x77c8ff, 0.82);
+    // Jagged path from core outward.
+    const points: Array<{ x: number; y: number }> = [];
+    for (let step = 0; step <= segments; step++) {
+      const t = step / segments;
+      const radius = 5 + reach * t;
+      const wobble = step === 0 || step === segments ? 0 : Phaser.Math.Between(-6, 6);
+      const spread = 0.35 * t;
+      const localAngle = angle + Phaser.Math.FloatBetween(-spread, spread);
+      points.push({
+        x: originX + Math.cos(localAngle) * radius + wobble,
+        y: originY + Math.sin(localAngle) * radius + wobble
+      });
+    }
+
+    // Outer glow pass, then bright core pass.
+    graphics.lineStyle(4, 0x3a86ff, 0.28);
+    this.strokePolyline(graphics, points);
+    graphics.lineStyle(1.5, boltIndex % 2 === 0 ? 0xecffff : 0x9fd8ff, 0.9);
+    this.strokePolyline(graphics, points);
+  }
+
+  private strokePolyline(
+    graphics: Phaser.GameObjects.Graphics,
+    points: ReadonlyArray<{ x: number; y: number }>
+  ): void {
+    if (points.length < 2) {
+      return;
+    }
+
     graphics.beginPath();
-    graphics.moveTo(startX, startY);
-    graphics.lineTo(midX, midY);
-    graphics.lineTo(endX, endY);
-    graphics.strokePath();
+    graphics.moveTo(points[0].x, points[0].y);
+    for (let index = 1; index < points.length; index++) {
+      graphics.lineTo(points[index].x, points[index].y);
+    }
 
-    graphics.fillStyle(0xffffff, 0.65);
-    graphics.fillCircle(endX, endY, 1.8);
+    graphics.strokePath();
   }
 
   private createExplosion(x: number, y: number, tier: ExplosionTier): void {
