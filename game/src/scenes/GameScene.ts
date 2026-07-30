@@ -167,10 +167,8 @@ export default class GameScene extends BaseScene {
   private castSelectedSecondaryWeapon(targetX: number, targetY: number): void {
     if (this.getSelectedWeaponSlot() === 1) {
       this.weaponSystem.castSphere(targetX, targetY);
-      return;
     }
-
-    this.weaponSystem.castFireball(targetX, targetY);
+    // Fireball is left-click only; right-click no longer casts it.
   }
 
   public isDevModeEnabled(): boolean {
