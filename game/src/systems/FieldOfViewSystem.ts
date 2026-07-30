@@ -208,13 +208,17 @@ export class FieldOfViewSystem {
     const camera = this.scene.cameras.main;
     const currentFovCenterX = this.player.x - camera.scrollX;
     const currentFovCenterY = this.player.y - camera.scrollY;
-    const movedEnough =
+    const playerMoved =
       Math.abs(currentFovCenterX - this.lastFovCenterX) > 0.25 ||
-      Math.abs(currentFovCenterY - this.lastFovCenterY) > 0.25 ||
-      this.activeProjectiles.length > 0 ||
-      this.activeExplosions.length > 0;
+      Math.abs(currentFovCenterY - this.lastFovCenterY) > 0.25;
+    const hasDynamicLights = this.activeProjectiles.length > 0 || this.activeExplosions.length > 0;
 
-    if (!movedEnough && this.fovRefreshAccumulator < this.fovRefreshMs) {
+    // Throttle every redraw to fovRefreshMs (~30/sec). Previously an active projectile/explosion
+    // forced a full raycast + mask redraw on every frame, bypassing the throttle. The redraw runs
+    // castCircle against every occluder, so in the wall-dense dungeon an in-flight fireball raycast
+    // at the display rate (120/sec) tanked FPS, while the near-empty arena stayed unaffected.
+    const needsRedraw = playerMoved || hasDynamicLights;
+    if (!needsRedraw || this.fovRefreshAccumulator < this.fovRefreshMs) {
       return;
     }
 
