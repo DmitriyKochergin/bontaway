@@ -15,7 +15,8 @@ export const gameConfig: Phaser.Types.Core.GameConfig = {
   // antialias: true, // enables smoothing for Canvas/WebGL
   // antialiasGL: true,
   render: {
-    maxLights: 100
+    maxLights: 100,
+    powerPreference: "high-performance"
   },
   physics: {
     default: "arcade",
