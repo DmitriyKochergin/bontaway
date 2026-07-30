@@ -23,6 +23,11 @@ export class FieldOfViewSystem {
   private activeProjectiles: Phaser.Types.Physics.Arcade.SpriteWithDynamicBody[] = [];
   private activeExplosions: { x: number; y: number; radius: number }[] = [];
 
+  // Shadow geometry from the last raycast, in WORLD space. Reused for dynamic-light-only redraws
+  // (fireballs/explosions) so a stationary player casting spells never re-runs castCircle. Cleared
+  // when the player moves or the occluder set changes, which are the only things that alter shadows.
+  private cachedVisibilityWorldPoints: Phaser.Math.Vector2[] | null = null;
+
   constructor(
     scene: Phaser.Scene,
     player: Player,
@@ -87,6 +92,8 @@ export class FieldOfViewSystem {
       this.raycasterOccluders.push(gameObject);
       this.raycaster.mapGameObjects(gameObject, false);
     }
+    // New occluders change the shadow shape; force a recast on the next redraw.
+    this.cachedVisibilityWorldPoints = null;
   }
 
   public addProjectile(projectile: Phaser.Types.Physics.Arcade.SpriteWithDynamicBody) {
@@ -105,7 +112,7 @@ export class FieldOfViewSystem {
     this.activeExplosions = this.activeExplosions.filter(e => e !== explosion);
   }
 
-  private redrawFovMask() {
+  private redrawFovMask(recastVisibility = true) {
     const context = this.fovMaskTexture.getContext();
     const width = this.scene.scale.width;
     const height = this.scene.scale.height;
@@ -117,10 +124,17 @@ export class FieldOfViewSystem {
     const tileSize = this.tileSize;
     const outerRadius = tileSize * (this.fovRadiusTiles + this.fovFadeTiles);
     const innerRadius = tileSize * this.fovRadiusTiles;
-    this.fovRay.setRay(originX, originY, 0, outerRadius);
-    this.raycaster.update();
-    const intersections = this.fovRay.castCircle({ objects: this.raycasterOccluders });
-    const visibilityPolygon = intersections
+
+    if (recastVisibility || !this.cachedVisibilityWorldPoints) {
+      this.fovRay.setRay(originX, originY, 0, outerRadius);
+      this.raycaster.update();
+      const intersections = this.fovRay.castCircle({ objects: this.raycasterOccluders });
+      this.cachedVisibilityWorldPoints = intersections.map(
+        (point: Phaser.Math.Vector2) => new Phaser.Math.Vector2(point.x, point.y)
+      );
+    }
+
+    const visibilityPolygon = this.cachedVisibilityWorldPoints
       .map((point: Phaser.Math.Vector2) => new Phaser.Math.Vector2(point.x - camera.scrollX, point.y - camera.scrollY))
       .sort(
         (left: Phaser.Math.Vector2, right: Phaser.Math.Vector2) =>
@@ -223,7 +237,9 @@ export class FieldOfViewSystem {
     }
 
     this.fovRefreshAccumulator = 0;
-    this.redrawFovMask();
+    // Recast only when the player moved. Dynamic-light-only redraws (fireballs/explosions) reuse the
+    // cached shadow geometry, so standing still and casting no longer runs castCircle at all.
+    this.redrawFovMask(playerMoved);
   }
 
   public destroy() {
