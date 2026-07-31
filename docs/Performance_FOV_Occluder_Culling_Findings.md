@@ -49,24 +49,36 @@ This is the location-dependent half of suspects **S2/S3** in the diagnostics pla
 
 ---
 
-## 3. Fix Applied
+## 3. Fixes Applied
+
+### Fix 1 — Occluder culling before the raycast (SHIPPED, confirmed 120 FPS)
 
 `FieldOfViewSystem.collectOccludersInRange()` — before each `castCircle`, filter `raycasterOccluders` down to
 only those whose axis-aligned bounding box overlaps the square that circumscribes the FOV circle, and pass that
 subset as `castCircle({ objects })`.
-
-Properties:
 
 - **Correct by construction.** The FOV circle is inscribed in the cull square, and rays are clamped to the FOV
   range, so no in-range occluder is ever dropped. The visibility polygon (fog) is pixel-identical.
 - **Kills the wasted work.** `objects` shrinks from ~every wall in the map to the local FOV window (dozens), so
   the `O(N^2)` pairwise pass no longer multiplies by total map wall count.
 - **Allocation-free.** Reuses a single persistent array, so no new per-redraw GC.
+- Verified: `tsc --noEmit` -> exit 0; Biome lint -> exit 0. Confirmed in play: stable 120 FPS in the top-left
+  corner (previously ~90).
 
-Verification:
+### Fix 2 — Projectile light decoupled from the shadow raycast (SHIPPED)
 
-- `tsc --noEmit` -> exit 0; Biome lint -> exit 0.
-- Confirmed in play: stable 120 FPS in the top-left corner (previously ~90).
+`redrawFovMask()` was split into `recomputeVisibilityPolygon()` (the raycast) and `paintMask()` (canvas repaint +
+projectile/explosion light stamping). The shadow shape depends only on the player's position, so `update()` now
+recomputes the raycast **only when the player actually moved**; while a fireball flies past a stationary player it
+reuses the cached world-space polygon and just re-stamps the moving light.
+
+- **Cheap hot path.** `castCircle` no longer runs on every ~30 Hz tick during "cast fireballs on the run" — only
+  the canvas repaint + texture upload does.
+- **Pixel-identical fog.** The cached polygon is stored in world space and re-projected at the current camera
+  scroll each paint, so shadows match a fresh raycast while the player holds still.
+- **Stale-light guard.** One extra paint fires when the last projectile/explosion ends, so its carved light hole
+  does not linger in the fog (which re-closes) until the player next moves.
+- Verified: `tsc --noEmit` -> exit 0; Biome lint -> exit 0. Runtime FPS / visual correctness not measured here.
 
 ---
 
@@ -74,17 +86,16 @@ Verification:
 
 | # | Improvement | Impact | Effort | Risk |
 | - | ----------- | ------ | ------ | ---- |
-| 1 | Decouple the projectile light from the shadow raycast | High (this exact scenario) | Med | Med |
+| ~~1~~ | ~~Decouple the projectile light from the shadow raycast~~ **(SHIPPED — see Fix 2)** | High (this scenario) | Med | Med |
 | 2 | Greedy-mesh wall tiles into merged rectangles for the raycaster | Very High in dense areas | Med-High | Med |
 | 3 | Wire Panel D diagnostics (FOV redraw ms + occluder count) | Enables measurement | Low | Low |
 | 4 | Skip per-redraw `raycaster.update()` for static geometry | Med | Low | Med (library contract) |
 | 5 | Cull off-screen Light2D objects / batch floor rendering (S2/S4) | Med | High | Med |
 
-### 1. Decouple projectile light from the shadow raycast
-Projectile motion does not change wall shadows — only the player moving does. Cache the player-driven
-visibility polygon and, when the player is stationary, re-stamp only the fireball/explosion circles onto the
-cached mask instead of re-running `castCircle`. Removes the raycast from the fireball hot path entirely. This is
-the biggest remaining win for "cast fireballs while running."
+### 1. Decouple projectile light from the shadow raycast — SHIPPED (Fix 2)
+Done. `redrawFovMask()` split into `recomputeVisibilityPolygon()` + `paintMask()`; the raycast now runs only when
+the player moves, and a flying fireball past a stationary player only re-stamps light onto the cached shadow. See
+Section 3, Fix 2.
 
 ### 2. Greedy-mesh wall tiles for the raycaster
 Each 32 px wall is currently its own occluder rectangle (4 corners / 4 segments). Merge coplanar wall runs into
