@@ -6,7 +6,7 @@ import Phaser from "phaser";
  */
 export default class PreloadScene extends Phaser.Scene {
   constructor() {
-    super("BootScene");
+    super("PreloadScene");
   }
 
   create(): void {
@@ -229,10 +229,10 @@ export default class PreloadScene extends Phaser.Scene {
 
       const npc = this.add.graphics();
       const frames = [
-        { y: 8, h: 9, r: 2.5 },      // Frame 0: Open
-        { y: 10, h: 5, r: 2.0 },     // Frame 1: Half closed
-        { y: 12, h: 1.5, r: 0.75 },  // Frame 2: Closed slit
-        { y: 10, h: 5, r: 2.0 }      // Frame 3: Half open
+        { y: 8, h: 9, r: 2.5 }, // Frame 0: Open
+        { y: 10, h: 5, r: 2.0 }, // Frame 1: Half closed
+        { y: 12, h: 1.5, r: 0.75 }, // Frame 2: Closed slit
+        { y: 10, h: 5, r: 2.0 } // Frame 3: Half open
       ];
 
       for (let i = 0; i < frames.length; i++) {
