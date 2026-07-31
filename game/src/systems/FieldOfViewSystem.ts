@@ -11,6 +11,7 @@ export class FieldOfViewSystem {
   private fovOverlay!: Phaser.GameObjects.Rectangle;
   private fovMaskTexture!: Phaser.Textures.CanvasTexture;
   private fovMaskImage!: Phaser.GameObjects.Image;
+  private npcVisibilityMask!: Phaser.Display.Masks.BitmapMask;
 
   private readonly fovRadiusTiles = 7.5;
   private readonly fovFadeTiles = 7.5;
@@ -99,8 +100,18 @@ export class FieldOfViewSystem {
     this.fovMaskImage.setVisible(false);
 
     this.fovOverlay.setMask(new Phaser.Display.Masks.BitmapMask(this.scene, this.fovMaskImage));
+    this.npcVisibilityMask = new Phaser.Display.Masks.BitmapMask(this.scene, this.fovMaskImage);
+    this.npcVisibilityMask.invertAlpha = true;
     this.recomputeVisibilityPolygon();
     this.paintMask();
+  }
+
+  /**
+   * NPCs sit above the fog overlay, so they need its inverse alpha to disappear in the same shadow.
+   * The shared source image is refreshed whenever player vision or a spell light changes.
+   */
+  public getNpcVisibilityMask(): Phaser.Display.Masks.BitmapMask {
+    return this.npcVisibilityMask;
   }
 
   public addOccluder(gameObject: Phaser.GameObjects.GameObject | Phaser.GameObjects.GameObject[]) {
@@ -349,6 +360,7 @@ export class FieldOfViewSystem {
   public destroy() {
     this.fovOverlay?.destroy();
     this.fovMaskImage?.destroy();
+    this.npcVisibilityMask?.destroy();
 
     if (this.scene.textures.exists("fov-mask")) {
       this.scene.textures.remove("fov-mask");
