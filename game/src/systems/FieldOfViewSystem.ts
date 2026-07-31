@@ -29,6 +29,10 @@ export class FieldOfViewSystem {
 
   private activeProjectiles: Phaser.Types.Physics.Arcade.SpriteWithDynamicBody[] = [];
   private activeExplosions: { x: number; y: number; radius: number }[] = [];
+  // Reused each redraw to hold only the occluders whose AABB overlaps the FOV reach box. castCircle
+  // runs an O(objects^2) pairwise pass plus a per-ray cast over every object it is given, so handing
+  // it every wall in the map made cost scale with total wall count and spike in the dense top-left.
+  private readonly occludersInView: Phaser.GameObjects.GameObject[] = [];
 
   constructor(
     scene: Phaser.Scene,
@@ -116,6 +120,41 @@ export class FieldOfViewSystem {
     this.activeExplosions = this.activeExplosions.filter(e => e !== explosion);
   }
 
+  /**
+   * Return only the occluders whose bounding box overlaps the square that circumscribes the FOV
+   * circle. castCircle runs an O(objects^2) pairwise pass plus a per-ray cast over every object it is
+   * given, so feeding it the whole map made the raycast cost scale with total wall count and spike in
+   * the dense top-left rooms. The FOV circle is inscribed in this square, so no in-range occluder is
+   * ever dropped and the visibility polygon is unchanged. Reuses one array to avoid per-redraw GC.
+   */
+  private collectOccludersInRange(originX: number, originY: number, reach: number): Phaser.GameObjects.GameObject[] {
+    const inView = this.occludersInView;
+    inView.length = 0;
+    const minX = originX - reach;
+    const maxX = originX + reach;
+    const minY = originY - reach;
+    const maxY = originY + reach;
+
+    for (const occluder of this.raycasterOccluders) {
+      const image = occluder as Phaser.GameObjects.Image;
+      const halfWidth = image.displayWidth * 0.5;
+      const halfHeight = image.displayHeight * 0.5;
+
+      if (
+        image.x + halfWidth < minX ||
+        image.x - halfWidth > maxX ||
+        image.y + halfHeight < minY ||
+        image.y - halfHeight > maxY
+      ) {
+        continue;
+      }
+
+      inView.push(occluder);
+    }
+
+    return inView;
+  }
+
   private redrawFovMask() {
     const context = this.fovMaskTexture.getContext();
     const camera = this.scene.cameras.main;
@@ -133,7 +172,9 @@ export class FieldOfViewSystem {
     const innerRadius = tileSize * this.fovRadiusTiles;
     this.fovRay.setRay(originX, originY, 0, outerRadius);
     this.raycaster.update();
-    const intersections = this.fovRay.castCircle({ objects: this.raycasterOccluders });
+    const intersections = this.fovRay.castCircle({
+      objects: this.collectOccludersInRange(originX, originY, outerRadius)
+    });
     const visibilityPolygon = intersections
       .map(
         (point: Phaser.Math.Vector2) =>
