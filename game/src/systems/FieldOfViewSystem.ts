@@ -33,6 +33,14 @@ export class FieldOfViewSystem {
   // runs an O(objects^2) pairwise pass plus a per-ray cast over every object it is given, so handing
   // it every wall in the map made cost scale with total wall count and spike in the dense top-left.
   private readonly occludersInView: Phaser.GameObjects.GameObject[] = [];
+  // Cached shadow shape from the last raycast, in world space and sorted by angle around the FOV
+  // origin. The raycast only depends on the player's position, so while the player holds still we
+  // reuse this and just re-stamp moving projectile/explosion light in paintMask — no castCircle.
+  private cachedVisibilityPolygon: Phaser.Math.Vector2[] = [];
+  // Whether the previous paint stamped projectile / explosion light. When the last dynamic light
+  // disappears while the player stands still, one final paint is needed to clear its carved hole,
+  // otherwise the lit circle lingers in the fog (which re-closes) until the player next moves.
+  private lastPaintHadDynamicLights = false;
 
   constructor(
     scene: Phaser.Scene,
@@ -91,7 +99,8 @@ export class FieldOfViewSystem {
     this.fovMaskImage.setVisible(false);
 
     this.fovOverlay.setMask(new Phaser.Display.Masks.BitmapMask(this.scene, this.fovMaskImage));
-    this.redrawFovMask();
+    this.recomputeVisibilityPolygon();
+    this.paintMask();
   }
 
   public addOccluder(gameObject: Phaser.GameObjects.GameObject | Phaser.GameObjects.GameObject[]) {
@@ -155,42 +164,58 @@ export class FieldOfViewSystem {
     return inView;
   }
 
-  private redrawFovMask() {
-    const context = this.fovMaskTexture.getContext();
-    const camera = this.scene.cameras.main;
-    const margin = this.maskMargin;
-    const canvasWidth = this.scene.scale.width + margin * 2;
-    const canvasHeight = this.scene.scale.height + margin * 2;
+  // Re-run the raycast to rebuild the shadow shape. This is the expensive, location-sensitive step
+  // (castCircle scales with occluder density), so update() only calls it when the player actually
+  // moved. Stored in world space, sorted by angle around the origin, so paintMask can re-project it
+  // at the current camera scroll without recasting while the player holds still.
+  private recomputeVisibilityPolygon() {
     const originX = this.player.x + this.player.fovOffsetX;
     const originY = this.player.y + this.player.fovOffsetY;
-    // Project world -> mask-canvas space. The +margin bakes a fog border around the screen so the
-    // mask can be nudged to track the world between redraws (repositionMask) without leaking light.
-    const centerX = originX - camera.scrollX + margin;
-    const centerY = originY - camera.scrollY + margin;
-    const tileSize = this.tileSize;
-    const outerRadius = tileSize * (this.fovRadiusTiles + this.fovFadeTiles);
-    const innerRadius = tileSize * this.fovRadiusTiles;
+    const outerRadius = this.tileSize * (this.fovRadiusTiles + this.fovFadeTiles);
+
     this.fovRay.setRay(originX, originY, 0, outerRadius);
     this.raycaster.update();
     const intersections = this.fovRay.castCircle({
       objects: this.collectOccludersInRange(originX, originY, outerRadius)
     });
-    const visibilityPolygon = intersections
-      .map(
-        (point: Phaser.Math.Vector2) =>
-          new Phaser.Math.Vector2(point.x - camera.scrollX + margin, point.y - camera.scrollY + margin)
-      )
-      .sort(
-        (left: Phaser.Math.Vector2, right: Phaser.Math.Vector2) =>
-          Math.atan2(left.y - centerY, left.x - centerX) - Math.atan2(right.y - centerY, right.x - centerX)
-      );
 
-    // Bookmark where this mask was baked so update() can keep it glued to the world and only re-bake
-    // the shadow shape once the player has actually moved.
-    this.maskScrollX = camera.scrollX;
-    this.maskScrollY = camera.scrollY;
+    // Angle sort is done in world space around the world origin. Projection to canvas space is a pure
+    // translation, so the ordering is identical to sorting the projected points.
+    intersections.sort(
+      (left: Phaser.Math.Vector2, right: Phaser.Math.Vector2) =>
+        Math.atan2(left.y - originY, left.x - originX) - Math.atan2(right.y - originY, right.x - originX)
+    );
+
+    this.cachedVisibilityPolygon = intersections;
     this.lastRedrawOriginX = originX;
     this.lastRedrawOriginY = originY;
+  }
+
+  // Repaint the mask canvas from the cached shadow polygon plus the current projectile / explosion
+  // positions, then upload it. No castCircle here, so this is cheap relative to a recompute. Runs
+  // every time the mask needs refreshing, including while a fireball flies past a stationary player.
+  private paintMask() {
+    const context = this.fovMaskTexture.getContext();
+    const camera = this.scene.cameras.main;
+    const margin = this.maskMargin;
+    const canvasWidth = this.scene.scale.width + margin * 2;
+    const canvasHeight = this.scene.scale.height + margin * 2;
+    const scrollX = camera.scrollX;
+    const scrollY = camera.scrollY;
+    const originX = this.lastRedrawOriginX;
+    const originY = this.lastRedrawOriginY;
+    // Project world -> mask-canvas space. The +margin bakes a fog border around the screen so the
+    // mask can be nudged to track the world between paints (repositionMask) without leaking light.
+    const centerX = originX - scrollX + margin;
+    const centerY = originY - scrollY + margin;
+    const tileSize = this.tileSize;
+    const outerRadius = tileSize * (this.fovRadiusTiles + this.fovFadeTiles);
+    const innerRadius = tileSize * this.fovRadiusTiles;
+    const visibilityPolygon = this.cachedVisibilityPolygon;
+
+    // Bookmark the scroll this canvas was baked at so repositionMask keeps it glued to the world.
+    this.maskScrollX = scrollX;
+    this.maskScrollY = scrollY;
 
     context.clearRect(0, 0, canvasWidth, canvasHeight);
     context.fillStyle = "rgba(255, 255, 255, 1)";
@@ -204,10 +229,10 @@ export class FieldOfViewSystem {
 
     context.save();
     context.beginPath();
-    context.moveTo(visibilityPolygon[0].x, visibilityPolygon[0].y);
+    context.moveTo(visibilityPolygon[0].x - scrollX + margin, visibilityPolygon[0].y - scrollY + margin);
 
     for (let i = 1; i < visibilityPolygon.length; i++) {
-      context.lineTo(visibilityPolygon[i].x, visibilityPolygon[i].y);
+      context.lineTo(visibilityPolygon[i].x - scrollX + margin, visibilityPolygon[i].y - scrollY + margin);
     }
 
     context.closePath();
@@ -230,8 +255,8 @@ export class FieldOfViewSystem {
 
     for (const projectile of this.activeProjectiles) {
       if (!projectile.active) continue;
-      const pX = projectile.x - camera.scrollX + margin;
-      const pY = projectile.y - camera.scrollY + margin;
+      const pX = projectile.x - scrollX + margin;
+      const pY = projectile.y - scrollY + margin;
       const radius = 150; // Match fireball light radius
 
       const grad = context.createRadialGradient(pX, pY, 0, pX, pY, radius);
@@ -246,8 +271,8 @@ export class FieldOfViewSystem {
     }
 
     for (const explosion of this.activeExplosions) {
-      const eX = explosion.x - camera.scrollX + margin;
-      const eY = explosion.y - camera.scrollY + margin;
+      const eX = explosion.x - scrollX + margin;
+      const eY = explosion.y - scrollY + margin;
       const radius = explosion.radius;
 
       const grad = context.createRadialGradient(eX, eY, 0, eX, eY, radius);
@@ -298,18 +323,27 @@ export class FieldOfViewSystem {
     const driftY = Math.abs(this.maskScrollY - camera.scrollY);
     const driftNearMargin = driftX > this.maskMargin * 0.75 || driftY > this.maskMargin * 0.75;
 
-    // Throttle the raycast + full-screen texture upload to ~30/sec. History: an in-flight fireball
-    // once forced a full raycast + mask redraw every frame, bypassing this throttle; castCircle
-    // against every occluder at the display rate (120/sec) tanked FPS in the wall-dense dungeon.
-    // repositionMask above now holds the fog in place, so the redraw only refreshes the shape.
+    // Throttle the mask repaint + full-screen texture upload to ~30/sec.
     const throttleReady = this.fovRefreshAccumulator >= this.fovRefreshMs;
-    const needsRedraw = (playerMoved || hasDynamicLights) && throttleReady;
-    if (!needsRedraw && !driftNearMargin) {
+    // One more paint after the last dynamic light vanishes clears its carved hole from the fog.
+    const dynamicLightsJustCleared = this.lastPaintHadDynamicLights && !hasDynamicLights;
+    const needsPaint = (playerMoved || hasDynamicLights || dynamicLightsJustCleared) && throttleReady;
+    if (!needsPaint && !driftNearMargin) {
       return;
     }
 
     this.fovRefreshAccumulator = 0;
-    this.redrawFovMask();
+
+    // The raycast (shadow shape) only depends on the player's position, so recompute it only when the
+    // player actually moved (or on the first paint). While a fireball flies past a stationary player,
+    // reuse the cached shadow and just re-stamp the moving light in paintMask. This keeps castCircle —
+    // the location-sensitive cost — off the hot path during "cast fireballs on the run".
+    if (playerMoved || this.cachedVisibilityPolygon.length === 0) {
+      this.recomputeVisibilityPolygon();
+    }
+
+    this.paintMask();
+    this.lastPaintHadDynamicLights = hasDynamicLights;
   }
 
   public destroy() {
