@@ -1,11 +1,12 @@
 import Phaser from "phaser";
-import { Player } from "../entities/Player";
 import { NPC } from "../entities/NPC";
+import { Player } from "../entities/Player";
 import { getLevelDefinition } from "../levels";
 import { DevModeOverlay } from "../systems/DevModeOverlay";
 import { DungeonSystem } from "../systems/DungeonSystem";
 import { FieldOfViewSystem } from "../systems/FieldOfViewSystem";
 import { PlayerControlsSystem } from "../systems/PlayerControlsSystem";
+import { PlayerTeleport } from "../systems/PlayerTeleport";
 import { WeaponSystem } from "../systems/WeaponSystem";
 import { type PhaserRaycasterPlugin } from "../types/phaser-raycaster";
 import { BaseScene } from "./BaseScene";
@@ -21,6 +22,7 @@ export default class GameScene extends BaseScene {
   private fovSystem!: FieldOfViewSystem;
   private playerControlSystem!: PlayerControlsSystem;
   private weaponSystem!: WeaponSystem;
+  private playerTeleport!: PlayerTeleport;
   private devModeEnabled = false;
   private devModeOverlay?: DevModeOverlay;
   private levelId = "arena";
@@ -105,6 +107,7 @@ export default class GameScene extends BaseScene {
     );
 
     this.weaponSystem = new WeaponSystem(this, this.player, this.dungeonSystem, this.fovSystem, this.audioSystem);
+    this.playerTeleport = new PlayerTeleport(this, this.player, () => this.devModeEnabled);
     this.playerControlSystem = new PlayerControlsSystem(
       this,
       this.player,
@@ -167,8 +170,11 @@ export default class GameScene extends BaseScene {
   private castSelectedSecondaryWeapon(targetX: number, targetY: number): void {
     if (this.getSelectedWeaponSlot() === 1) {
       this.weaponSystem.castSphere(targetX, targetY);
+      return;
     }
-    // Fireball is left-click only; right-click no longer casts it.
+
+    // Fireball (slot 0) grants a blink: right-click teleports the player to the target.
+    this.playerTeleport.teleport(targetX, targetY);
   }
 
   public isDevModeEnabled(): boolean {

@@ -1,16 +1,14 @@
 import Phaser from "phaser";
 import { type Player } from "../entities/Player";
 
-type DevModeChecker = () => boolean;
-
 export class PlayerTeleport {
   private readonly scene: Phaser.Scene;
   private readonly player: Player;
-  private readonly isDevModeEnabled: DevModeChecker;
+  private readonly isDevModeEnabled: () => boolean;
   private isTeleporting = false;
   private isDestroyed = false;
 
-  constructor(scene: Phaser.Scene, player: Player, isDevModeEnabled: DevModeChecker) {
+  constructor(scene: Phaser.Scene, player: Player, isDevModeEnabled: () => boolean) {
     this.scene = scene;
     this.player = player;
     this.isDevModeEnabled = isDevModeEnabled;
@@ -20,6 +18,8 @@ export class PlayerTeleport {
     });
   }
 
+  // Caller decides eligibility (e.g. only the fireball slot allows a blink); the guard here just
+  // prevents overlapping/dead-scene teleports.
   public teleport(targetX: number, targetY: number): void {
     if (!this.isDevModeEnabled() || this.isTeleporting || this.isDestroyed || !this.player.body) {
       return;
