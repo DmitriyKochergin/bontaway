@@ -16,9 +16,16 @@ export class FieldOfViewSystem {
   private readonly fovFadeTiles = 7.5;
   private readonly tileSize = 32;
   private readonly fovRefreshMs = 33;
+  // The mask canvas is baked a little larger than the screen so it can be nudged to follow the
+  // world between redraws (see repositionMask) without exposing un-fogged screen edges.
+  private readonly maskMargin = 48;
   private fovRefreshAccumulator = 0;
-  private lastFovCenterX = Number.NaN;
-  private lastFovCenterY = Number.NaN;
+  private lastRedrawOriginX = Number.NaN;
+  private lastRedrawOriginY = Number.NaN;
+  // Camera scroll captured at the last mask redraw. Used to keep the throttled mask glued to the
+  // world (not the player/screen) every frame.
+  private maskScrollX = 0;
+  private maskScrollY = 0;
 
   private activeProjectiles: Phaser.Types.Physics.Arcade.SpriteWithDynamicBody[] = [];
   private activeExplosions: { x: number; y: number; radius: number }[] = [];
@@ -63,7 +70,11 @@ export class FieldOfViewSystem {
     this.fovOverlay.setScrollFactor(0);
     this.fovOverlay.setDepth(100);
 
-    const maskTexture = this.scene.textures.createCanvas("fov-mask", this.scene.scale.width, this.scene.scale.height);
+    const maskTexture = this.scene.textures.createCanvas(
+      "fov-mask",
+      this.scene.scale.width + this.maskMargin * 2,
+      this.scene.scale.height + this.maskMargin * 2
+    );
 
     if (!maskTexture) {
       throw new Error("Unable to create the field-of-view mask texture.");
@@ -107,13 +118,16 @@ export class FieldOfViewSystem {
 
   private redrawFovMask() {
     const context = this.fovMaskTexture.getContext();
-    const width = this.scene.scale.width;
-    const height = this.scene.scale.height;
     const camera = this.scene.cameras.main;
+    const margin = this.maskMargin;
+    const canvasWidth = this.scene.scale.width + margin * 2;
+    const canvasHeight = this.scene.scale.height + margin * 2;
     const originX = this.player.x + this.player.fovOffsetX;
     const originY = this.player.y + this.player.fovOffsetY;
-    const centerX = originX - camera.scrollX;
-    const centerY = originY - camera.scrollY;
+    // Project world -> mask-canvas space. The +margin bakes a fog border around the screen so the
+    // mask can be nudged to track the world between redraws (repositionMask) without leaking light.
+    const centerX = originX - camera.scrollX + margin;
+    const centerY = originY - camera.scrollY + margin;
     const tileSize = this.tileSize;
     const outerRadius = tileSize * (this.fovRadiusTiles + this.fovFadeTiles);
     const innerRadius = tileSize * this.fovRadiusTiles;
@@ -121,18 +135,29 @@ export class FieldOfViewSystem {
     this.raycaster.update();
     const intersections = this.fovRay.castCircle({ objects: this.raycasterOccluders });
     const visibilityPolygon = intersections
-      .map((point: Phaser.Math.Vector2) => new Phaser.Math.Vector2(point.x - camera.scrollX, point.y - camera.scrollY))
+      .map(
+        (point: Phaser.Math.Vector2) =>
+          new Phaser.Math.Vector2(point.x - camera.scrollX + margin, point.y - camera.scrollY + margin)
+      )
       .sort(
         (left: Phaser.Math.Vector2, right: Phaser.Math.Vector2) =>
           Math.atan2(left.y - centerY, left.x - centerX) - Math.atan2(right.y - centerY, right.x - centerX)
       );
 
-    context.clearRect(0, 0, width, height);
+    // Bookmark where this mask was baked so update() can keep it glued to the world and only re-bake
+    // the shadow shape once the player has actually moved.
+    this.maskScrollX = camera.scrollX;
+    this.maskScrollY = camera.scrollY;
+    this.lastRedrawOriginX = originX;
+    this.lastRedrawOriginY = originY;
+
+    context.clearRect(0, 0, canvasWidth, canvasHeight);
     context.fillStyle = "rgba(255, 255, 255, 1)";
-    context.fillRect(0, 0, width, height);
+    context.fillRect(0, 0, canvasWidth, canvasHeight);
 
     if (visibilityPolygon.length < 3) {
       this.fovMaskTexture.refresh();
+      this.repositionMask();
       return;
     }
 
@@ -155,7 +180,7 @@ export class FieldOfViewSystem {
     radialGradient.addColorStop(1, "rgba(0, 0, 0, 0)");
 
     context.fillStyle = radialGradient;
-    context.fillRect(0, 0, width, height);
+    context.fillRect(0, 0, canvasWidth, canvasHeight);
     context.restore();
 
     // Draw circles for fireballs and explosions directly to the mask (no shadows/raycasting)
@@ -164,8 +189,8 @@ export class FieldOfViewSystem {
 
     for (const projectile of this.activeProjectiles) {
       if (!projectile.active) continue;
-      const pX = projectile.x - camera.scrollX;
-      const pY = projectile.y - camera.scrollY;
+      const pX = projectile.x - camera.scrollX + margin;
+      const pY = projectile.y - camera.scrollY + margin;
       const radius = 150; // Match fireball light radius
 
       const grad = context.createRadialGradient(pX, pY, 0, pX, pY, radius);
@@ -180,8 +205,8 @@ export class FieldOfViewSystem {
     }
 
     for (const explosion of this.activeExplosions) {
-      const eX = explosion.x - camera.scrollX;
-      const eY = explosion.y - camera.scrollY;
+      const eX = explosion.x - camera.scrollX + margin;
+      const eY = explosion.y - camera.scrollY + margin;
       const radius = explosion.radius;
 
       const grad = context.createRadialGradient(eX, eY, 0, eX, eY, radius);
@@ -197,28 +222,48 @@ export class FieldOfViewSystem {
 
     context.restore();
 
-    this.lastFovCenterX = centerX;
-    this.lastFovCenterY = centerY;
     this.fovMaskTexture.refresh();
+    this.repositionMask();
+  }
+
+  /**
+   * Nudge the throttled mask so its baked contents stay locked to world space as the camera scrolls.
+   * The mask is baked maskMargin px larger than the screen, so shifting it by the camera delta keeps
+   * the fog under the walls without exposing un-fogged screen edges. Near-free vs a full re-bake.
+   */
+  private repositionMask() {
+    const camera = this.scene.cameras.main;
+    this.fovMaskImage.x = this.maskScrollX - camera.scrollX - this.maskMargin;
+    this.fovMaskImage.y = this.maskScrollY - camera.scrollY - this.maskMargin;
   }
 
   public update(delta: number) {
+    // Cheap per-frame: keep the throttled mask glued to the world so shadows stay under the walls
+    // instead of sliding with the camera during the gap between redraws.
+    this.repositionMask();
+
     this.fovRefreshAccumulator += delta;
 
     const camera = this.scene.cameras.main;
-    const currentFovCenterX = this.player.x - camera.scrollX;
-    const currentFovCenterY = this.player.y - camera.scrollY;
+    const originX = this.player.x + this.player.fovOffsetX;
+    const originY = this.player.y + this.player.fovOffsetY;
     const playerMoved =
-      Math.abs(currentFovCenterX - this.lastFovCenterX) > 0.25 ||
-      Math.abs(currentFovCenterY - this.lastFovCenterY) > 0.25;
+      Math.abs(originX - this.lastRedrawOriginX) > 0.25 || Math.abs(originY - this.lastRedrawOriginY) > 0.25;
     const hasDynamicLights = this.activeProjectiles.length > 0 || this.activeExplosions.length > 0;
 
-    // Throttle every redraw to fovRefreshMs (~30/sec). Previously an active projectile/explosion
-    // forced a full raycast + mask redraw on every frame, bypassing the throttle. The redraw runs
-    // castCircle against every occluder, so in the wall-dense dungeon an in-flight fireball raycast
-    // at the display rate (120/sec) tanked FPS, while the near-empty arena stayed unaffected.
-    const needsRedraw = playerMoved || hasDynamicLights;
-    if (!needsRedraw || this.fovRefreshAccumulator < this.fovRefreshMs) {
+    // Safety valve: if the camera drifted toward the fog border, re-bake now regardless of the
+    // throttle so the oversized mask never runs out and shows the raw screen edge.
+    const driftX = Math.abs(this.maskScrollX - camera.scrollX);
+    const driftY = Math.abs(this.maskScrollY - camera.scrollY);
+    const driftNearMargin = driftX > this.maskMargin * 0.75 || driftY > this.maskMargin * 0.75;
+
+    // Throttle the raycast + full-screen texture upload to ~30/sec. History: an in-flight fireball
+    // once forced a full raycast + mask redraw every frame, bypassing this throttle; castCircle
+    // against every occluder at the display rate (120/sec) tanked FPS in the wall-dense dungeon.
+    // repositionMask above now holds the fog in place, so the redraw only refreshes the shape.
+    const throttleReady = this.fovRefreshAccumulator >= this.fovRefreshMs;
+    const needsRedraw = (playerMoved || hasDynamicLights) && throttleReady;
+    if (!needsRedraw && !driftNearMargin) {
       return;
     }
 
