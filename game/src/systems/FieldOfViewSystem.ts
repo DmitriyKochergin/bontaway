@@ -239,6 +239,7 @@ export class FieldOfViewSystem {
     }
 
     context.save();
+    context.filter = "blur(1px)";
     context.beginPath();
     context.moveTo(visibilityPolygon[0].x - scrollX + margin, visibilityPolygon[0].y - scrollY + margin);
 
@@ -247,17 +248,19 @@ export class FieldOfViewSystem {
     }
 
     context.closePath();
-    context.clip();
     context.globalCompositeOperation = "destination-out";
 
     const radialGradient = context.createRadialGradient(centerX, centerY, 0, centerX, centerY, outerRadius);
 
+    const innerStop = innerRadius / outerRadius;
     radialGradient.addColorStop(0, "rgba(0, 0, 0, 1)");
-    radialGradient.addColorStop(innerRadius / outerRadius, "rgba(0, 0, 0, 0.75)");
+    radialGradient.addColorStop(innerStop * 0.5, "rgba(0, 0, 0, 0.85)");
+    radialGradient.addColorStop(innerStop, "rgba(0, 0, 0, 0.55)");
+    radialGradient.addColorStop(0.82, "rgba(0, 0, 0, 0.18)");
     radialGradient.addColorStop(1, "rgba(0, 0, 0, 0)");
 
     context.fillStyle = radialGradient;
-    context.fillRect(0, 0, canvasWidth, canvasHeight);
+    context.fill();
     context.restore();
 
     // Draw circles for fireballs and explosions directly to the mask (no shadows/raycasting)
