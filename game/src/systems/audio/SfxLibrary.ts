@@ -1,10 +1,12 @@
 import Phaser from "phaser";
 import { type VolumeMixer } from "./VolumeMixer";
 
+type ManagedPhaserSound = Phaser.Sound.HTML5AudioSound | Phaser.Sound.WebAudioSound;
+
 export class SfxLibrary {
   private readonly soundBuffers = new Map<string, AudioBuffer>();
   private readonly activeProceduralSounds = new Map<GainNode, number>();
-  private readonly activePhaserSounds = new Map<Phaser.Sound.BaseSound, number>();
+  private readonly activePhaserSounds = new Map<ManagedPhaserSound, number>();
   private paused = false;
 
   constructor(
@@ -55,9 +57,10 @@ export class SfxLibrary {
     }
 
     this.paused = paused;
-    const effectiveVolume = this.volumeMixer.getEffectiveSFXVolume();
-    for (const [gainNode, baseVolume] of this.activeProceduralSounds) {
-      gainNode.gain.value = paused ? 0 : baseVolume * effectiveVolume;
+    if (paused && this.audioContext?.state === "running") {
+      void this.audioContext.suspend();
+    } else if (!paused && this.audioContext?.state === "suspended") {
+      void this.audioContext.resume();
     }
     for (const sound of this.activePhaserSounds.keys()) {
       if (paused) {
@@ -71,7 +74,7 @@ export class SfxLibrary {
   updateVolume(): void {
     const effectiveVolume = this.volumeMixer.getEffectiveSFXVolume();
     for (const [gainNode, baseVolume] of this.activeProceduralSounds) {
-      gainNode.gain.value = this.paused ? 0 : baseVolume * effectiveVolume;
+      gainNode.gain.value = baseVolume * effectiveVolume;
     }
     for (const [sound, baseVolume] of this.activePhaserSounds) {
       sound.setVolume(baseVolume * effectiveVolume);
@@ -146,7 +149,9 @@ export class SfxLibrary {
     }
 
     const baseVolume = clampVolume(volume);
-    const sound = this.scene.sound.add(key, { volume: baseVolume * this.volumeMixer.getEffectiveSFXVolume() });
+    const sound = this.scene.sound.add(key, {
+      volume: baseVolume * this.volumeMixer.getEffectiveSFXVolume()
+    }) as ManagedPhaserSound;
     this.activePhaserSounds.set(sound, baseVolume);
     sound.once(Phaser.Sound.Events.COMPLETE, () => this.activePhaserSounds.delete(sound));
     sound.play();

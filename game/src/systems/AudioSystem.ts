@@ -9,14 +9,19 @@ export type MusicStyle = "exploration" | "combat" | "shrine";
  * Compatibility façade for scene and UI callers. Audio behavior lives in focused modules.
  */
 export class AudioSystem {
-  private audioContext: AudioContext | null = null;
+  private sfxAudioContext: AudioContext | null = null;
+  private musicAudioContext: AudioContext | null = null;
   private readonly volumeMixer = new VolumeMixer();
   private sfxLibrary!: SfxLibrary;
   private musicDirector!: MusicDirector;
   private removeVolumeListener?: () => void;
+  private sfxPaused = false;
   private readonly unlockHandler = () => {
-    if (this.audioContext?.state === "suspended") {
-      void this.audioContext.resume();
+    if (this.musicAudioContext?.state === "suspended") {
+      void this.musicAudioContext.resume();
+    }
+    if (!this.sfxPaused && this.sfxAudioContext?.state === "suspended") {
+      void this.sfxAudioContext.resume();
     }
   };
 
@@ -37,6 +42,7 @@ export class AudioSystem {
   }
 
   setSfxPaused(paused: boolean): void {
+    this.sfxPaused = paused;
     this.sfxLibrary.setPaused(paused);
   }
 
@@ -78,19 +84,25 @@ export class AudioSystem {
     this.sfxLibrary.destroy();
     document.removeEventListener("click", this.unlockHandler);
     document.removeEventListener("keydown", this.unlockHandler);
-    void this.audioContext?.close();
-    this.audioContext = null;
+    void this.sfxAudioContext?.close();
+    void this.musicAudioContext?.close();
+    this.sfxAudioContext = null;
+    this.musicAudioContext = null;
   }
 
   private initAudio(scene: Phaser.Scene): void {
     try {
-      this.audioContext = new AudioContext();
+      this.sfxAudioContext = new AudioContext();
+      this.musicAudioContext = new AudioContext();
     } catch {
-      this.audioContext = null;
+      void this.sfxAudioContext?.close();
+      void this.musicAudioContext?.close();
+      this.sfxAudioContext = null;
+      this.musicAudioContext = null;
     }
 
-    this.sfxLibrary = new SfxLibrary(scene, this.audioContext, this.volumeMixer);
-    this.musicDirector = new MusicDirector(this.audioContext, this.volumeMixer);
+    this.sfxLibrary = new SfxLibrary(scene, this.sfxAudioContext, this.volumeMixer);
+    this.musicDirector = new MusicDirector(this.musicAudioContext, this.volumeMixer);
     this.removeVolumeListener = this.volumeMixer.onChange(() => {
       this.sfxLibrary.updateVolume();
       this.musicDirector.updateVolume();
