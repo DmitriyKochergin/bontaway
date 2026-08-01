@@ -14,7 +14,7 @@
 - **AI agents:** each item in §6 and §11 is a self-contained task. Before starting one, read the cited
   files, honor `AGENTS.md` (Ecological Design, no tutorials/manuals, dark/liminal vibe, RTwP-first,
   object pooling) and the root `global.instructions.md` persona/rules. Keep changes to the smallest
-  complete slice. Add tests when behavior changes (§10).
+  complete slice. Follow the testing policy in §10.
 - **Scope anchor:** all game code lives under `game/` (per `AGENTS.md`). The sibling workspace project
   `dungeon-crawler-now` is reference-only; do not edit it.
 
@@ -30,39 +30,39 @@ Roughly **5,340 lines** of TypeScript across 27 files. Build is WebGL-forced, Ar
 
 | File | Lines | Role | Smell |
 | --- | ---: | --- | --- |
-| `systems/WeaponSystem.ts` | 741 | Fireball/ray/sphere + 3 explosions + FX | God object, heavy duplication, no pooling |
-| `ui/GameHUD.ts` | 658 | Hotbar + level picker + stone art | Mixed concerns (layout + procedural art + state) |
-| `ui/SettingsUI.ts` | 567 | Settings panel, sliders, controls list | Long builder, inline widgets |
-| `systems/AudioSystem.ts` | 479 | SFX synth + generative music + volume | 3 responsibilities in one class |
-| `scenes/PreloadScene.ts` | 380 | All procedural texture factories | Belongs in a `render/textures` module |
-| `systems/FieldOfViewSystem.ts` | 237 | Raycast fog-of-war, full-screen canvas mask | Primary perf suspect (see perf docs) |
-| `scenes/MainScene.ts` | 224 | Supervisor: HUD, pause, settings, keys | Cross-scene casts |
-| `scenes/GameScene.ts` | 220 | Gameplay wiring + update loop | Cross-scene casts |
-| `systems/PlayerTeleport.ts` | 206 | Teleport VFX | **Dead code — unreferenced** |
-| `systems/DungeonSystem.ts` | 206 | Per-tile floor/wall/obstacle rendering | Per-tile images + Light2D (perf) |
-| `entities/NPC.ts` | 206 | Dialogue NPC, blink, speech bubble | Blink logic duplicated with Player |
-| `systems/DevModeOverlay.ts` | 191 | FPS + tile-axis labels | Perf-diagnostics panels not built yet |
-| `entities/Player.ts` | 170 | Movement, light, blink | Per-frame `Vector2` alloc; no FSM |
-| `systems/MobileControlsSystem.ts` | 129 | Dynamic joystick | Per-move `Vector2` alloc |
+| `systems/WeaponSystem.ts` | 742 | Fireball/ray/sphere + 3 explosions + FX | God object, heavy duplication, no pooling |
+| `ui/GameHUD.ts` | 659 | Hotbar + level picker + stone art | Mixed concerns (layout + procedural art + state) |
+| `ui/SettingsUI.ts` | 568 | Settings panel, sliders, controls list | Long builder, inline widgets |
+| `systems/AudioSystem.ts` | 480 | SFX synth + generative music + volume | 3 responsibilities in one class |
+| `scenes/PreloadScene.ts` | 381 | All procedural texture factories | Belongs in a `render/textures` module |
+| `systems/FieldOfViewSystem.ts` | 373 | Raycast fog-of-war, full-screen canvas mask | Primary perf suspect (see perf docs) |
+| `scenes/MainScene.ts` | 225 | Supervisor: HUD, pause, settings, keys | Cross-scene casts |
+| `scenes/GameScene.ts` | 228 | Gameplay wiring + update loop | Cross-scene casts |
+| `systems/PlayerTeleport.ts` | 207 | Teleport VFX | Wired to fireball-slot right-click; gated by dev mode |
+| `systems/DungeonSystem.ts` | 207 | Per-tile floor/wall/obstacle rendering | Per-tile images + Light2D (perf) |
+| `entities/NPC.ts` | 207 | Dialogue NPC, blink, speech bubble | Blink logic duplicated with Player |
+| `systems/DevModeOverlay.ts` | 147 | FPS + tile-axis labels | Perf-diagnostics panels not built yet |
+| `entities/Player.ts` | 171 | Movement, light, blink | Per-frame `Vector2` alloc; no FSM |
+| `systems/MobileControlsSystem.ts` | 130 | Dynamic joystick | Per-move `Vector2` alloc |
 | `levels/dungeon.ts` | 102 | Handcrafted layout (carve helpers) | OK; data pattern to standardize |
-| `systems/PlayerControlsSystem.ts` | 97 | Desktop/mobile input routing | OK |
+| `systems/PlayerControlsSystem.ts` | 98 | Desktop/mobile input routing | OK |
 | `levels/arena.ts` | 95 | Handcrafted arena + NPCs | OK |
-| `systems/SettingsManager.ts` | 81 | localStorage volume store (singleton) | Volume state duplicated in AudioSystem |
+| `systems/SettingsManager.ts` | 82 | localStorage volume store (singleton) | Volume state duplicated in AudioSystem |
 | `ui/SettingsButton.ts` | 68 | Gear button | OK |
-| `scenes/SettingsScene.ts` | 63 | Settings overlay scene | OK |
+| `scenes/SettingsScene.ts` | 64 | Settings overlay scene | OK |
 | `systems/PlayerKeysSyncSystem.ts` | 61 | Window-level key capture | OK; niche workaround |
-| `config.ts` | 43 | Phaser game config | Physics 120 Hz, uncapped DPR |
+| `config.ts` | 44 | Phaser game config | Physics 120 Hz, uncapped DPR |
 | `levels/types.ts` | 38 | Level/placement interfaces | Good seed for content schema |
-| `scenes/BaseScene.ts` | 25 | Audio lifecycle base | OK |
+| `scenes/BaseScene.ts` | 26 | Audio lifecycle base | OK |
 | `types/phaser-raycaster.ts` | 18 | Type shim for broken package export | Necessary evil (documented) |
-| `levels/index.ts` | 16 | Level registry | OK |
+| `levels/index.ts` | 17 | Level registry | OK |
 | `main.ts` | 14 | Boot entry | OK |
 
 ### 1.2 Runtime scene flow
 
 ```
 main.ts → new Phaser.Game(gameConfig)
-  scene order: [PreloadScene("BootScene"), MainScene, GameScene, SettingsScene]
+  scene order: [PreloadScene("PreloadScene"), MainScene, GameScene, SettingsScene]
 
 PreloadScene.create()
   ├─ load 2 fireball mp3s (network)
@@ -118,9 +118,9 @@ Severity: **H** = correctness/perf/scaling risk or blocks the design vision; **M
 **L** = polish.
 
 ### F1 — God objects / oversized files (H)
-`WeaponSystem` (741), `GameHUD` (658), `SettingsUI` (567), `AudioSystem` (479), `PreloadScene` (380) each
+`WeaponSystem` (742), `GameHUD` (659), `SettingsUI` (568), `AudioSystem` (480), `PreloadScene` (381) each
 own multiple responsibilities. They are hard to test, hard to extend (e.g. adding a 3rd spell means editing
-a 741-line file), and hostile to parallel AI work. → §6.1, §6.4, §6.6.
+a 742-line file), and hostile to parallel AI work. → §6.1, §6.4, §6.6.
 
 ### F2 — Duplication (H for maintainability)
 - `WeaponSystem.castFireball` vs `castProjectile`: near-identical lifecycle (sprite → light → particles →
@@ -140,10 +140,11 @@ a 741-line file), and hostile to parallel AI work. → §6.1, §6.4, §6.6.
 The four `as unknown as` casts (§1.3) defeat the type system. A renamed method compiles fine and breaks at
 runtime. → replace with a typed registry + typed event bus (§5.2).
 
-### F4 — Dead code (M)
-`systems/PlayerTeleport.ts` (206 lines) is never imported or instantiated (confirmed: only self-reference).
-Either wire it to a dev-mode "teleport on click" action (its `isDevModeEnabled` gate suggests original
-intent) or delete it. Carrying unused, untested code misleads future work.
+### F4 — Dev-mode teleport wiring (M)
+`systems/PlayerTeleport.ts` (207 lines) is imported and instantiated by `GameScene` and used as a
+right-click "blink" when the fireball weapon slot is selected (`GameScene.ts:110,177`). It is gated by
+`isDevModeEnabled()`, so it is effectively a dev-only easter egg, not dead code. Decide whether this
+behavior belongs in the public design or should be removed; do not leave it half-documented.
 
 ### F5 — Magic numbers, no central constants/theme (M)
 - **Depth values** are raw literals in 8 files: `0, 100, 200, 240–261, 300, 350, 400, 600/601, 990, 1000`.
@@ -168,8 +169,8 @@ Prefer one system-owned update that iterates live effects.
 
 ### F8 — Per-frame allocations (M, perf)
 `Player.update` allocates `new Phaser.Math.Vector2(0,0)` every frame; `MobileControlsSystem` allocates a
-`Vector2` per pointer-move; `FieldOfViewSystem.redrawFovMask` builds+sorts a fresh point array and
-`addProjectile/removeExplosion` rebuild arrays via `.filter()`. Reuse buffers.
+`Vector2` per pointer-move; `FieldOfViewSystem.recomputeVisibilityPolygon` builds+sorts a fresh point array
+and `addProjectile/removeExplosion` rebuild arrays via `.filter()`. Reuse buffers.
 
 ### F9 — Vision ↔ implementation gap (H, strategic)
 The design docs (`Game_Master_Design_Doc.md`, `Game_Detailed_Requirements.md`,
@@ -195,13 +196,6 @@ settings + audio), not the game. Missing, in rough dependency order:
 ### F10 — Double source of truth for volume (M)
 `AudioSystem` holds `masterVolume/musicVolume/sfxVolume` **and** `SettingsManager` persists the same. Setters
 write both; getters read the local copy. One store should own the value; the other should observe.
-
-### F11 — No tests, no root README, naming drift (M/L)
-- Zero test files; `package.json` has no test runner. Refactors are unguarded.
-- No root `README.md` (only `AGENTS.md`). New contributors lack a run/architecture entry point.
-- `PreloadScene` registers under the key **`"BootScene"`** — class name and scene key disagree; other
-  scenes fetch by string key, so the mismatch is a latent trap.
-
 ---
 
 ## 4. Performance: how this proposal relates to the existing plans
@@ -212,7 +206,8 @@ proposal only adds the **structural** enablers and records drift:
 
 - **Drift to fix in the docs:** both plans cite `config.ts` using `Phaser.AUTO` at 20–30 FPS; the current
   `config.ts` already uses `Phaser.WEBGL` + `powerPreference`. Update the plans' S1 line, or add a note that
-  S1 is partially mitigated. (Documentation-only follow-up.)
+  S1 is partially mitigated. Also update `FieldOfViewSystem` method references: `redrawFovMask` was split
+  into `recomputeVisibilityPolygon` + `paintMask`. (Documentation-only follow-up.)
 - **Still-open suspects unchanged by config:** S2 `Light2D` on every floor tile (`DungeonSystem`, 9
   `setPipeline("Light2D")` sites), S3 full-screen `CanvasTexture` FOV mask upload, S5 physics at 120 Hz
   (`config.ts`), S7 uncapped DPR under `Scale.RESIZE`.
@@ -382,7 +377,7 @@ Each block: **Problem → Target → Steps → Definition of Done (DoD).** Tasks
 is shippable alone.
 
 ### 6.1 WeaponSystem → SpellCaster + EffectPool
-- **Problem:** F1, F2, F6, F7. 741 lines, duplicated cast/explosion lifecycles, no pooling, per-object
+- **Problem:** F1, F2, F6, F7. 742 lines, duplicated cast/explosion lifecycles, no pooling, per-object
   listeners.
 - **Target:** `systems/combat/SpellCaster.ts` (reads `SpellDefinition`), `systems/combat/EffectManager.ts`
   (one `update`, iterates live effects), `core/Pool.ts` backing projectile sprites/lights/emitters.
@@ -396,8 +391,7 @@ is shippable alone.
   6. Back projectiles/lights/emitters with `Pool`; enforce a concurrent-effect cap (perf docs P2.3).
 - **DoD:** fireball/ray/sphere behave identically on-screen; adding a 4th spell needs only a new
   `content/spells/*` file; no `scene.events.on("update")` per projectile; rapid casting shows no retained
-  growth after effects expire (verify with §6.7 heap panel); unit test covers `SpellDefinition` selection and
-  pool acquire/release.
+  growth after effects expire (verify with §6.7 heap panel).
 
 ### 6.2 Damage & combat loop (unblocks F9)
 - **Problem:** projectiles collide with walls only; no HP/death; no saving throws.
@@ -407,7 +401,7 @@ is shippable alone.
   `DamageSystem.applyHit(target, spell)` rolls a d20 save (`core/rng.ts`), applies damage, emits
   `player:damaged`/`enemy:died`, spawns floating text; on death drop honest loot (§6.8 hook).
 - **DoD:** a spell reduces enemy HP and kills at 0; save-throw text appears; player can take damage and reach
-  a FALLEN state; covered by a `DamageSystem` unit test (save success/fail, lethal/non-lethal).
+  a FALLEN state.
 
 ### 6.3 FieldOfViewSystem → bounded-resolution render target
 - **Problem:** F8 + perf S3: full-screen `CanvasTexture` re-uploaded each redraw; fresh point array + sort per
@@ -462,11 +456,11 @@ is shippable alone.
   gameplay class hardcodes content lists.
 
 ### 6.9 Dead code & naming
-- Delete `systems/PlayerTeleport.ts` **or** wire it to a dev-mode teleport action (decide explicitly; do not
-  leave dangling). If wired, gate it behind `GameScene.isDevModeEnabled()` and a dev-only click.
-- Rename the boot scene key `"BootScene"` → `"PreloadScene"` (or rename the class to `BootScene`) so key and
-  class agree; update `scene.start` in `PreloadScene.create`.
-- **DoD:** no unreferenced modules; scene key and class name match; game boots unchanged.
+- `PlayerTeleport` is already wired to a dev-mode right-click blink via the fireball slot
+  (`GameScene.ts:110,177`). Decide whether to keep this dev-only behavior, promote it to a real mechanic, or
+  delete it; update this document accordingly.
+- ~~Rename the boot scene key `"BootScene"` → `"PreloadScene"`~~ (already matches — `PreloadScene.ts:9`).
+- **DoD:** no ambiguous modules; scene key and class name match; game boots unchanged.
 
 ---
 
@@ -527,17 +521,12 @@ Ordered by dependency. Each milestone assumes the §6 structural work it needs i
 
 ---
 
-## 10. Testing strategy (currently zero)
+## 10. Testing policy
 
-- **Add a runner:** Vitest (fast, TS-native, jsdom for DOM-adjacent code). Add `test`/`test:watch` scripts.
-  Check the dep for CVEs before adding (per global instructions).
-- **Test the logic, not Phaser:** target pure/near-pure units — `core/rng.ts`, `DamageSystem` (save/lethal),
-  `SpellDefinition` selection, `StateMachine` transitions, `SettingsManager` clamp/persist, `Pool`
-  acquire/release, `EventBus` typing. Keep Phaser scene objects behind thin seams so tests need no WebGL.
-- **TDD for new behavior** (§6.2, FSM, fatigue) per global rules; retrofit is optional for existing untested
-  VFX code.
-- **DoD for the testing task:** `yarn test` runs green in CI-less local; each new system in §6/§7 ships with
-  at least happy-path + one edge/error case.
+- **UI unit tests are forbidden.** Phaser scene/UI code is tested through play and visual verification only.
+- **No Vitest.** The project does not use Vitest or any other JS unit-test runner.
+- Logic-heavy modules may be validated through manual inspection, runtime asserts, or small standalone
+  scripts — not through a test framework.
 
 ---
 
@@ -547,38 +536,36 @@ Phased so every step compiles, is reversible, and leaves the game runnable. AI a
 verify build/lint, then proceed.
 
 **Phase 0 — Safety net & drift (docs/config, low risk)**
-1. Add Vitest + first trivial test (`SettingsManager`). (§10)
-2. Add root `README.md` (run/build/deploy + this doc as the architecture index). (F11)
-3. Fix `PreloadScene`/`"BootScene"` key-name mismatch. (F11)
-4. Update the two perf docs' stale `Phaser.AUTO`/S1 note. (§4)
+1. Update the two perf docs' stale `Phaser.AUTO`/S1 note and the `redrawFovMask` method name (now
+   `recomputeVisibilityPolygon` + `paintMask`). (§4)
 
 **Phase 1 — Foundations (`core/`, no behavior change)**
-5. `core/constants.ts` (Depth, Tile, tuning) + migrate depth/tile literals. (F5)
-6. `core/theme.ts` (Palette/Font) + migrate colors in HUD/Settings/Dev/Button. (F5)
-7. `core/EventBus.ts` + `core/ServiceRegistry.ts`; replace the four `as unknown as` casts. (F3)
-8. `core/Pool.ts` + `core/rng.ts` (unused yet; unit-tested).
+2. `core/constants.ts` (Depth, Tile, tuning) + migrate depth/tile literals. (F5)
+3. `core/theme.ts` (Palette/Font) + migrate colors in HUD/Settings/Dev/Button. (F5)
+4. `core/EventBus.ts` + `core/ServiceRegistry.ts`; replace the four `as unknown as` casts. (F3)
+5. `core/Pool.ts` + `core/rng.ts` (unused yet; validated via standalone scripts only).
 
 **Phase 2 — De-duplication (behavior-preserving)**
-9. Extract `entities/components/BlinkBehavior.ts`; use in `Player`+`NPC`. (F2)
-10. `ui/widgets/*` (StoneFrame/StonePanel/Slider/IconButton); thin out `GameHUD`+`SettingsUI`. (F1/F2)
-11. Split `AudioSystem` into Sfx/Music/Mixer; single volume owner. (F1/F10)
-12. Decide+resolve `PlayerTeleport` (delete or wire). (F4)
+6. Extract `entities/components/BlinkBehavior.ts`; use in `Player`+`NPC`. (F2)
+7. `ui/widgets/*` (StoneFrame/StonePanel/Slider/IconButton); thin out `GameHUD`+`SettingsUI`. (F1/F2)
+8. Split `AudioSystem` into Sfx/Music/Mixer; single volume owner. (F1/F10)
+9. Decide+resolve `PlayerTeleport` (delete or wire). (F4)
 
 **Phase 3 — Content spine**
-13. Move `levels/` → `content/levels/`; add spells/enemies/items schemas + registries. (§5.3/§6.8)
-14. Rewrite `WeaponSystem` → `SpellCaster` + `EffectManager` on `Pool`, spells as data. (§6.1)
-15. Batched map layer in `DungeonSystem`; unify wall/door block. (§6.5)
+10. Move `levels/` → `content/levels/`; add spells/enemies/items schemas + registries. (§5.3/§6.8)
+11. Rewrite `WeaponSystem` → `SpellCaster` + `EffectManager` on `Pool`, spells as data. (§6.1)
+12. Batched map layer in `DungeonSystem`; unify wall/door block. (§6.5)
 
 **Phase 4 — Diagnostics & measured perf**
-16. `DevModeOverlay` Panels A–F. (§6.7) — the gate.
-17. Capture slow-machine traces (per perf docs); apply only confirmed FOV (§6.3) / Light2D (§6.5) / physics-Hz
+13. `DevModeOverlay` Panels A–F. (§6.7) — the gate.
+14. Capture slow-machine traces (per perf docs); apply only confirmed FOV (§6.3) / Light2D (§6.5) / physics-Hz
     fixes with before/after evidence.
 
-**Phase 5 — The game (vision systems, TDD)**
-18. RTwP grayscale FX. (§7.1)
-19. Health/damage/death + saving throws. (§6.2)
-20. Enemy + AI + vision cone + auto-pause. (§7.3)
-21. Stealth/noise; SCP statue; loot/inventory; cursed items; fatigue. (§7.4–7.8)
+**Phase 5 — The game (vision systems)**
+15. RTwP grayscale FX. (§7.1)
+16. Health/damage/death + saving throws. (§6.2)
+17. Enemy + AI + vision cone + auto-pause. (§7.3)
+18. Stealth/noise; SCP statue; loot/inventory; cursed items; fatigue. (§7.4–7.8)
 
 **Suggested milestone tags:** M0 (Phase 0–1) "hardened skeleton", M1 (Phase 2–3) "data-driven & DRY",
 M2 (Phase 4) "measured & fast", M3 (Phase 5) "actually the game".
@@ -613,5 +600,4 @@ M2 (Phase 4) "measured & fast", M3 (Phase 5) "actually the game".
 - **Biggest single risk?** F9 — the code is a tech demo; the design docs are a full game. Build the spine
   (§5) before piling on features, or every feature re-pays the coupling tax.
 - **First thing to do?** Phase 0 → Phase 1. Small, safe, unlocks everything else.
-```
 
