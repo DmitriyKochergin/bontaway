@@ -57,10 +57,11 @@ export class GameHUD {
   private readonly locationIconPadding = 6;
   private readonly locationPanelPadding = 6;
 
-  constructor(scene: Phaser.Scene, controller: GameHudController, onOpenSettings: () => void) {
+  constructor(scene: Phaser.Scene, controller: GameHudController, onOpenSettings: () => void, initialSelection = 0) {
     this.scene = scene;
     this.controller = controller;
     this.onOpenSettings = onOpenSettings;
+    this.currentSelection = Phaser.Math.Clamp(initialSelection, 0, this.numSlots - 1);
 
     // Calculate total width of the stone plate
     this.panelWidth = this.numSlots * this.slotSize + (this.numSlots - 1) * this.slotPadding + this.panelPadding * 2;

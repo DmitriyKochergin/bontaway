@@ -1,4 +1,6 @@
 import Phaser from "phaser";
+import { SettingsManager } from "../systems/SettingsManager";
+import { FlatGameHUD } from "../ui/FlatGameHUD";
 import { GameHUD, type GameHudController } from "../ui/GameHUD";
 import { BaseScene } from "./BaseScene";
 import GameScene from "./GameScene";
@@ -15,7 +17,7 @@ export default class MainScene extends BaseScene {
   private pausedLabel?: Phaser.GameObjects.Text;
   private pausedLabelResizeHandler?: (gameSize: Phaser.Structs.Size) => void;
   private gameplayPaused = false;
-  private gameHUD?: GameHUD;
+  private gameHUD?: GameHUD | FlatGameHUD;
 
   constructor() {
     super("MainScene");
@@ -55,9 +57,13 @@ export default class MainScene extends BaseScene {
 
   /** (Re)create the HUD bound to the current GameScene instance. */
   private rebuildHud(): void {
+    const selectedWeaponSlot = this.gameHUD?.getSelectedWeaponSlot() ?? 0;
     this.gameHUD?.destroy();
     const gameScene = this.scene.get("GameScene") as unknown as GameHudController;
-    this.gameHUD = new GameHUD(this, gameScene, () => this.toggleSettings());
+    this.gameHUD =
+      SettingsManager.getHudStyle() === "flat"
+        ? new FlatGameHUD(this, gameScene, () => this.toggleSettings(), selectedWeaponSlot)
+        : new GameHUD(this, gameScene, () => this.toggleSettings(), selectedWeaponSlot);
     this.gameHUD.create();
     this.scene.bringToTop();
   }
@@ -127,7 +133,10 @@ export default class MainScene extends BaseScene {
 
     this.scene.pause("GameScene");
     const gameScene = this.scene.get("GameScene") as GameScene;
-    this.scene.launch("SettingsScene", { audioSystem: gameScene.getAudioSystem() });
+    this.scene.launch("SettingsScene", {
+      audioSystem: gameScene.getAudioSystem(),
+      onHudStyleChange: () => this.rebuildHud()
+    });
 
     const settingsScene = this.scene.get("SettingsScene");
     settingsScene.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {

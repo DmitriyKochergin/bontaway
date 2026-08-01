@@ -1,7 +1,10 @@
+export type HudStyle = "stone" | "flat";
+
 export interface GameSettings {
   masterVolume: number;
   musicVolume: number;
   sfxVolume: number;
+  hudStyle: HudStyle;
 }
 
 const STORAGE_KEY = "bontaway_settings";
@@ -9,7 +12,8 @@ const STORAGE_KEY = "bontaway_settings";
 const DEFAULT_SETTINGS: GameSettings = {
   masterVolume: 0.7,
   musicVolume: 0.5,
-  sfxVolume: 0.6
+  sfxVolume: 0.6,
+  hudStyle: "stone"
 };
 
 class SettingsManagerClass {
@@ -24,7 +28,11 @@ class SettingsManagerClass {
       const stored = localStorage.getItem(STORAGE_KEY);
       if (stored) {
         const parsed = JSON.parse(stored) as Partial<GameSettings>;
-        return { ...DEFAULT_SETTINGS, ...parsed };
+        return {
+          ...DEFAULT_SETTINGS,
+          ...parsed,
+          hudStyle: parsed.hudStyle === "flat" ? "flat" : "stone"
+        };
       }
     } catch (error) {
       console.warn("Failed to load settings:", error);
@@ -70,6 +78,15 @@ class SettingsManagerClass {
 
   getSFXVolume(): number {
     return this.settings.sfxVolume;
+  }
+
+  getHudStyle(): HudStyle {
+    return this.settings.hudStyle;
+  }
+
+  setHudStyle(style: HudStyle): void {
+    this.settings.hudStyle = style;
+    this.save();
   }
 
   resetToDefaults(): void {

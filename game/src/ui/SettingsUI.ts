@@ -1,6 +1,6 @@
 import Phaser from "phaser";
 import { AudioSystem } from "../systems/AudioSystem";
-import { SettingsManager } from "../systems/SettingsManager";
+import { type HudStyle, SettingsManager } from "../systems/SettingsManager";
 
 interface SliderData {
   container: Phaser.GameObjects.Container;
@@ -21,6 +21,7 @@ export class SettingsUI {
   private closeTween: Phaser.Tweens.Tween | null = null;
   private panelRestY = 0;
   private isClosing = false;
+  private hudStyleButtonRedraw?: () => void;
   public onClose: (() => void) | null = null;
 
   private sliders: {
@@ -30,13 +31,17 @@ export class SettingsUI {
   } = { master: null, music: null, sfx: null };
 
   private readonly PANEL_WIDTH = 380;
-  private readonly PANEL_HEIGHT = 420;
+  private readonly PANEL_HEIGHT = 500;
   private readonly SLIDER_WIDTH = 120;
   private readonly TRACK_X = 0;
   private readonly OVERLAY_DEPTH = 990;
   private readonly PANEL_DEPTH = 1000;
 
-  constructor(scene: Phaser.Scene, audioSystem?: AudioSystem) {
+  constructor(
+    scene: Phaser.Scene,
+    audioSystem?: AudioSystem,
+    private onHudStyleChange?: (style: HudStyle) => void
+  ) {
     this.scene = scene;
     this.audioSystem = audioSystem || null;
   }
@@ -59,12 +64,12 @@ export class SettingsUI {
 
     const fillWidth = Math.max(2, this.SLIDER_WIDTH * value);
     slider.fill.clear();
-    slider.fill.fillStyle(0xff6600, 1);
+    slider.fill.fillStyle(this.isStoneStyle() ? 0xc97918 : 0xff6600, 1);
     slider.fill.fillRoundedRect(this.TRACK_X, -4, fillWidth, 8, 2);
 
     slider.thumb.setPosition(this.TRACK_X + this.SLIDER_WIDTH * value, 0);
-    slider.thumb.setFillStyle(0xff6600);
-    slider.thumb.setStrokeStyle(2, 0xffffff);
+    slider.thumb.setFillStyle(this.isStoneStyle() ? 0xc97918 : 0xff6600);
+    slider.thumb.setStrokeStyle(2, this.isStoneStyle() ? 0x2d3134 : 0xffffff);
   }
 
   show(): void {
@@ -117,17 +122,60 @@ export class SettingsUI {
     const halfH = this.PANEL_HEIGHT / 2;
 
     const bg = this.scene.add.graphics();
-    bg.fillStyle(0x0a0a0a, 0.95);
-    bg.fillRoundedRect(-halfW, -halfH, this.PANEL_WIDTH, this.PANEL_HEIGHT, 8);
-    bg.lineStyle(1, 0x444444, 0.8);
-    bg.strokeRoundedRect(-halfW, -halfH, this.PANEL_WIDTH, this.PANEL_HEIGHT, 8);
+    this.drawPanelBackground(bg, halfW, halfH);
     this.panel.add(bg);
 
-    this.drawCornerAccents(halfW, halfH);
+    if (this.isStoneStyle()) {
+      this.drawStoneAccents(halfW, halfH);
+    } else {
+      this.drawCornerAccents(halfW, halfH);
+    }
     this.createHeader(halfW, halfH);
     this.createVolumeSection(halfW, halfH);
+    this.createInterfaceSection(halfW, halfH);
     this.createControlsSection(halfW, halfH);
     this.createActionButtons(halfH);
+  }
+
+  private isStoneStyle(): boolean {
+    return false;
+  }
+
+  private drawPanelBackground(background: Phaser.GameObjects.Graphics, halfW: number, halfH: number): void {
+    if (!this.isStoneStyle()) {
+      background.fillStyle(0x0a0a0a, 0.95);
+      background.fillRoundedRect(-halfW, -halfH, this.PANEL_WIDTH, this.PANEL_HEIGHT, 8);
+      background.lineStyle(1, 0x444444, 0.8);
+      background.strokeRoundedRect(-halfW, -halfH, this.PANEL_WIDTH, this.PANEL_HEIGHT, 8);
+      return;
+    }
+
+    background.fillStyle(0x1c1d1f, 0.98);
+    background.fillRoundedRect(-halfW, -halfH, this.PANEL_WIDTH, this.PANEL_HEIGHT, 8);
+    for (let index = 1; index < 6; index++) {
+      const y = -halfH + (this.PANEL_HEIGHT / 6) * index;
+      background.lineStyle(2, 0x121314, 0.65);
+      background.lineBetween(-halfW + 4, y, halfW - 4, y);
+    }
+    background.lineStyle(2, 0x73787c, 0.85);
+    background.lineBetween(-halfW + 4, -halfH + 2, halfW - 4, -halfH + 2);
+    background.lineBetween(-halfW + 2, -halfH + 4, -halfW + 2, halfH - 4);
+    background.lineStyle(3, 0x0c0d0e, 0.95);
+    background.lineBetween(-halfW + 2, halfH - 2, halfW - 2, halfH - 2);
+    background.lineBetween(halfW - 2, -halfH + 4, halfW - 2, halfH - 2);
+  }
+
+  private drawStoneAccents(halfW: number, halfH: number): void {
+    if (!this.panel) return;
+
+    const accents = this.scene.add.graphics();
+    accents.lineStyle(1, 0x090a0c, 0.9);
+    accents.lineBetween(-halfW + 18, -halfH + 2, -halfW + 12, -halfH + 20);
+    accents.lineBetween(halfW - 18, halfH - 2, halfW - 12, halfH - 20);
+    accents.lineStyle(1, 0x6e7275, 0.4);
+    accents.lineBetween(-halfW + 19, -halfH + 2, -halfW + 13, -halfH + 20);
+    accents.lineBetween(halfW - 17, halfH - 2, halfW - 11, halfH - 20);
+    this.panel.add(accents);
   }
 
   private drawCornerAccents(halfW: number, halfH: number): void {
@@ -168,13 +216,17 @@ export class SettingsUI {
     if (!this.panel) return;
 
     const headerBg = this.scene.add.graphics();
-    headerBg.fillStyle(0x1a1a1a, 0.8);
-    headerBg.fillRect(-halfW + 15, -halfH + 15, this.PANEL_WIDTH - 30, 40);
+    headerBg.fillStyle(this.isStoneStyle() ? 0x2d3134 : 0x1a1a1a, this.isStoneStyle() ? 0.95 : 0.8);
+    headerBg.fillRoundedRect(-halfW + 15, -halfH + 15, this.PANEL_WIDTH - 30, 40, this.isStoneStyle() ? 3 : 0);
+    if (this.isStoneStyle()) {
+      headerBg.lineStyle(1, 0x73787c, 0.7);
+      headerBg.strokeRoundedRect(-halfW + 15, -halfH + 15, this.PANEL_WIDTH - 30, 40, 3);
+    }
     this.panel.add(headerBg);
 
-    const accent = this.scene.add.text(-halfW + 25, -halfH + 35, "◆", {
+    const accent = this.scene.add.text(-halfW + 25, -halfH + 35, this.isStoneStyle() ? "❖" : "◆", {
       fontSize: "14px",
-      color: "#ff6600"
+      color: this.isStoneStyle() ? "#ffbb33" : "#ff6600"
     });
     accent.setOrigin(0, 0.5);
     this.panel.add(accent);
@@ -182,7 +234,7 @@ export class SettingsUI {
     const title = this.scene.add.text(-halfW + 45, -halfH + 35, "SETTINGS", {
       fontSize: "18px",
       fontFamily: "Cinzel, Georgia, serif",
-      color: "#ffffff"
+      color: this.isStoneStyle() ? "#ffd59a" : "#ffffff"
     });
     title.setOrigin(0, 0.5);
     this.panel.add(title);
@@ -190,12 +242,12 @@ export class SettingsUI {
     const closeBtn = this.scene.add.text(halfW - 30, -halfH + 35, "✕", {
       fontSize: "16px",
       fontFamily: "Roboto Mono, Courier New, monospace",
-      color: "#666666"
+      color: this.isStoneStyle() ? "#a8a8a8" : "#666666"
     });
     closeBtn.setOrigin(0.5, 0.5);
     closeBtn.setInteractive({ useHandCursor: true });
     closeBtn.on("pointerover", () => closeBtn.setColor("#ff4444"));
-    closeBtn.on("pointerout", () => closeBtn.setColor("#666666"));
+    closeBtn.on("pointerout", () => closeBtn.setColor(this.isStoneStyle() ? "#a8a8a8" : "#666666"));
     closeBtn.on("pointerdown", (_pointer: Phaser.Input.Pointer, _localX: number, _localY: number, event: Event) => {
       this.close();
       event.stopPropagation();
@@ -211,13 +263,13 @@ export class SettingsUI {
     const label = this.scene.add.text(-halfW + 25, sectionY, "VOLUME", {
       fontSize: "12px",
       fontFamily: "Cinzel, Georgia, serif",
-      color: "#888888"
+      color: this.isStoneStyle() ? "#c4b08a" : "#888888"
     });
     label.setOrigin(0, 0.5);
     this.panel.add(label);
 
     const divider = this.scene.add.graphics();
-    divider.lineStyle(1, 0x333333, 0.8);
+    divider.lineStyle(1, this.isStoneStyle() ? 0x5a5145 : 0x333333, 0.8);
     divider.lineBetween(-halfW + 80, sectionY, halfW - 25, sectionY);
     this.panel.add(divider);
 
@@ -264,32 +316,38 @@ export class SettingsUI {
     const labelText = this.scene.add.text(-halfW + 25, 0, label, {
       fontSize: "13px",
       fontFamily: "Roboto Mono, Courier New, monospace",
-      color: "#cccccc"
+      color: this.isStoneStyle() ? "#d5c7aa" : "#cccccc"
     });
     labelText.setOrigin(0, 0.5);
     container.add(labelText);
 
     const track = this.scene.add.graphics();
-    track.fillStyle(0x1a1a1a, 1);
+    track.fillStyle(this.isStoneStyle() ? 0x101113 : 0x1a1a1a, 1);
     track.fillRoundedRect(this.TRACK_X, -4, this.SLIDER_WIDTH, 8, 2);
-    track.lineStyle(1, 0x333333, 1);
+    track.lineStyle(1, this.isStoneStyle() ? 0x5a5145 : 0x333333, 1);
     track.strokeRoundedRect(this.TRACK_X, -4, this.SLIDER_WIDTH, 8, 2);
     container.add(track);
 
     const fillWidth = Math.max(2, this.SLIDER_WIDTH * initialValue);
     const fill = this.scene.add.graphics();
-    fill.fillStyle(0xff6600, 1);
+    fill.fillStyle(this.isStoneStyle() ? 0xc97918 : 0xff6600, 1);
     fill.fillRoundedRect(this.TRACK_X, -4, fillWidth, 8, 2);
     container.add(fill);
 
-    const thumb = this.scene.add.ellipse(this.TRACK_X + this.SLIDER_WIDTH * initialValue, 0, 14, 14, 0xff6600);
-    thumb.setStrokeStyle(2, 0xffffff);
+    const thumb = this.scene.add.ellipse(
+      this.TRACK_X + this.SLIDER_WIDTH * initialValue,
+      0,
+      14,
+      14,
+      this.isStoneStyle() ? 0xc97918 : 0xff6600
+    );
+    thumb.setStrokeStyle(2, this.isStoneStyle() ? 0x2d3134 : 0xffffff);
     container.add(thumb);
 
     const valueText = this.scene.add.text(halfW - 30, 0, `${Math.round(initialValue * 100)}%`, {
       fontSize: "11px",
       fontFamily: "Roboto Mono, Courier New, monospace",
-      color: "#888888"
+      color: this.isStoneStyle() ? "#c4b08a" : "#888888"
     });
     valueText.setOrigin(1, 0.5);
     container.add(valueText);
@@ -337,18 +395,18 @@ export class SettingsUI {
   private createControlsSection(halfW: number, halfH: number): void {
     if (!this.panel) return;
 
-    const sectionY = -halfH + 210;
+    const sectionY = -halfH + 310;
 
     const label = this.scene.add.text(-halfW + 25, sectionY, "CONTROLS", {
       fontSize: "12px",
       fontFamily: "Cinzel, Georgia, serif",
-      color: "#888888"
+      color: this.isStoneStyle() ? "#c4b08a" : "#888888"
     });
     label.setOrigin(0, 0.5);
     this.panel.add(label);
 
     const divider = this.scene.add.graphics();
-    divider.lineStyle(1, 0x333333, 0.8);
+    divider.lineStyle(1, this.isStoneStyle() ? 0x5a5145 : 0x333333, 0.8);
     divider.lineBetween(-halfW + 100, sectionY, halfW - 25, sectionY);
     this.panel.add(divider);
 
@@ -371,7 +429,7 @@ export class SettingsUI {
       const keyText = this.scene.add.text(-halfW + 30, y, key, {
         fontSize: "11px",
         fontFamily: "Roboto Mono, Courier New, monospace",
-        color: "#cccccc"
+        color: this.isStoneStyle() ? "#d5c7aa" : "#cccccc"
       });
       keyText.setOrigin(0, 0.5);
       this.panel.add(keyText);
@@ -379,11 +437,93 @@ export class SettingsUI {
       const actionText = this.scene.add.text(halfW - 30, y, action, {
         fontSize: "11px",
         fontFamily: "Roboto Mono, Courier New, monospace",
-        color: "#888888"
+        color: this.isStoneStyle() ? "#c4b08a" : "#888888"
       });
       actionText.setOrigin(1, 0.5);
       this.panel.add(actionText);
     }
+  }
+
+  private createInterfaceSection(halfW: number, halfH: number): void {
+    if (!this.panel) return;
+
+    const sectionY = -halfH + 210;
+    const label = this.scene.add.text(-halfW + 25, sectionY, "INTERFACE", {
+      fontSize: "12px",
+      fontFamily: "Cinzel, Georgia, serif",
+      color: this.isStoneStyle() ? "#c4b08a" : "#888888"
+    });
+    label.setOrigin(0, 0.5);
+    this.panel.add(label);
+
+    const divider = this.scene.add.graphics();
+    divider.lineStyle(1, this.isStoneStyle() ? 0x5a5145 : 0x333333, 0.8);
+    divider.lineBetween(-halfW + 100, sectionY, halfW - 25, sectionY);
+    this.panel.add(divider);
+
+    const styleLabel = this.scene.add.text(-halfW + 25, sectionY + 35, "HUD STYLE", {
+      fontSize: "11px",
+      fontFamily: "Roboto Mono, Courier New, monospace",
+      color: this.isStoneStyle() ? "#d5c7aa" : "#cccccc"
+    });
+    styleLabel.setOrigin(0, 0.5);
+    this.panel.add(styleLabel);
+
+    const buttons = [
+      this.createHudStyleButton("STONE", -35, sectionY + 35, "stone"),
+      this.createHudStyleButton("FLAT", 95, sectionY + 35, "flat")
+    ];
+    this.hudStyleButtonRedraw = () => {
+      const activeStyle = SettingsManager.getHudStyle();
+      buttons.forEach(({ style, redraw }) => redraw(style === activeStyle));
+    };
+    this.hudStyleButtonRedraw();
+  }
+
+  private createHudStyleButton(
+    label: string,
+    x: number,
+    y: number,
+    style: HudStyle
+  ): { style: HudStyle; redraw: (isSelected: boolean) => void } {
+    if (!this.panel) throw new Error("Panel not initialized");
+
+    const width = 115;
+    const height = 26;
+    const container = this.scene.add.container(x, y);
+    const background = this.scene.add.graphics();
+    const text = this.scene.add.text(0, 0, label, {
+      fontSize: "10px",
+      fontFamily: "Roboto Mono, Courier New, monospace"
+    });
+    text.setOrigin(0.5, 0.5);
+
+    const redraw = (isSelected: boolean) => {
+      background.clear();
+      const stoneStyle = this.isStoneStyle();
+      background.fillStyle(isSelected ? (stoneStyle ? 0x4a3b28 : 0x3b210d) : stoneStyle ? 0x2d3134 : 0x1a1a1a, 0.95);
+      background.fillRoundedRect(-width / 2, -height / 2, width, height, stoneStyle ? 2 : 4);
+      background.lineStyle(isSelected ? 2 : 1, isSelected ? (stoneStyle ? 0xffbb33 : 0xff6600) : 0x444444, 0.9);
+      background.strokeRoundedRect(-width / 2, -height / 2, width, height, stoneStyle ? 2 : 4);
+      text.setColor(isSelected ? (stoneStyle ? "#ffd59a" : "#ffcc88") : stoneStyle ? "#c4b08a" : "#888888");
+    };
+
+    const hitArea = this.scene.add.rectangle(0, 0, width, height, 0xffffff, 0);
+    hitArea.setInteractive({ useHandCursor: true });
+    hitArea.on("pointerdown", (_pointer: Phaser.Input.Pointer, _localX: number, _localY: number, event: Event) => {
+      event.stopPropagation();
+      if (SettingsManager.getHudStyle() === style) {
+        return;
+      }
+
+      SettingsManager.setHudStyle(style);
+      this.hudStyleButtonRedraw?.();
+      this.onHudStyleChange?.(style);
+    });
+
+    container.add([background, text, hitArea]);
+    this.panel.add(container);
+    return { style, redraw };
   }
 
   private createActionButtons(halfH: number): void {
@@ -391,32 +531,12 @@ export class SettingsUI {
     const btnHeight = 32;
     const y = halfH - 30;
 
-    // Reset button on the left (x = -90)
-    this.createPanelButton(
-      "RESET",
-      -90,
-      y,
-      btnWidth,
-      btnHeight,
-      0x4a1a1a, // normal BG (crimson)
-      0x884444, // normal Stroke
-      0x5a2a2a, // hover BG
-      0xaa6666, // hover Stroke
-      () => this.resetDefaults()
+    this.createPanelButton("RESET", -90, y, btnWidth, btnHeight, 0x4a1a1a, 0x884444, 0x5a2a2a, 0xaa6666, () =>
+      this.resetDefaults()
     );
 
-    // Close button on the right (x = 90)
-    this.createPanelButton(
-      "CLOSE",
-      90,
-      y,
-      btnWidth,
-      btnHeight,
-      0x1a1a1a, // normal BG (obsidian)
-      0x444444, // normal Stroke
-      0x2a2a2a, // hover BG
-      0x666666, // hover Stroke
-      () => this.close()
+    this.createPanelButton("CLOSE", 90, y, btnWidth, btnHeight, 0x1a1a1a, 0x444444, 0x2a2a2a, 0x666666, () =>
+      this.close()
     );
   }
 
@@ -501,6 +621,8 @@ export class SettingsUI {
     }
 
     this.updateSliderValues();
+    this.hudStyleButtonRedraw?.();
+    this.onHudStyleChange?.(defaults.hudStyle);
   }
 
   close(): void {
@@ -558,6 +680,7 @@ export class SettingsUI {
     }
 
     this.sliders = { master: null, music: null, sfx: null };
+    this.hudStyleButtonRedraw = undefined;
     this.isClosing = false;
   }
 

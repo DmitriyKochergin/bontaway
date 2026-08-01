@@ -1,9 +1,11 @@
 import Phaser from "phaser";
 import { AudioSystem } from "../systems/AudioSystem";
+import { type HudStyle } from "../systems/SettingsManager";
 import { SettingsUI } from "../ui/SettingsUI";
 
 type SettingsSceneData = {
   audioSystem?: AudioSystem | null;
+  onHudStyleChange?: (style: HudStyle) => void;
 };
 
 /**
@@ -24,7 +26,7 @@ export default class SettingsScene extends Phaser.Scene {
     this.isClosing = false;
     this.audioSystem = data.audioSystem ?? null;
 
-    this.settingsUI = new SettingsUI(this, this.audioSystem ?? undefined);
+    this.settingsUI = new SettingsUI(this, this.audioSystem ?? undefined, data.onHudStyleChange);
     this.settingsUI.onClose = () => {
       this.settingsUI?.destroy();
       this.settingsUI = null;
