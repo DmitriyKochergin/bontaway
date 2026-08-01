@@ -27,15 +27,9 @@ export class GameHUD {
   private hudContainer!: Phaser.GameObjects.Container;
   private backgroundGraphics!: Phaser.GameObjects.Graphics;
 
-  // Level Selection Panel Properties
+  // Location selection rail properties
   private levelContainer!: Phaser.GameObjects.Container;
   private levelBackgroundRect!: Phaser.GameObjects.Graphics;
-  private levelItems: Array<{
-    container: Phaser.GameObjects.Container;
-    bg: Phaser.GameObjects.Graphics;
-    text: Phaser.GameObjects.Text;
-    levelId: string;
-  }> = [];
 
   // Weapon/Spell slots (fireball + blue weapon)
   private slots: Array<{
@@ -59,6 +53,9 @@ export class GameHUD {
   private readonly panelPadding = 10;
   private readonly panelHeight = 84;
   private readonly panelWidth: number;
+  private readonly locationIconSize = 36;
+  private readonly locationIconPadding = 6;
+  private readonly locationPanelPadding = 6;
 
   constructor(scene: Phaser.Scene, controller: GameHudController, onOpenSettings: () => void) {
     this.scene = scene;
@@ -359,7 +356,7 @@ export class GameHUD {
 
     if (this.levelContainer) {
       const levelX = 20;
-      const levelY = gameSize.height - 100 - 14;
+      const levelY = gameSize.height - this.getLocationPanelHeight() - 14;
       this.levelContainer.setPosition(levelX, levelY);
       this.drawLevelSelectionPanel();
     }
@@ -476,34 +473,19 @@ export class GameHUD {
     this.levelBackgroundRect = this.scene.add.graphics();
     this.levelContainer.add(this.levelBackgroundRect);
 
-    // Full-panel input blocker (matches drawLevelSelectionPanel dimensions).
-    const levelBlocker = this.scene.add.zone(0, 0, 140, 100).setOrigin(0, 0);
+    const panelWidth = this.getLocationPanelWidth();
+    const panelHeight = this.getLocationPanelHeight();
+    const levelBlocker = this.scene.add.zone(0, 0, panelWidth, panelHeight).setOrigin(0, 0);
     levelBlocker.setInteractive();
     this.levelContainer.add(levelBlocker);
 
-    // Header Text
-    const headerText = this.scene.add.text(12, 10, "LOCATIONS", {
-      fontSize: "11px",
-      fontFamily: "Cinzel, Georgia, serif",
-      color: "#ffd59a",
-      stroke: "#000000",
-      strokeThickness: 2,
-      fontStyle: "bold"
-    });
-    this.levelContainer.add(headerText);
-
-    // List of levels
     const availableLevels = getLevels();
     const currentLevelId = this.controller.getLevelId();
 
-    const itemHeight = 24;
-    const itemPadding = 8;
-    const startY = 30;
-
     availableLevels.forEach((level, index) => {
-      const itemY = startY + index * (itemHeight + itemPadding);
+      const itemY = this.locationPanelPadding + index * (this.locationIconSize + this.locationIconPadding);
 
-      const itemContainer = this.scene.add.container(10, itemY);
+      const itemContainer = this.scene.add.container(this.locationPanelPadding, itemY);
       this.levelContainer.add(itemContainer);
 
       const isSelected = level.id === currentLevelId;
@@ -512,44 +494,29 @@ export class GameHUD {
       const itemBg = this.scene.add.graphics();
       itemContainer.add(itemBg);
 
-      // Label text
-      const nameText = this.scene.add.text(22, itemHeight / 2, level.name.toUpperCase(), {
-        fontSize: "10px",
-        fontFamily: "Roboto Mono, Courier New, monospace",
-        color: isSelected ? "#ff9900" : "#a8a8a8",
-        fontStyle: isSelected ? "bold" : "normal"
-      });
-      nameText.setOrigin(0, 0.5);
-      itemContainer.add(nameText);
+      const icon = this.scene.add.image(
+        this.locationIconSize / 2,
+        this.locationIconSize / 2,
+        this.getLocationIconTexture(level.id)
+      );
+      const maxIconDimension = this.locationIconSize - 10;
+      icon.setScale(maxIconDimension / Math.max(icon.width, icon.height));
+      itemContainer.add(icon);
 
-      // Simple bullet indicator
-      const bullet = this.scene.add.text(10, itemHeight / 2 - 1, "❖", {
-        fontSize: "10px",
-        color: isSelected ? "#ffbb33" : "#444444"
-      });
-      bullet.setOrigin(0.5, 0.5);
-      itemContainer.add(bullet);
-
-      // Hover / Click interaction zones
-      const interactionZone = this.scene.add.zone(0, 0, 120, itemHeight).setOrigin(0, 0);
+      const interactionZone = this.scene.add.zone(0, 0, this.locationIconSize, this.locationIconSize).setOrigin(0, 0);
       interactionZone.setInteractive({ useHandCursor: true });
       itemContainer.add(interactionZone);
 
-      // Draw the initial stone frame of the button
-      this.drawStoneFrame(itemBg, 0, 0, 120, itemHeight, isSelected, false);
+      this.drawStoneFrame(itemBg, 0, 0, this.locationIconSize, this.locationIconSize, isSelected, false);
 
       interactionZone.on("pointerover", () => {
-        nameText.setColor("#ffd59a");
-        // Clear first: drawStoneFrame paints the selection border outside the fill,
-        // so without clearing it would persist after pointerout.
         itemBg.clear();
-        this.drawStoneFrame(itemBg, 0, 0, 120, itemHeight, true, false);
+        this.drawStoneFrame(itemBg, 0, 0, this.locationIconSize, this.locationIconSize, true, false);
       });
 
       interactionZone.on("pointerout", () => {
-        nameText.setColor(isSelected ? "#ff9900" : "#a8a8a8");
         itemBg.clear();
-        this.drawStoneFrame(itemBg, 0, 0, 120, itemHeight, isSelected, false);
+        this.drawStoneFrame(itemBg, 0, 0, this.locationIconSize, this.locationIconSize, isSelected, false);
       });
 
       interactionZone.on(
@@ -565,22 +532,32 @@ export class GameHUD {
           }
         }
       );
-
-      this.levelItems.push({
-        container: itemContainer,
-        bg: itemBg,
-        text: nameText,
-        levelId: level.id
-      });
     });
+  }
+
+  private getLocationIconTexture(levelId: string): string {
+    return levelId === "arena" ? "obstacle" : "door_1";
+  }
+
+  private getLocationPanelWidth(): number {
+    return this.locationIconSize + this.locationPanelPadding * 2;
+  }
+
+  private getLocationPanelHeight(): number {
+    const locations = getLevels().length;
+    return (
+      locations * this.locationIconSize +
+      Math.max(0, locations - 1) * this.locationIconPadding +
+      this.locationPanelPadding * 2
+    );
   }
 
   private drawLevelSelectionPanel(): void {
     const g = this.levelBackgroundRect;
     g.clear();
 
-    const w = 140;
-    const h = 100;
+    const w = this.getLocationPanelWidth();
+    const h = this.getLocationPanelHeight();
 
     // 1. Fill base dark obsidian / slate texture
     g.fillStyle(0x1c1d1f, 0.95);
@@ -653,6 +630,5 @@ export class GameHUD {
     }
 
     this.slots = [];
-    this.levelItems = [];
   }
 }
