@@ -1,7 +1,7 @@
 import Phaser from "phaser";
-import { type AudioSystem } from "../systems/AudioSystem";
 import { GameHUD, type GameHudController } from "../ui/GameHUD";
 import { BaseScene } from "./BaseScene";
+import GameScene from "./GameScene";
 
 /**
  * Supervisor scene.
@@ -126,10 +126,7 @@ export default class MainScene extends BaseScene {
     }
 
     this.scene.pause("GameScene");
-
-    const gameScene = this.scene.get("GameScene") as unknown as {
-      getAudioSystem: () => AudioSystem | undefined;
-    };
+    const gameScene = this.scene.get("GameScene") as GameScene;
     this.scene.launch("SettingsScene", { audioSystem: gameScene.getAudioSystem() });
 
     const settingsScene = this.scene.get("SettingsScene");
@@ -159,12 +156,12 @@ export default class MainScene extends BaseScene {
   private applyGameplayPauseState(): void {
     if (this.gameplayPaused) {
       this.scene.pause("GameScene");
-      return;
-    }
-
-    if (!this.scene.isActive("SettingsScene")) {
+    } else if (!this.scene.isActive("SettingsScene")) {
       this.scene.resume("GameScene");
     }
+
+    const gameScene = this.scene.get("GameScene") as GameScene;
+    gameScene.getAudioSystem()?.setSfxPaused(this.gameplayPaused);
   }
 
   private createPausedLabel(): void {
