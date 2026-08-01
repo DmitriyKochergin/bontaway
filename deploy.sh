@@ -1,0 +1,1 @@
+cd game && yarn build && yarn deploy
