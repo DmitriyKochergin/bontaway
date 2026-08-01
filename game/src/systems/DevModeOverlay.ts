@@ -84,11 +84,12 @@ export class DevModeOverlay {
 
   private createLabel(value = ""): Phaser.GameObjects.Text {
     const label = this.scene.add.text(0, 0, value, {
-      fontSize: "13px",
+      fontSize: "20px",
+      fontStyle: "bold",
       fontFamily: "Roboto Mono, Courier New, monospace",
-      color: "#9efc9e",
+      color: "#ff6600",
       stroke: "#000000",
-      strokeThickness: 2
+      strokeThickness: 3
     });
 
     label.setOrigin(0.5, 0.5);
