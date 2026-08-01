@@ -6,10 +6,8 @@ export class DevModeOverlay {
   private dungeonSystem: DungeonSystem;
   private container?: Phaser.GameObjects.Container;
   private fpsLabel?: Phaser.GameObjects.Text;
-  private topLabels: Phaser.GameObjects.Text[] = [];
-  private bottomLabels: Phaser.GameObjects.Text[] = [];
-  private leftLabels: Phaser.GameObjects.Text[] = [];
-  private rightLabels: Phaser.GameObjects.Text[] = [];
+  private coordinateLabel?: Phaser.GameObjects.Text;
+  private controlKey?: Phaser.Input.Keyboard.Key;
   private visible = false;
   private readonly hudInset = 16;
 
@@ -49,17 +47,7 @@ export class DevModeOverlay {
     }
 
     this.updateFpsLabel();
-
-    const camera = this.scene.cameras.main;
-    const tileSize = this.dungeonSystem.getTileSize();
-    const worldView = camera.worldView;
-    const startColumn = Math.floor(worldView.left / tileSize);
-    const startRow = Math.floor(worldView.top / tileSize);
-
-    this.updateHorizontalAxisLabels(this.topLabels, startColumn, worldView.x, 8, camera.width);
-    this.updateHorizontalAxisLabels(this.bottomLabels, startColumn, worldView.x, camera.height - 8, camera.width);
-    this.updateVerticalAxisLabels(this.leftLabels, startRow, worldView.y, 8, camera.height);
-    this.updateVerticalAxisLabels(this.rightLabels, startRow, worldView.y, camera.width - 8, camera.height);
+    this.updateCoordinateLabel();
   }
 
   public destroy(): void {
@@ -67,10 +55,8 @@ export class DevModeOverlay {
     this.container?.destroy(true);
     this.container = undefined;
     this.fpsLabel = undefined;
-    this.topLabels = [];
-    this.bottomLabels = [];
-    this.leftLabels = [];
-    this.rightLabels = [];
+    this.coordinateLabel = undefined;
+    this.controlKey = undefined;
   }
 
   private ensureCreated(): void {
@@ -82,34 +68,18 @@ export class DevModeOverlay {
     this.container.setDepth(1000);
     this.container.setScrollFactor(0);
 
-    const camera = this.scene.cameras.main;
-    const tileSize = this.dungeonSystem.getTileSize();
-    const columnsOnScreen = Math.ceil(camera.width / tileSize) + 1;
-    const rowsOnScreen = Math.ceil(camera.height / tileSize) + 1;
-
-    this.topLabels = this.createLabelStrip(columnsOnScreen);
-    this.bottomLabels = this.createLabelStrip(columnsOnScreen);
-    this.leftLabels = this.createLabelStrip(rowsOnScreen);
-    this.rightLabels = this.createLabelStrip(rowsOnScreen);
     this.fpsLabel = this.createLabel("FPS: 0");
+    this.coordinateLabel = this.createLabel();
+    this.coordinateLabel.setOrigin(0, 0);
+    this.coordinateLabel.setVisible(false);
 
-    for (const label of [
-      this.fpsLabel,
-      ...this.topLabels,
-      ...this.bottomLabels,
-      ...this.leftLabels,
-      ...this.rightLabels
-    ]) {
+    for (const label of [this.fpsLabel, this.coordinateLabel]) {
       label.setScrollFactor(0);
       this.container.add(label);
     }
 
     this.fpsLabel.setOrigin(0, 0);
     this.fpsLabel.setPosition(this.hudInset, this.hudInset);
-  }
-
-  private createLabelStrip(count: number): Phaser.GameObjects.Text[] {
-    return Array.from({ length: count }, () => this.createLabel());
   }
 
   private createLabel(value = ""): Phaser.GameObjects.Text {
@@ -133,59 +103,43 @@ export class DevModeOverlay {
     this.fpsLabel.setText(`FPS: ${Math.round(this.scene.game.loop.actualFps)}`);
   }
 
-  private updateHorizontalAxisLabels(
-    labels: Phaser.GameObjects.Text[],
-    startColumn: number,
-    worldViewX: number,
-    y: number,
-    cameraWidth: number
-  ): void {
+  private updateCoordinateLabel(): void {
+    if (!this.coordinateLabel) {
+      return;
+    }
+
+    const pointer = this.scene.input.activePointer;
+    this.controlKey ??= this.scene.input.keyboard?.addKey(Phaser.Input.Keyboard.KeyCodes.CTRL);
+
+    if (!this.controlKey?.isDown || !pointer.active) {
+      this.coordinateLabel.setVisible(false);
+      return;
+    }
+
+    const camera = this.scene.cameras.main;
+
+    if (pointer.x < 0 || pointer.x > camera.width || pointer.y < 0 || pointer.y > camera.height) {
+      this.coordinateLabel.setVisible(false);
+      return;
+    }
+
+    const worldPoint = camera.getWorldPoint(pointer.x, pointer.y);
     const tileSize = this.dungeonSystem.getTileSize();
     const totalColumns = this.dungeonSystem.getDungeonColumns();
-
-    for (let index = 0; index < labels.length; index++) {
-      const column = startColumn + index;
-      const label = labels[index];
-
-      if (column < 0 || column >= totalColumns) {
-        label.setVisible(false);
-        continue;
-      }
-
-      const worldX = column * tileSize + tileSize / 2;
-      const screenX = Phaser.Math.Clamp(worldX - worldViewX, 8, cameraWidth - 8);
-
-      label.setText(`${column}`);
-      label.setPosition(screenX, y);
-      label.setVisible(true);
-    }
-  }
-
-  private updateVerticalAxisLabels(
-    labels: Phaser.GameObjects.Text[],
-    startRow: number,
-    worldViewY: number,
-    x: number,
-    cameraHeight: number
-  ): void {
-    const tileSize = this.dungeonSystem.getTileSize();
     const totalRows = this.dungeonSystem.getDungeonRows();
+    const column = Math.floor(worldPoint.x / tileSize);
+    const row = Math.floor(worldPoint.y / tileSize);
 
-    for (let index = 0; index < labels.length; index++) {
-      const row = startRow + index;
-      const label = labels[index];
-
-      if (row < 0 || row >= totalRows) {
-        label.setVisible(false);
-        continue;
-      }
-
-      const worldY = row * tileSize + tileSize / 2;
-      const screenY = Phaser.Math.Clamp(worldY - worldViewY, 8, cameraHeight - 8);
-
-      label.setText(`${row}`);
-      label.setPosition(x, screenY);
-      label.setVisible(true);
+    if (column < 0 || column >= totalColumns || row < 0 || row >= totalRows) {
+      this.coordinateLabel.setVisible(false);
+      return;
     }
+
+    this.coordinateLabel.setText(`(${column}, ${row})`);
+    this.coordinateLabel.setPosition(
+      Phaser.Math.Clamp(pointer.x + 12, 8, camera.width - this.coordinateLabel.width - 8),
+      Phaser.Math.Clamp(pointer.y + 12, 8, camera.height - this.coordinateLabel.height - 8)
+    );
+    this.coordinateLabel.setVisible(true);
   }
 }
