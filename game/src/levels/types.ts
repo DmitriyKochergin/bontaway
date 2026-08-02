@@ -17,7 +17,9 @@ export interface NpcPlacement {
   type: "scholar" | "guard" | "wanderer" | "merchant";
   name: string;
   dialogue: string[];
+  emotion?: string;
 }
+
 
 export interface LevelLayout {
   walkable: boolean[][];
