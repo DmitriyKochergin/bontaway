@@ -157,7 +157,7 @@ export class NPC extends Phaser.Physics.Arcade.Sprite {
       // Sprite art faces "up" (north); Angle.Between measures from east, so correct by +90 degrees
       this.targetRotation = Phaser.Math.Angle.Between(this.x, this.y, playerX, playerY) + Math.PI / 2;
     } else {
-      this.targetRotation = 0;
+      this.targetRotation = Phaser.Math.Angle.Between(this.x, this.y, 24.5 * 32, 24.5 * 32) + Math.PI / 2;
     }
 
     this.rotation = Phaser.Math.Angle.RotateTo(this.rotation, this.targetRotation, rotationSpeed * _delta);

@@ -21,7 +21,7 @@ export const emotionsLevel: LevelDefinition = {
       tileY: 24,
       type: "scholar",
       emotion: "angry",
-      name: "Scholar Ignatius",
+      name: "Angry",
       dialogue: [
         "Why do you disturb me? The library of coordinates is in absolute disarray!",
         "Every keystroke you make echoes like a hammer in my head!"
@@ -32,7 +32,7 @@ export const emotionsLevel: LevelDefinition = {
       tileY: 28,
       type: "scholar",
       emotion: "sad",
-      name: "Scholar Barnaby",
+      name: "Sad",
       dialogue: [
         "I've cataloged all the forgotten values, but none of them can bring back the original sky.",
         "The light... it fades a little more every time we reload."
@@ -43,7 +43,7 @@ export const emotionsLevel: LevelDefinition = {
       tileY: 32,
       type: "scholar",
       emotion: "happy",
-      name: "Scholar Felix",
+      name: "Happy",
       dialogue: [
         "Ah, a guest! The variables align beautifully today, don't you think?",
         "I've found a way to render a perfect circle! It's the small things."
@@ -54,7 +54,7 @@ export const emotionsLevel: LevelDefinition = {
       tileY: 35,
       type: "scholar",
       emotion: "surprised",
-      name: "Scholar Alistair",
+      name: "Surprised",
       dialogue: [
         "Oh! A living player? I thought the main loop had pruned all external inputs!",
         "What is that device in your hand? It hums with foreign energy!"
@@ -65,7 +65,7 @@ export const emotionsLevel: LevelDefinition = {
       tileY: 37,
       type: "scholar",
       emotion: "fear",
-      name: "Scholar Timothy",
+      name: "Fear",
       dialogue: [
         "Shh! Keep your voice down... the garbage collector is scanning this memory block.",
         "I saw a shadow move. Not a game shadow, a real one, sliding between the pixels."
@@ -76,7 +76,7 @@ export const emotionsLevel: LevelDefinition = {
       tileY: 38,
       type: "guard",
       emotion: "disgusted",
-      name: "Watcher Kael",
+      name: "Disgusted",
       dialogue: [
         "Ugh, another biological entity. Smells like wet carbon and copper.",
         "This sector is polluted with deprecated assets. Disgusting."
@@ -87,7 +87,7 @@ export const emotionsLevel: LevelDefinition = {
       tileY: 37,
       type: "guard",
       emotion: "suspicious",
-      name: "Watcher Thorne",
+      name: "Suspicious",
       dialogue: [
         "You walk with the stride of a debugger. What values are you altering?",
         "I'm watching your input buffer. Don't try anything clever."
@@ -98,7 +98,7 @@ export const emotionsLevel: LevelDefinition = {
       tileY: 35,
       type: "guard",
       emotion: "sleepy",
-      name: "Watcher Gideon",
+      name: "Sleepy",
       dialogue: [
         "Huh? Oh, I must have slipped into a low-power sleep state...",
         "Just five more cycles... my memory refresh rate is lagging..."
@@ -109,7 +109,7 @@ export const emotionsLevel: LevelDefinition = {
       tileY: 32,
       type: "guard",
       emotion: "bored",
-      name: "Watcher Caleb",
+      name: "Bored",
       dialogue: [
         "Still guarding. Still empty. Nothing changes, not even the random seed.",
         "Talk to someone else. Or don't. It doesn't write to any log anyway."
@@ -120,7 +120,7 @@ export const emotionsLevel: LevelDefinition = {
       tileY: 28,
       type: "guard",
       emotion: "excited",
-      name: "Watcher Jace",
+      name: "Excited",
       dialogue: [
         "System alert! An active session! This is the most action I've seen in cycles!",
         "Show me your skills! Cast a spell, let's see the particle engine spark!"
@@ -131,7 +131,7 @@ export const emotionsLevel: LevelDefinition = {
       tileY: 24,
       type: "wanderer",
       emotion: "confused",
-      name: "The Lost Soul",
+      name: "Confused",
       dialogue: [
         "Where is the exit portal? The pathing nodes seem to have lost their edges.",
         "I was walking north, but the compass keeps spinning clockwise."
@@ -142,7 +142,7 @@ export const emotionsLevel: LevelDefinition = {
       tileY: 20,
       type: "wanderer",
       emotion: "proud",
-      name: "The Exiled Prince",
+      name: "Proud",
       dialogue: [
         "I was once the master of the main rendering thread. Look at my geometry.",
         "Even in exile, my outline remains perfectly anti-aliased."
@@ -153,7 +153,7 @@ export const emotionsLevel: LevelDefinition = {
       tileY: 16,
       type: "wanderer",
       emotion: "devastated",
-      name: "The Weeping Wraith",
+      name: "Devastated",
       dialogue: [
         "They deleted the home directory... everything I was, swept into /dev/null...",
         "My tears are just unallocated bytes, pooling at your feet."
@@ -164,7 +164,7 @@ export const emotionsLevel: LevelDefinition = {
       tileY: 13,
       type: "wanderer",
       emotion: "manic",
-      name: "The Mad Hermit",
+      name: "Manic",
       dialogue: [
         "Hehehe! Look at the stars! They aren't stars, they're debug points!",
         "The pointer is null! It's null! We are all floating in the void!"
@@ -175,7 +175,7 @@ export const emotionsLevel: LevelDefinition = {
       tileY: 11,
       type: "wanderer",
       emotion: "smug",
-      name: "The Clever Rogue",
+      name: "Smug",
       dialogue: [
         "You think you're the only one who can bypass the physics engine? Please.",
         "I found a collision exploit. Want to buy the offsets?"
@@ -186,7 +186,7 @@ export const emotionsLevel: LevelDefinition = {
       tileY: 10,
       type: "merchant",
       emotion: "determined",
-      name: "Trader Boris",
+      name: "Determined",
       dialogue: [
         "No discounts. I will compile my inventory value by value until the market stabilizes.",
         "Success is a function of pure iteration. I will stand here until the next version."
@@ -197,7 +197,7 @@ export const emotionsLevel: LevelDefinition = {
       tileY: 11,
       type: "merchant",
       emotion: "shy",
-      name: "Trader Lily",
+      name: "Shy",
       dialogue: [
         "Oh... hello. I... I have some potions, if you want to look... no pressure.",
         "I don't usually trade with strangers. Please don't look at my prices too closely..."
@@ -208,7 +208,7 @@ export const emotionsLevel: LevelDefinition = {
       tileY: 13,
       type: "merchant",
       emotion: "pleading",
-      name: "Trader Pippin",
+      name: "Pleading",
       dialogue: [
         "Please, buy these scrolls! The memory leak is eating my storage capacity!",
         "Just one trade, traveler. I need to clear my buffer before the next check!"
@@ -219,7 +219,7 @@ export const emotionsLevel: LevelDefinition = {
       tileY: 16,
       type: "merchant",
       emotion: "soulless",
-      name: "Trader Morbid",
+      name: "Soulless",
       dialogue: [
         "I trade in fragments of empty disk space. Nothing goes in, nothing comes out.",
         "You have a soul link. I have empty arrays. Let us trade."
@@ -230,7 +230,7 @@ export const emotionsLevel: LevelDefinition = {
       tileY: 20,
       type: "merchant",
       emotion: "hypnotized",
-      name: "Trader Mesmer",
+      name: "Hypnotized",
       dialogue: [
         "Watch the spiral... buy the gears... feel the tick of the frame clock...",
         "Your sanity is a variable. Set it to zero. Trade all your coins to me."
