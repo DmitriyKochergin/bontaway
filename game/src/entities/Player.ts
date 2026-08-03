@@ -5,11 +5,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   private keys: Partial<Record<"W" | "A" | "S" | "D", Phaser.Input.Keyboard.Key>> = {};
   private targetRotation: number = 0;
   public readonly movementSpeed = 165;
-  private readonly fovOffsetMax = 10;
-  private readonly fovOffsetLerp = 0.18;
 
-  public fovOffsetX = 0;
-  public fovOffsetY = 0;
   public playerLight!: Phaser.GameObjects.Light;
   public joystickVector: Phaser.Math.Vector2 | null = null;
   private nextBlinkTime = 0;
@@ -159,12 +155,5 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     } else {
       this.setVelocity(0, 0);
     }
-
-    const targetOffsetX =
-      movementVector.lengthSq() > 0 ? (movementVector.x / this.movementSpeed) * this.fovOffsetMax : 0;
-    const targetOffsetY =
-      movementVector.lengthSq() > 0 ? (movementVector.y / this.movementSpeed) * this.fovOffsetMax : 0;
-    this.fovOffsetX += (targetOffsetX - this.fovOffsetX) * this.fovOffsetLerp;
-    this.fovOffsetY += (targetOffsetY - this.fovOffsetY) * this.fovOffsetLerp;
   }
 }

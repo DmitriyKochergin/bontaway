@@ -180,8 +180,8 @@ export class FieldOfViewSystem {
   // moved. Stored in world space, sorted by angle around the origin, so paintMask can re-project it
   // at the current camera scroll without recasting while the player holds still.
   private recomputeVisibilityPolygon() {
-    const originX = this.player.x + this.player.fovOffsetX;
-    const originY = this.player.y + this.player.fovOffsetY;
+    const originX = this.player.x;
+    const originY = this.player.y;
     const outerRadius = this.tileSize * (this.fovRadiusTiles + this.fovFadeTiles);
 
     this.fovRay.setRay(originX, originY, 0, outerRadius);
@@ -325,8 +325,8 @@ export class FieldOfViewSystem {
     this.fovRefreshAccumulator += delta;
 
     const camera = this.scene.cameras.main;
-    const originX = this.player.x + this.player.fovOffsetX;
-    const originY = this.player.y + this.player.fovOffsetY;
+    const originX = this.player.x;
+    const originY = this.player.y;
     const playerMoved =
       Math.abs(originX - this.lastRedrawOriginX) > 0.25 || Math.abs(originY - this.lastRedrawOriginY) > 0.25;
     const hasDynamicLights = this.activeProjectiles.length > 0 || this.activeExplosions.length > 0;
