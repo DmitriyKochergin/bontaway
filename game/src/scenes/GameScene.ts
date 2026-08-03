@@ -218,7 +218,7 @@ export default class GameScene extends BaseScene {
       const x = p.tileX * tileSize;
       const y = p.tileY * tileSize;
 
-      const npc = new NPC(this, x, y, p.type, p.name, p.dialogue, p.emotion);
+      const npc = new NPC(this, x, y, p.type, p.name, p.dialogue, p.emotion, p.restTarget);
       npc.setMask(this.fovSystem.getNpcVisibilityMask());
       this.npcGroup.add(npc);
       this.npcs.push(npc);

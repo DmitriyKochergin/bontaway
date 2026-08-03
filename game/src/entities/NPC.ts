@@ -1,7 +1,7 @@
 import Phaser from "phaser";
 import { type NpcEmotion } from "./NpcEmotion";
 
-export type NpcType = "scholar" | "guard" | "wanderer" | "merchant";
+export type NpcType = "scholar" | "guard" | "wanderer" | "merchant" | "human";
 
 export class NPC extends Phaser.Physics.Arcade.Sprite {
   private npcType: NpcType;
@@ -13,6 +13,8 @@ export class NPC extends Phaser.Physics.Arcade.Sprite {
 
   // Eye-follow: NPC body rotates to face the player while in activation radius, eases back to rest otherwise
   private targetRotation = 0;
+  private restTargetX = 24.5 * 32;
+  private restTargetY = 24.5 * 32;
 
   // Floating text / dialogue components
   private speechContainer: Phaser.GameObjects.Container | null = null;
@@ -20,9 +22,23 @@ export class NPC extends Phaser.Physics.Arcade.Sprite {
   private bubbleText: Phaser.GameObjects.Text | null = null;
   private playerInRange = false;
 
-  constructor(scene: Phaser.Scene, x: number, y: number, npcType: NpcType, npcName: string, dialogueLines: string[], emotion?: NpcEmotion) {
+  constructor(
+    scene: Phaser.Scene,
+    x: number,
+    y: number,
+    npcType: NpcType,
+    npcName: string,
+    dialogueLines: string[],
+    emotion?: NpcEmotion,
+    restTarget?: { x: number; y: number }
+  ) {
     const textureKey = emotion ? `npc_${npcType}_${emotion}` : `npc_${npcType}`;
     super(scene, x, y, textureKey);
+
+    if (restTarget) {
+      this.restTargetX = restTarget.x;
+      this.restTargetY = restTarget.y;
+    }
 
     this.npcType = npcType;
     this.npcName = npcName;
@@ -158,7 +174,7 @@ export class NPC extends Phaser.Physics.Arcade.Sprite {
       // Sprite art faces "up" (north); Angle.Between measures from east, so correct by +90 degrees
       this.targetRotation = Phaser.Math.Angle.Between(this.x, this.y, playerX, playerY) + Math.PI / 2;
     } else {
-      this.targetRotation = Phaser.Math.Angle.Between(this.x, this.y, 24.5 * 32, 24.5 * 32) + Math.PI / 2;
+      this.targetRotation = Phaser.Math.Angle.Between(this.x, this.y, this.restTargetX, this.restTargetY) + Math.PI / 2;
     }
 
     this.rotation = Phaser.Math.Angle.RotateTo(this.rotation, this.targetRotation, rotationSpeed * _delta);

@@ -25,6 +25,12 @@ export interface NpcStyle {
    * A higher value places eyes wider apart on the face.
    */
   eyeSpread: number;
+  /**
+   * When false, eyebrow and extra face detail overlays (tears, blush, spirals…)
+   * are skipped entirely. Useful for stripped-down "eyes only" looks.
+   * Defaults to true.
+   */
+  showBrows?: boolean;
 }
 
 /** Canonical style for each built-in NPC archetype. */
@@ -33,4 +39,6 @@ export const NPC_STYLES: Record<NpcType, NpcStyle> = {
   guard:    { bodyColor: 0x555c65, eyeColor: 0x00f0ff, eyeSize: 4.0, eyeSpread: 5 },
   wanderer: { bodyColor: 0x111111, eyeColor: 0xff2222, eyeSize: 3.5, eyeSpread: 3 },
   merchant: { bodyColor: 0x8c5d31, eyeColor: 0x7cfc00, eyeSize: 4.5, eyeSpread: 4 },
+  // Looks identical to the player — used for emotion showcase rows.
+  human:    { bodyColor: 0x777777, eyeColor: 0x111111, eyeSize: 4.5, eyeSpread: 5, showBrows: false },
 };

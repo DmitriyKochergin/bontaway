@@ -1,11 +1,12 @@
 import { dungeonLevel } from "./dungeon";
 import { arenaLevel } from "./arena";
 import { emotionsLevel } from "./emotions";
+import { emotions2Level } from "./emotions2";
 import { type LevelDefinition } from "./types";
 
 export * from "./types";
 
-export const levels: LevelDefinition[] = [dungeonLevel, arenaLevel, emotionsLevel];
+export const levels: LevelDefinition[] = [dungeonLevel, arenaLevel, emotionsLevel, emotions2Level];
 
 export function getLevels(): LevelDefinition[] {
   return levels;

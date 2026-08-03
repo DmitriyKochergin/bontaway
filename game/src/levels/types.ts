@@ -16,11 +16,13 @@ export interface ObstaclePlacement {
 export interface NpcPlacement {
   tileX: number;
   tileY: number;
-  type: "scholar" | "guard" | "wanderer" | "merchant";
+  type: "scholar" | "guard" | "wanderer" | "merchant" | "human";
   name: string;
   dialogue: string[];
   /** Optional emotional state — modifies eye shape and face decorations. */
   emotion?: NpcEmotion;
+  /** World-space rest-look target. Defaults to the level's centre when omitted. */
+  restTarget?: { x: number; y: number };
 }
 
 

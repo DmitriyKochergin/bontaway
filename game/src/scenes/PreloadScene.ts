@@ -290,7 +290,7 @@ export default class PreloadScene extends Phaser.Scene {
     emotion: NpcEmotion | null,
     blinkFrameIndex: number
   ): void {
-    const { eyeColor, eyeSpread } = style;
+    const { eyeColor, eyeSpread, showBrows = true } = style;
     const cx = offsetX + 16;
     const isClosed = blinkFrameIndex === 2;
     const isHalf = blinkFrameIndex === 1 || blinkFrameIndex === 3;
@@ -305,7 +305,7 @@ export default class PreloadScene extends Phaser.Scene {
       npc.fillRoundedRect(cx - eyeSpread - 1.5, 12, 5, 1.5, 0.75);
       npc.fillRoundedRect(cx + eyeSpread - 3.5, 12, 5, 1.5, 0.75);
 
-      this.drawEyebrowsAndDetails(npc, cx, eyeSpread, emotion, true);
+      this.drawEyebrowsAndDetails(npc, cx, eyeSpread, emotion, true, showBrows);
       return;
     }
 
@@ -436,7 +436,7 @@ export default class PreloadScene extends Phaser.Scene {
       npc.strokeCircle(cx + eyeSpread, ey + eh / 2, rMax / 2);
     }
 
-    this.drawEyebrowsAndDetails(npc, cx, eyeSpread, emotion, isClosed);
+    this.drawEyebrowsAndDetails(npc, cx, eyeSpread, emotion, isClosed, showBrows);
   }
 
   private drawEyebrowsAndDetails(
@@ -444,8 +444,10 @@ export default class PreloadScene extends Phaser.Scene {
     cx: number,
     eyeSpread: number,
     emotion: NpcEmotion | null,
-    isEyeClosed: boolean
+    isEyeClosed: boolean,
+    showBrows = true
   ): void {
+    if (!showBrows) return;
     if (!emotion || emotion === "neutral" || emotion === "soulless") {
       return;
     }
