@@ -16,3 +16,4 @@ Some voice over the door (door tile in wall), voice - is text next to this door.
 Hey, there!      Yes, you.     Are you nuts?! stop firing, you are attracting them!
 14) додати двері, тоді скрипи дверей будуть більш доречними.
 15) Learn a secret incantation, right here!
+16) синдром поиска глубинного смысла
