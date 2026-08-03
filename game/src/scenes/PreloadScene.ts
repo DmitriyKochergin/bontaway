@@ -1,4 +1,7 @@
 import Phaser from "phaser";
+import { type NpcType } from "../entities/NPC";
+import { type NpcStyle, NPC_STYLES } from "../entities/NpcStyle";
+import { type NpcEmotion, NPC_EMOTIONS } from "../entities/NpcEmotion";
 
 /**
  * Boot scene.
@@ -215,38 +218,25 @@ export default class PreloadScene extends Phaser.Scene {
   }
 
   private createNpcTextures(): void {
-    const npcTypes = [
-      { key: "npc_scholar", bodyColor: 0x3b3a6d, eyeColor: 0xffd700, eyeSize: 4.5, eyeSpread: 4 },
-      { key: "npc_guard", bodyColor: 0x555c65, eyeColor: 0x00f0ff, eyeSize: 4.0, eyeSpread: 5 },
-      { key: "npc_wanderer", bodyColor: 0x111111, eyeColor: 0xff2222, eyeSize: 3.5, eyeSpread: 3 },
-      { key: "npc_merchant", bodyColor: 0x8c5d31, eyeColor: 0x7cfc00, eyeSize: 4.5, eyeSpread: 4 }
-    ];
-
-    const emotions = [
-      "angry", "sad", "happy", "surprised", "fear",
-      "disgusted", "suspicious", "sleepy", "bored", "excited",
-      "confused", "proud", "devastated", "manic", "smug",
-      "determined", "shy", "pleading", "soulless", "hypnotized"
-    ];
-
     // Generate baseline (neutral/no emotion) textures
-    for (const type of npcTypes) {
-      this.generateSingleNpcTexture(type, null);
+    for (const [npcType, style] of Object.entries(NPC_STYLES) as [NpcType, NpcStyle][]) {
+      this.generateSingleNpcTexture(npcType, style, null);
     }
 
     // Generate emotion-specific textures
-    for (const type of npcTypes) {
-      for (const emotion of emotions) {
-        this.generateSingleNpcTexture(type, emotion);
+    for (const [npcType, style] of Object.entries(NPC_STYLES) as [NpcType, NpcStyle][]) {
+      for (const emotion of NPC_EMOTIONS) {
+        this.generateSingleNpcTexture(npcType, style, emotion);
       }
     }
   }
 
   private generateSingleNpcTexture(
-    type: { key: string; bodyColor: number; eyeColor: number; eyeSize: number; eyeSpread: number },
-    emotion: string | null
+    npcType: NpcType,
+    style: NpcStyle,
+    emotion: NpcEmotion | null
   ): void {
-    const textureKey = emotion ? `${type.key}_${emotion}` : type.key;
+    const textureKey = emotion ? `npc_${npcType}_${emotion}` : `npc_${npcType}`;
     if (this.textures.exists(textureKey)) {
       return;
     }
@@ -264,14 +254,14 @@ export default class PreloadScene extends Phaser.Scene {
       const offsetX = i * 32;
 
       // Body
-      npc.fillStyle(type.bodyColor);
+      npc.fillStyle(style.bodyColor);
       npc.fillCircle(offsetX + 16, 16, 14);
 
       npc.lineStyle(1.5, 0x111111, 0.8);
       npc.strokeCircle(offsetX + 16, 16, 14);
 
       // Face elements (eyes, brows, tears, blush, etc.)
-      this.drawNpcFace(npc, offsetX, frame, type.bodyColor, type.eyeColor, type.eyeSpread, emotion, i);
+      this.drawNpcFace(npc, offsetX, frame, style, emotion, i);
     }
 
     npc.generateTexture(textureKey, 128, 32);
@@ -296,12 +286,11 @@ export default class PreloadScene extends Phaser.Scene {
     npc: Phaser.GameObjects.Graphics,
     offsetX: number,
     frame: { y: number; h: number; r: number },
-    _bodyColor: number,
-    eyeColor: number,
-    eyeSpread: number,
-    emotion: string | null,
+    style: NpcStyle,
+    emotion: NpcEmotion | null,
     blinkFrameIndex: number
   ): void {
+    const { eyeColor, eyeSpread } = style;
     const cx = offsetX + 16;
     const isClosed = blinkFrameIndex === 2;
     const isHalf = blinkFrameIndex === 1 || blinkFrameIndex === 3;
@@ -454,7 +443,7 @@ export default class PreloadScene extends Phaser.Scene {
     npc: Phaser.GameObjects.Graphics,
     cx: number,
     eyeSpread: number,
-    emotion: string | null,
+    emotion: NpcEmotion | null,
     isEyeClosed: boolean
   ): void {
     if (!emotion || emotion === "neutral" || emotion === "soulless") {

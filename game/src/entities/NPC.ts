@@ -1,4 +1,5 @@
 import Phaser from "phaser";
+import { type NpcEmotion } from "./NpcEmotion";
 
 export type NpcType = "scholar" | "guard" | "wanderer" | "merchant";
 
@@ -19,7 +20,7 @@ export class NPC extends Phaser.Physics.Arcade.Sprite {
   private bubbleText: Phaser.GameObjects.Text | null = null;
   private playerInRange = false;
 
-  constructor(scene: Phaser.Scene, x: number, y: number, npcType: NpcType, npcName: string, dialogueLines: string[], emotion?: string) {
+  constructor(scene: Phaser.Scene, x: number, y: number, npcType: NpcType, npcName: string, dialogueLines: string[], emotion?: NpcEmotion) {
     const textureKey = emotion ? `npc_${npcType}_${emotion}` : `npc_${npcType}`;
     super(scene, x, y, textureKey);
 

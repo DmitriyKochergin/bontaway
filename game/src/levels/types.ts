@@ -1,3 +1,5 @@
+import { type NpcEmotion } from "../entities/NpcEmotion";
+
 export interface DoorPlacement {
   column: number;
   row: number;
@@ -17,7 +19,8 @@ export interface NpcPlacement {
   type: "scholar" | "guard" | "wanderer" | "merchant";
   name: string;
   dialogue: string[];
-  emotion?: string;
+  /** Optional emotional state — modifies eye shape and face decorations. */
+  emotion?: NpcEmotion;
 }
 
 
