@@ -51,6 +51,18 @@ export class SfxLibrary {
     this.playPhaserSound("fireball_hit", volume);
   }
 
+  playShockRifleFire(volume = 0.5): void {
+    this.playPhaserSound("shock_rifle_fire", volume);
+  }
+
+  playShockRifleAltFire(volume = 0.5): void {
+    this.playPhaserSound("shock_rifle_alt_fire", volume);
+  }
+
+  playShockRifleHit(volume = 0.5): void {
+    this.playPhaserSound("shock_rifle_alt_explode", volume);
+  }
+
   setPaused(paused: boolean): void {
     if (this.paused === paused) {
       return;

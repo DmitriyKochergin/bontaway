@@ -41,6 +41,18 @@ export class AudioSystem {
     this.sfxLibrary.playFireballHit(volume);
   }
 
+  playShockRifleFire(volume = 0.5): void {
+    this.sfxLibrary.playShockRifleFire(volume);
+  }
+
+  playShockRifleAltFire(volume = 0.5): void {
+    this.sfxLibrary.playShockRifleAltFire(volume);
+  }
+
+  playShockRifleHit(volume = 0.5): void {
+    this.sfxLibrary.playShockRifleHit(volume);
+  }
+
   setSfxPaused(paused: boolean): void {
     this.sfxPaused = paused;
     this.sfxLibrary.setPaused(paused);

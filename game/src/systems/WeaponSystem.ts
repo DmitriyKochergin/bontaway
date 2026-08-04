@@ -262,7 +262,11 @@ export class WeaponSystem {
     const explosionTier = kind === "ray" ? "small" : "large";
     const speed = kind === "ray" ? 980 : 280;
 
-    this.audioSystem?.playFireballCast(kind === "ray" ? 0.35 : 0.55);
+    if (kind === "ray") {
+      this.audioSystem?.playShockRifleFire(0.35);
+    } else {
+      this.audioSystem?.playShockRifleAltFire(0.55);
+    }
 
     const castVector = new Phaser.Math.Vector2(targetX - this.player.x, targetY - this.player.y);
     const spawnOffset = Math.min(20, castVector.length() * 0.5);
@@ -395,7 +399,11 @@ export class WeaponSystem {
         return;
       }
 
-      this.audioSystem?.playFireballHit(kind === "ray" ? 0.4 : 0.65);
+      if (kind === "ray") {
+        // this.audioSystem?.playFireballHit(0.4);
+      } else {
+        this.audioSystem?.playShockRifleHit(0.65);
+      }
       this.createExplosion(projectile.x, projectile.y, explosionTier);
       cleanUp();
     });
@@ -451,7 +459,7 @@ export class WeaponSystem {
         continue;
       }
 
-      this.audioSystem?.playFireballHit(0.85);
+      this.audioSystem?.playShockRifleHit(0.85);
       this.createExplosion(
         (rayState.sprite.x + sphereState.sprite.x) * 0.5,
         (rayState.sprite.y + sphereState.sprite.y) * 0.5,
@@ -524,10 +532,7 @@ export class WeaponSystem {
     this.strokePolyline(graphics, points);
   }
 
-  private strokePolyline(
-    graphics: Phaser.GameObjects.Graphics,
-    points: ReadonlyArray<{ x: number; y: number }>
-  ): void {
+  private strokePolyline(graphics: Phaser.GameObjects.Graphics, points: ReadonlyArray<{ x: number; y: number }>): void {
     if (points.length < 2) {
       return;
     }

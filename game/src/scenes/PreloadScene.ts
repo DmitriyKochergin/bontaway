@@ -1,7 +1,7 @@
 import Phaser from "phaser";
 import { type NpcType } from "../entities/NPC";
-import { type NpcStyle, NPC_STYLES } from "../entities/NpcStyle";
-import { type NpcEmotion, NPC_EMOTIONS } from "../entities/NpcEmotion";
+import { NPC_EMOTIONS, type NpcEmotion } from "../entities/NpcEmotion";
+import { NPC_STYLES, type NpcStyle } from "../entities/NpcStyle";
 
 /**
  * Boot scene.
@@ -17,6 +17,7 @@ export default class PreloadScene extends Phaser.Scene {
 
     const loadingUi = this.createLoadingUi();
     this.queueFireballAudio();
+    this.queueShockRifleAudio();
 
     this.load.on(Phaser.Loader.Events.PROGRESS, (progress: number) => {
       this.updateLoadingUi(loadingUi, progress);
@@ -37,6 +38,12 @@ export default class PreloadScene extends Phaser.Scene {
       "fireball_hit",
       "assets/sound/fireball/cartoon-music-game-sfx-fireball-explosion-impact-2-568074.mp3"
     );
+  }
+
+  private queueShockRifleAudio(): void {
+    this.load.audio("shock_rifle_fire", "assets/sound/shock rifle/fire.wav");
+    this.load.audio("shock_rifle_alt_fire", "assets/sound/shock rifle/alt_fire.wav");
+    this.load.audio("shock_rifle_alt_explode", "assets/sound/shock rifle/alt_explode.wav");
   }
 
   private buildSharedTextures(): void {
@@ -231,11 +238,7 @@ export default class PreloadScene extends Phaser.Scene {
     }
   }
 
-  private generateSingleNpcTexture(
-    npcType: NpcType,
-    style: NpcStyle,
-    emotion: NpcEmotion | null
-  ): void {
+  private generateSingleNpcTexture(npcType: NpcType, style: NpcStyle, emotion: NpcEmotion | null): void {
     const textureKey = emotion ? `npc_${npcType}_${emotion}` : `npc_${npcType}`;
     if (this.textures.exists(textureKey)) {
       return;
