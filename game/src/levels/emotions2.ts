@@ -16,15 +16,15 @@ const EMOTIONS_ROW = [
 
 // Dialogues are intentionally terse — this level is a visual reference, not a story beat
 const DIALOGUES: Record<string, string[]> = {
-  shy:        ["..."],
+  shy: ["..."],
   determined: ["Forward."],
-  bored:      ["..."],
+  bored: ["..."],
   suspicious: ["Hmm."],
-  disgusted:  ["Ugh."],
-  surprised:  ["Oh!"],
-  happy:      ["Hi!"],
-  sad:        ["Oh..."],
-  angry:      ["Back off."],
+  disgusted: ["Ugh."],
+  surprised: ["Oh!"],
+  happy: ["Hi!"],
+  sad: ["Oh..."],
+  angry: ["Back off."],
   hypnotized: ["...watch..."]
 };
 
@@ -33,10 +33,11 @@ const ROWS = 20;
 
 // Row of NPCs: 10 NPCs spread across columns 2..21, sitting at row 5
 // Player spawns at col 12, row 15 (below the NPC row)
-const NPC_ROW = 5;
+const NPC_ROW = 10;
 const PLAYER_ROW = 15;
 const NPC_START_COL = 2; // first NPC tile column
-const NPC_SPACING = 2;   // tiles between NPC centres
+const NPC_SPACING = 2; // tiles between NPC centres
+const REST_LOOK_ROW = NPC_ROW + 1;
 
 export const emotions2Level: LevelDefinition = {
   id: "emotions2",
@@ -53,8 +54,8 @@ export const emotions2Level: LevelDefinition = {
     emotion,
     name: emotion.charAt(0).toUpperCase() + emotion.slice(1),
     dialogue: DIALOGUES[emotion] ?? ["..."],
-    // Always rest-look at the player spawn below
-    restTarget: { x: 12 * 32 + 16, y: PLAYER_ROW * 32 + 16 }
+    // Always rest-look straight down from the NPC position
+    restTarget: { x: (NPC_START_COL + i * NPC_SPACING) * 32, y: REST_LOOK_ROW * 32 + 16 }
   })),
 
   generateLayout(tileSize: number): LevelLayout {
