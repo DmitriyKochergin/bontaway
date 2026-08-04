@@ -134,18 +134,7 @@ export class WeaponSystem {
 
     this.audioSystem?.playFireballCast(0.45);
 
-    const castVector = new Phaser.Math.Vector2(targetX - this.player.x, targetY - this.player.y);
-    const spawnOffset = Math.min(20, castVector.length() * 0.5);
-
-    if (spawnOffset > 0) {
-      castVector.normalize().scale(spawnOffset);
-    }
-
-    const projectile = this.scene.physics.add.sprite(
-      this.player.x + castVector.x,
-      this.player.y + castVector.y,
-      "fireball"
-    );
+    const projectile = this.scene.physics.add.sprite(this.player.x, this.player.y, "fireball");
     projectile.setPipeline("Light2D");
     projectile.setDepth(250);
 
@@ -268,18 +257,7 @@ export class WeaponSystem {
       this.audioSystem?.playShockRifleAltFire(0.55);
     }
 
-    const castVector = new Phaser.Math.Vector2(targetX - this.player.x, targetY - this.player.y);
-    const spawnOffset = Math.min(20, castVector.length() * 0.5);
-
-    if (spawnOffset > 0) {
-      castVector.normalize().scale(spawnOffset);
-    }
-
-    const projectile = this.scene.physics.add.sprite(
-      this.player.x + castVector.x,
-      this.player.y + castVector.y,
-      textureKey
-    );
+    const projectile = this.scene.physics.add.sprite(this.player.x, this.player.y, textureKey);
     projectile.setPipeline("Light2D");
     projectile.setDepth(kind === "ray" ? 255 : 253);
     projectile.setCollideWorldBounds(false);
