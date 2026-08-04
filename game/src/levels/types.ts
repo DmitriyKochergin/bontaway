@@ -16,7 +16,7 @@ export interface ObstaclePlacement {
 export interface NpcPlacement {
   tileX: number;
   tileY: number;
-  type: "scholar" | "guard" | "wanderer" | "merchant" | "human";
+  type: "scholar" | "guard" | "wanderer" | "merchant" | "player";
   name: string;
   dialogue: string[];
   /** Optional emotional state — modifies eye shape and face decorations. */

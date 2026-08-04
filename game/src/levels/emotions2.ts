@@ -49,7 +49,7 @@ export const emotions2Level: LevelDefinition = {
   npcPlacements: EMOTIONS_ROW.map((emotion, i) => ({
     tileX: NPC_START_COL + i * NPC_SPACING,
     tileY: NPC_ROW,
-    type: "human" as const,
+    type: "player" as const,
     emotion,
     name: emotion.charAt(0).toUpperCase() + emotion.slice(1),
     dialogue: DIALOGUES[emotion] ?? ["..."],

@@ -1,7 +1,7 @@
 import Phaser from "phaser";
 import { type NpcEmotion } from "./NpcEmotion";
 
-export type NpcType = "scholar" | "guard" | "wanderer" | "merchant" | "human";
+export type NpcType = "scholar" | "guard" | "wanderer" | "merchant" | "player";
 
 export class NPC extends Phaser.Physics.Arcade.Sprite {
   private npcType: NpcType;
