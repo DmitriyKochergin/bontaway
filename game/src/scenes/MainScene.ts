@@ -1,7 +1,7 @@
 import Phaser from "phaser";
 import { SettingsManager } from "../systems/SettingsManager";
 import { FlatGameHUD } from "../ui/FlatGameHUD";
-import { GameHUD, type GameHudController } from "../ui/GameHUD";
+import { type GameHudController, StoneGameHUD } from "../ui/StoneGameHUD";
 import { BaseScene } from "./BaseScene";
 import GameScene from "./GameScene";
 
@@ -17,7 +17,7 @@ export default class MainScene extends BaseScene {
   private pausedLabel?: Phaser.GameObjects.Text;
   private pausedLabelResizeHandler?: (gameSize: Phaser.Structs.Size) => void;
   private gameplayPaused = false;
-  private gameHUD?: GameHUD | FlatGameHUD;
+  private gameHUD?: StoneGameHUD | FlatGameHUD;
 
   constructor() {
     super("MainScene");
@@ -63,7 +63,7 @@ export default class MainScene extends BaseScene {
     this.gameHUD =
       SettingsManager.getHudStyle() === "flat"
         ? new FlatGameHUD(this, gameScene, () => this.toggleSettings(), selectedWeaponSlot)
-        : new GameHUD(this, gameScene, () => this.toggleSettings(), selectedWeaponSlot);
+        : new StoneGameHUD(this, gameScene, () => this.toggleSettings(), selectedWeaponSlot);
     this.gameHUD.create();
     this.scene.bringToTop();
   }

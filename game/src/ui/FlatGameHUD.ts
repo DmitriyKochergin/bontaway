@@ -1,7 +1,7 @@
 import Phaser from "phaser";
 import { getLevels } from "../levels";
-import { type GameHudController } from "./GameHUD";
 import { SettingsButton } from "./SettingsButton";
+import { type GameHudController } from "./StoneGameHUD";
 
 /** Flat HUD variant, styled to match the settings dialog and gear control. */
 export class FlatGameHUD {

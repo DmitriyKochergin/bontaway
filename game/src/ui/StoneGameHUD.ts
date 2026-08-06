@@ -18,7 +18,7 @@ export interface GameHudController {
  * Displays available weapon options (slots/tiles) at the bottom.
  * Styled to look hand-carved, ancient stone (3D slate bevels, chiseled cracks, lava glow).
  */
-export class GameHUD {
+export class StoneGameHUD {
   private scene: Phaser.Scene;
   private controller: GameHudController;
   private onOpenSettings: () => void;
