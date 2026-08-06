@@ -6,6 +6,7 @@ import { DevModeOverlay } from "../systems/DevModeOverlay";
 import { DungeonSystem } from "../systems/DungeonSystem";
 import { FieldOfViewSystem } from "../systems/FieldOfViewSystem";
 import { PlayerControlsSystem } from "../systems/PlayerControlsSystem";
+import { loadPlayerProgress, savePlayerProgress, type PlayerProgressState } from "../systems/PlayerProgressManager";
 import { PlayerTeleport } from "../systems/PlayerTeleport";
 import { WeaponSystem } from "../systems/WeaponSystem";
 import { type PhaserRaycasterPlugin } from "../types/phaser-raycaster";
@@ -26,6 +27,8 @@ export default class GameScene extends BaseScene {
   private devModeEnabled = false;
   private devModeOverlay?: DevModeOverlay;
   private levelId = "arena";
+  private savedPlayerProgress?: PlayerProgressState;
+  private lastSavedPlayerProgress?: PlayerProgressState;
   private npcs: NPC[] = [];
   private npcGroup!: Phaser.Physics.Arcade.StaticGroup;
 
@@ -34,9 +37,21 @@ export default class GameScene extends BaseScene {
   }
 
   init(data?: { levelId?: string }): void {
+    const savedPlayerProgress = loadPlayerProgress();
+
     if (data?.levelId) {
       this.levelId = data.levelId;
+      this.savedPlayerProgress = savedPlayerProgress?.levelId === data.levelId ? savedPlayerProgress : undefined;
+      return;
     }
+
+    if (savedPlayerProgress && getLevelDefinition(savedPlayerProgress.levelId)) {
+      this.levelId = savedPlayerProgress.levelId;
+      this.savedPlayerProgress = savedPlayerProgress;
+      return;
+    }
+
+    this.savedPlayerProgress = undefined;
   }
 
   public getLevelId(): string {
@@ -52,6 +67,7 @@ export default class GameScene extends BaseScene {
     this.setupShutdownCleanup();
     this.events.on("toggle-dev-mode", this.toggleDevMode, this);
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      this.saveCurrentPlayerProgress(true);
       this.events.off("toggle-dev-mode", this.toggleDevMode, this);
       this.npcs.forEach(npc => npc.destroy());
       this.npcs = [];
@@ -95,7 +111,11 @@ export default class GameScene extends BaseScene {
     this.physics.world.setBounds(0, 0, this.dungeonSystem.getMapWidth(), this.dungeonSystem.getMapHeight());
 
     // Player
-    this.player = new Player(this, this.dungeonSystem.getSpawnX(), this.dungeonSystem.getSpawnY());
+    const startingPlayerProgress = this.getStartingPlayerProgress();
+    this.player = new Player(this, startingPlayerProgress.x, startingPlayerProgress.y);
+    this.player.rotation = startingPlayerProgress.rotation;
+    this.lastSavedPlayerProgress = undefined;
+    this.saveCurrentPlayerProgress(true);
 
     this.fovSystem = new FieldOfViewSystem(
       this,
@@ -191,6 +211,7 @@ export default class GameScene extends BaseScene {
 
     this.playerControlSystem.syncPlayerKeys();
     this.player.update(_time, delta);
+    this.saveCurrentPlayerProgress();
 
     // Update standing NPCs in real-time
     for (const npc of this.npcs) {
@@ -223,5 +244,72 @@ export default class GameScene extends BaseScene {
       this.npcGroup.add(npc);
       this.npcs.push(npc);
     }
+  }
+
+  private getStartingPlayerProgress(): PlayerProgressState {
+    if (this.savedPlayerProgress && this.isSavedPlayerProgressValid(this.savedPlayerProgress)) {
+      return this.savedPlayerProgress;
+    }
+
+    return {
+      levelId: this.levelId,
+      x: this.dungeonSystem.getSpawnX(),
+      y: this.dungeonSystem.getSpawnY(),
+      rotation: 0
+    };
+  }
+
+  private isSavedPlayerProgressValid(progress: PlayerProgressState): boolean {
+    if (progress.levelId !== this.levelId) {
+      return false;
+    }
+
+    const mapWidth = this.dungeonSystem.getMapWidth();
+    const mapHeight = this.dungeonSystem.getMapHeight();
+
+    if (progress.x < 0 || progress.x >= mapWidth || progress.y < 0 || progress.y >= mapHeight) {
+      return false;
+    }
+
+    const tileSize = this.dungeonSystem.getTileSize();
+    const column = Math.floor(progress.x / tileSize);
+    const row = Math.floor(progress.y / tileSize);
+    return this.dungeonSystem.isWalkable(column, row);
+  }
+
+  private saveCurrentPlayerProgress(force = false): void {
+    if (!this.player?.body) {
+      return;
+    }
+
+    const currentPlayerProgress: PlayerProgressState = {
+      levelId: this.levelId,
+      x: this.player.x,
+      y: this.player.y,
+      rotation: this.player.rotation
+    };
+
+    if (!force && this.isSamePlayerProgress(currentPlayerProgress, this.lastSavedPlayerProgress)) {
+      return;
+    }
+
+    savePlayerProgress(currentPlayerProgress);
+    this.lastSavedPlayerProgress = currentPlayerProgress;
+  }
+
+  private isSamePlayerProgress(
+    currentProgress: PlayerProgressState,
+    savedProgress?: PlayerProgressState
+  ): boolean {
+    if (!savedProgress) {
+      return false;
+    }
+
+    return (
+      currentProgress.levelId === savedProgress.levelId &&
+      Math.abs(currentProgress.x - savedProgress.x) < 0.5 &&
+      Math.abs(currentProgress.y - savedProgress.y) < 0.5 &&
+      Math.abs(Phaser.Math.Angle.Wrap(currentProgress.rotation - savedProgress.rotation)) < 0.01
+    );
   }
 }
