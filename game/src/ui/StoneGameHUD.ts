@@ -356,8 +356,8 @@ export class StoneGameHUD {
     this.drawMainPanel();
 
     if (this.levelContainer) {
-      const levelX = 20;
-      const levelY = gameSize.height - this.getLocationPanelHeight() - 14;
+      const levelX = gameSize.width - this.getLocationPanelWidth() - 8;
+      const levelY = 74;
       this.levelContainer.setPosition(levelX, levelY);
       this.drawLevelSelectionPanel();
     }

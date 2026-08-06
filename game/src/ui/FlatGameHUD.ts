@@ -216,7 +216,7 @@ export class FlatGameHUD {
 
   private reposition(gameSize: Phaser.Structs.Size): void {
     this.hudContainer.setPosition(gameSize.width / 2 - this.panelWidth / 2, gameSize.height - this.panelHeight - 14);
-    this.locationContainer.setPosition(20, gameSize.height - this.getLocationPanelHeight() - 14);
+    this.locationContainer.setPosition(gameSize.width - this.getLocationPanelWidth() - 8, 74);
     this.drawFlatPanel(this.hotbarBackground, this.panelWidth, this.panelHeight);
     this.drawFlatPanel(this.locationBackground, this.getLocationPanelWidth(), this.getLocationPanelHeight());
   }
