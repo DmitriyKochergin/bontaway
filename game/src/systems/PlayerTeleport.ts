@@ -33,12 +33,12 @@ export class PlayerTeleport {
     const sourceX = this.player.x;
     const sourceY = this.player.y;
 
+    this.createTeleportTrail(sourceX, sourceY, clampedTargetX, clampedTargetY);
+
     this.createTeleportDepartureEffect(sourceX, sourceY);
 
     this.player.setVelocity(0, 0);
     this.player.joystickVector = null;
-    this.player.fovOffsetX = 0;
-    this.player.fovOffsetY = 0;
 
     this.scene.tweens.add({
       targets: this.player,
@@ -89,6 +89,31 @@ export class PlayerTeleport {
   public destroy(): void {
     this.isDestroyed = true;
     this.isTeleporting = false;
+  }
+
+  private createTeleportTrail(sourceX: number, sourceY: number, targetX: number, targetY: number): void {
+    const centerX = (sourceX + targetX) / 2;
+    const centerY = (sourceY + targetY) / 2;
+    const distance = Phaser.Math.Distance.Between(sourceX, sourceY, targetX, targetY);
+    const angle = Phaser.Math.Angle.Between(sourceX, sourceY, targetX, targetY);
+
+    const warpTrail = this.scene.add
+      .rectangle(centerX, centerY, Math.max(distance, 1), 1, 0xbfefff, 0.4)
+      .setDepth(this.player.depth - 2)
+      .setBlendMode(Phaser.BlendModes.ADD)
+      .setRotation(angle);
+
+    this.scene.tweens.add({
+      targets: warpTrail,
+      alpha: 0,
+      scaleX: 0.15,
+      scaleY: 2.2,
+      duration: 140,
+      ease: "Sine.easeOut",
+      onComplete: () => {
+        warpTrail.destroy();
+      }
+    });
   }
 
   private createTeleportDepartureEffect(sourceX: number, sourceY: number): void {
