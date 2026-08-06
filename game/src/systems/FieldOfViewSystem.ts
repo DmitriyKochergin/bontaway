@@ -30,6 +30,7 @@ export class FieldOfViewSystem {
 
   private activeProjectiles: Phaser.Types.Physics.Arcade.SpriteWithDynamicBody[] = [];
   private activeExplosions: { x: number; y: number; radius: number }[] = [];
+  private enabled: boolean;
   // Reused each redraw to hold only the occluders whose AABB overlaps the FOV reach box. castCircle
   // runs an O(objects^2) pairwise pass plus a per-ray cast over every object it is given, so handing
   // it every wall in the map made cost scale with total wall count and spike in the dense top-left.
@@ -54,6 +55,7 @@ export class FieldOfViewSystem {
     this.scene = scene;
     this.player = player;
     this.raycasterOccluders = [...initialOccluders];
+    this.enabled = true;
 
     this.raycaster = raycasterPlugin.createRaycaster({
       boundingBox: new Phaser.Geom.Rectangle(0, 0, mapWidth, mapHeight),
@@ -138,6 +140,25 @@ export class FieldOfViewSystem {
 
   public removeExplosion(explosion: { x: number; y: number; radius: number }) {
     this.activeExplosions = this.activeExplosions.filter(e => e !== explosion);
+  }
+
+  public setEnabled(enabled: boolean): void {
+    if (this.enabled === enabled) {
+      return;
+    }
+
+    this.enabled = enabled;
+    this.fovRefreshAccumulator = this.fovRefreshMs;
+    this.lastPaintHadDynamicLights = false;
+
+    if (!enabled) {
+      this.paintDisabledMask();
+      return;
+    }
+
+    this.fovOverlay.setVisible(true);
+    this.recomputeVisibilityPolygon();
+    this.paintMask();
   }
 
   /**
@@ -306,6 +327,22 @@ export class FieldOfViewSystem {
     this.repositionMask();
   }
 
+  private paintDisabledMask() {
+    const context = this.fovMaskTexture.getContext();
+    const camera = this.scene.cameras.main;
+    const margin = this.maskMargin;
+    const canvasWidth = this.scene.scale.width + margin * 2;
+    const canvasHeight = this.scene.scale.height + margin * 2;
+
+    this.maskScrollX = camera.scrollX;
+    this.maskScrollY = camera.scrollY;
+
+    context.clearRect(0, 0, canvasWidth, canvasHeight);
+    this.fovMaskTexture.refresh();
+    this.fovOverlay.setVisible(false);
+    this.repositionMask();
+  }
+
   /**
    * Nudge the throttled mask so its baked contents stay locked to world space as the camera scrolls.
    * The mask is baked maskMargin px larger than the screen, so shifting it by the camera delta keeps
@@ -318,6 +355,10 @@ export class FieldOfViewSystem {
   }
 
   public update(delta: number) {
+    if (!this.enabled) {
+      return;
+    }
+
     // Cheap per-frame: keep the throttled mask glued to the world so shadows stay under the walls
     // instead of sliding with the camera during the gap between redraws.
     this.repositionMask();

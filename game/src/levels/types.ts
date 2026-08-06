@@ -37,6 +37,7 @@ export interface LevelDefinition {
   name: string;
   columns: number;
   rows: number;
+  fogOfWarEnabled?: boolean;
   doorPlacements: DoorPlacement[];
   obstaclePlacements: ObstaclePlacement[];
   npcPlacements?: NpcPlacement[];

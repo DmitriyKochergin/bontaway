@@ -109,6 +109,7 @@ export default class GameScene extends BaseScene {
     this.dungeonSystem = new DungeonSystem(this, this.levelId);
 
     this.physics.world.setBounds(0, 0, this.dungeonSystem.getMapWidth(), this.dungeonSystem.getMapHeight());
+    const levelDef = getLevelDefinition(this.levelId);
 
     // Player
     const startingPlayerProgress = this.getStartingPlayerProgress();
@@ -125,6 +126,8 @@ export default class GameScene extends BaseScene {
       this.dungeonSystem.getMapHeight(),
       this.dungeonSystem.getOccluders()
     );
+
+    this.fovSystem.setEnabled(levelDef?.fogOfWarEnabled !== false);
 
     this.weaponSystem = new WeaponSystem(this, this.player, this.dungeonSystem, this.fovSystem, this.audioSystem);
     this.playerTeleport = new PlayerTeleport(this, this.player, () => this.devModeEnabled);
