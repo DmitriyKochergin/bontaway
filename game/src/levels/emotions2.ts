@@ -59,8 +59,18 @@ export const emotions2Level: LevelDefinition = {
   })),
 
   generateLayout(tileSize: number): LevelLayout {
-    // Fully open rectangle — every tile is walkable
+    // Keep the interior open, but leave the outer ring blocked so wall cells spawn around the map.
     const walkable = Array.from({ length: ROWS }, () => Array(COLS).fill(true));
+
+    for (let row = 0; row < ROWS; row++) {
+      for (let column = 0; column < COLS; column++) {
+        const isBorderTile = row === 0 || row === ROWS - 1 || column === 0 || column === COLS - 1;
+
+        if (isBorderTile) {
+          walkable[row][column] = false;
+        }
+      }
+    }
 
     return {
       walkable,
