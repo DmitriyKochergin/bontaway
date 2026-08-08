@@ -24,25 +24,19 @@ interface ProjectileState {
 export class RemoteProjectiles {
   private readonly scene: Phaser.Scene;
   private readonly pool: Phaser.Physics.Arcade.Group;
-  private readonly visibilityMask?: Phaser.Display.Masks.BitmapMask;
   private readonly lifetimeTimers = new Map<Phaser.Physics.Arcade.Sprite, Phaser.Time.TimerEvent>();
   private readonly activeProjectiles = new Map<Phaser.Physics.Arcade.Sprite, ProjectileState>();
   private isDestroyed = false;
 
-  constructor(
-    scene: Phaser.Scene,
-    walls: Phaser.Physics.Arcade.StaticGroup,
-    visibilityMask?: Phaser.Display.Masks.BitmapMask
-  ) {
+  constructor(scene: Phaser.Scene, walls: Phaser.Physics.Arcade.StaticGroup) {
     this.scene = scene;
-    this.visibilityMask = visibilityMask;
     this.pool = scene.physics.add.group();
 
     scene.physics.add.collider(this.pool, walls, projectile => {
       const sprite = projectile as Phaser.Physics.Arcade.Sprite;
       const state = this.activeProjectiles.get(sprite);
       if (state && !state.isCleanedUp) {
-        createProjectileImpactVisuals(this.scene, sprite.x, sprite.y, state.impactKind, this.visibilityMask);
+        createProjectileImpactVisuals(this.scene, sprite.x, sprite.y, state.impactKind);
       }
       this.deactivate(sprite);
     });
@@ -65,10 +59,7 @@ export class RemoteProjectiles {
     projectile.setDepth(weapon === "ray" ? 255 : weapon === "sphere" ? 253 : 250);
     projectile.setPipeline("Light2D");
     projectile.setAlpha(weapon === "ray" ? 0.98 : weapon === "sphere" ? 0.94 : 1);
-    if (this.visibilityMask) {
-      projectile.setMask(this.visibilityMask);
-    }
-    const visuals = createProjectileVisuals(this.scene, projectile, kind, this.visibilityMask);
+    const visuals = createProjectileVisuals(this.scene, projectile, kind);
     this.scene.physics.moveTo(projectile, targetX, targetY, weapon === "ray" ? 980 : weapon === "sphere" ? 280 : 300);
 
     const state: ProjectileState = {

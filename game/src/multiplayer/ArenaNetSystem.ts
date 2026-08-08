@@ -44,7 +44,7 @@ export class ArenaNetSystem {
     this.player = player;
     this.visibilityMask = visibilityMask;
     this.roomId = roomId;
-    this.remoteProjectiles = new RemoteProjectiles(scene, walls, visibilityMask);
+    this.remoteProjectiles = new RemoteProjectiles(scene, walls);
 
     this.network.onMessage((message, peerId) => this.handleMessage(message, peerId));
     this.network.onPeerJoin(peerId => this.greetPeer(peerId));

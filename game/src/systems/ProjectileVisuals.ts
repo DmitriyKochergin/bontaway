@@ -175,8 +175,7 @@ export interface ProjectileVisualBundle {
 export function createProjectileVisuals(
   scene: Phaser.Scene,
   projectile: Phaser.Physics.Arcade.Sprite,
-  kind: ProjectileVisualKind,
-  visibilityMask?: Phaser.Display.Masks.BitmapMask
+  kind: ProjectileVisualKind
 ): ProjectileVisualBundle {
   const config = PROJECTILE_VISUALS[kind];
 
@@ -187,10 +186,6 @@ export function createProjectileVisuals(
   const particles = scene.add.particles(0, 0, config.particleTexture, config.particleConfig);
   particles.setDepth(config.particleDepth);
   particles.startFollow(projectile);
-  // Trail hides in shadow with the shot itself, so a fireball behind a wall leaves no glow.
-  if (visibilityMask) {
-    particles.setMask(visibilityMask);
-  }
 
   let isCleanedUp = false;
   let particleDestroyTimer: Phaser.Time.TimerEvent | undefined;
@@ -260,8 +255,7 @@ export function createProjectileImpactVisuals(
   scene: Phaser.Scene,
   x: number,
   y: number,
-  kind: ProjectileImpactKind,
-  visibilityMask?: Phaser.Display.Masks.BitmapMask
+  kind: ProjectileImpactKind
 ): void {
   const profile = IMPACT_VISUALS[kind];
   const explosionLight = scene.lights.addLight(x, y, profile.lightRadius, profile.lightColor, profile.intensity);
@@ -285,13 +279,6 @@ export function createProjectileImpactVisuals(
     maxParticles: profile.particleCount
   });
   particles.setDepth(profile.particleDepth);
-
-  // A blast outside the player's line of sight stays dark, matching the fog rules NPCs obey.
-  if (visibilityMask) {
-    flash.setMask(visibilityMask);
-    ring?.setMask(visibilityMask);
-    particles.setMask(visibilityMask);
-  }
 
   const explosionObj = { x, y, radius: profile.maxRadius };
   let elapsed = 0;

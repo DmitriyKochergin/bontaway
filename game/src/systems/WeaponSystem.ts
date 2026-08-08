@@ -127,13 +127,6 @@ export class WeaponSystem {
     this.activeSpheres.clear();
   }
 
-  /** Dress a shot/blast object in the same inverted fog mask the NPCs wear, so it hides in shadow. */
-  private applyVisibilityMask(
-    gameObject: Phaser.GameObjects.GameObject & { setMask: (mask: Phaser.Display.Masks.BitmapMask) => unknown }
-  ): void {
-    gameObject.setMask(this.fovSystem.getNpcVisibilityMask());
-  }
-
   public castFireball(targetX: number, targetY: number): void {
     if (this.isDestroyed) {
       return;
@@ -144,9 +137,10 @@ export class WeaponSystem {
     const projectile = this.scene.physics.add.sprite(this.player.x, this.player.y, "fireball");
     projectile.setPipeline("Light2D");
     projectile.setDepth(250);
-    this.applyVisibilityMask(projectile);
 
-    const visuals = createProjectileVisuals(this.scene, projectile, "fireball", this.fovSystem.getNpcVisibilityMask());
+    this.fovSystem.addProjectile(projectile);
+
+    const visuals = createProjectileVisuals(this.scene, projectile, "fireball");
 
     this.scene.physics.moveTo(projectile, targetX, targetY, 300);
 
@@ -159,6 +153,7 @@ export class WeaponSystem {
 
       isCleanedUp = true;
       this.activeCleanups.delete(cleanUp);
+      this.fovSystem.removeProjectile(projectile);
 
       visuals.cleanup(this.isDestroyed);
 
@@ -231,9 +226,10 @@ export class WeaponSystem {
     projectile.setDepth(kind === "ray" ? 255 : 253);
     projectile.setCollideWorldBounds(false);
     projectile.setAlpha(kind === "ray" ? 0.98 : 0.94);
-    this.applyVisibilityMask(projectile);
 
-    const visuals = createProjectileVisuals(this.scene, projectile, kind, this.fovSystem.getNpcVisibilityMask());
+    this.fovSystem.addProjectile(projectile);
+
+    const visuals = createProjectileVisuals(this.scene, projectile, kind);
 
     this.scene.physics.moveTo(projectile, targetX, targetY, speed);
 
@@ -250,7 +246,6 @@ export class WeaponSystem {
       state.lightningGraphics = this.scene.add.graphics();
       state.lightningGraphics.setDepth(249);
       state.lightningGraphics.setBlendMode(Phaser.BlendModes.ADD);
-      this.applyVisibilityMask(state.lightningGraphics);
     }
 
     let elapsed = 0;
@@ -265,6 +260,7 @@ export class WeaponSystem {
       this.activeCleanups.delete(cleanUp);
       this.activeRays.delete(state);
       this.activeSpheres.delete(state);
+      this.fovSystem.removeProjectile(projectile);
 
       visuals.cleanup(this.isDestroyed);
 
@@ -451,6 +447,8 @@ export class WeaponSystem {
 
     const profile = EXPLOSION_PROFILES[tier];
     const explosionLight = this.scene.lights.addLight(x, y, profile.lightRadius, 0x8fdcff, profile.intensity);
+    const explosionObj = { x, y, radius: profile.maxRadius };
+    this.fovSystem.addExplosion(explosionObj);
 
     const flash = this.scene.add.circle(x, y, profile.maxRadius * 0.18, profile.coreColor, 0.95);
     flash.setDepth(260);
@@ -470,9 +468,6 @@ export class WeaponSystem {
       maxParticles: profile.particleCount
     });
     particles.setDepth(261);
-    this.applyVisibilityMask(flash);
-    this.applyVisibilityMask(ring);
-    this.applyVisibilityMask(particles);
 
     const particleDestroyTimer = this.scene.time.delayedCall(profile.duration + 260, () => {
       destroyParticles();
@@ -504,6 +499,7 @@ export class WeaponSystem {
       }
 
       this.scene.events.off("update", updateLight);
+      this.fovSystem.removeExplosion(explosionObj);
 
       flash.destroy();
       ring.destroy();
@@ -526,6 +522,7 @@ export class WeaponSystem {
 
       explosionLight.radius = profile.lightRadius + progress * profile.maxRadius * 2.15;
       explosionLight.intensity = profile.intensity * (1 - progress);
+      explosionObj.radius = explosionLight.radius;
 
       flash.setScale(1 + progress * 2.5);
       flash.setAlpha(Math.max(0, 0.95 * (1 - progress * 1.3)));
@@ -546,6 +543,8 @@ export class WeaponSystem {
     }
 
     const explosionLight = this.scene.lights.addLight(x, y, 50, 0xff5500, 10);
+    const explosionObj = { x, y, radius: 50 };
+    this.fovSystem.addExplosion(explosionObj);
 
     const particles = this.scene.add.particles(x, y, "fireball", {
       speed: { min: 30, max: 120 },
@@ -556,7 +555,6 @@ export class WeaponSystem {
       maxParticles: 25
     });
     particles.setDepth(260);
-    this.applyVisibilityMask(particles);
 
     const particleDestroyTimer = this.scene.time.delayedCall(1200, () => {
       destroyParticles();
@@ -589,6 +587,7 @@ export class WeaponSystem {
       }
 
       this.scene.events.off("update", updateLight);
+      this.fovSystem.removeExplosion(explosionObj);
 
       if (this.isDestroyed) {
         particleDestroyTimer.remove(false);
@@ -608,6 +607,7 @@ export class WeaponSystem {
 
       explosionLight.radius = 150 + progress * 250;
       explosionLight.intensity = 10 * (1 - progress);
+      explosionObj.radius = explosionLight.radius;
 
       if (progress >= 1) {
         cleanUp();
