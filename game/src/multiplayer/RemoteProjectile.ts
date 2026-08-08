@@ -1,5 +1,6 @@
 import Phaser from "phaser";
 import {
+  createProjectileImpactVisuals,
   createProjectileVisuals,
   type ProjectileVisualBundle,
   type ProjectileVisualKind
@@ -11,6 +12,7 @@ const MAX_LIFETIME_MS = 6000;
 interface ProjectileState {
   readonly sprite: Phaser.Physics.Arcade.Sprite;
   readonly visuals: ProjectileVisualBundle;
+  readonly impactKind: "fireball" | "small" | "large";
   isCleanedUp: boolean;
 }
 
@@ -31,7 +33,12 @@ export class RemoteProjectiles {
     this.pool = scene.physics.add.group();
 
     scene.physics.add.collider(this.pool, walls, projectile => {
-      this.deactivate(projectile as Phaser.Physics.Arcade.Sprite);
+      const sprite = projectile as Phaser.Physics.Arcade.Sprite;
+      const state = this.activeProjectiles.get(sprite);
+      if (state && !state.isCleanedUp) {
+        createProjectileImpactVisuals(this.scene, sprite.x, sprite.y, state.impactKind);
+      }
+      this.deactivate(sprite);
     });
   }
 
@@ -58,6 +65,7 @@ export class RemoteProjectiles {
     const state: ProjectileState = {
       sprite: projectile,
       visuals,
+      impactKind: weapon === "fireball" ? "fireball" : weapon === "ray" ? "small" : "large",
       isCleanedUp: false
     };
 

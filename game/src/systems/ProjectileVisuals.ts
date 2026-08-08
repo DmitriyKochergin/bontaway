@@ -1,6 +1,7 @@
 import Phaser from "phaser";
 
 export type ProjectileVisualKind = "fireball" | "ray" | "sphere";
+export type ProjectileImpactKind = "fireball" | "small" | "large" | "huge";
 
 interface ProjectileVisualConfig {
   readonly particleTexture: string;
@@ -64,6 +65,99 @@ const PROJECTILE_VISUALS: Record<ProjectileVisualKind, ProjectileVisualConfig> =
     lightColor: 0x5eb7ff,
     lightIntensity: 5.2,
     particleDestroyDelayMs: 360
+  }
+};
+
+interface ProjectileImpactConfig {
+  readonly lightRadius: number;
+  readonly maxRadius: number;
+  readonly intensity: number;
+  readonly lightColor: number;
+  readonly duration: number;
+  readonly particleTexture: string;
+  readonly particleSpeedMin: number;
+  readonly particleSpeedMax: number;
+  readonly particleLifespanMin: number;
+  readonly particleLifespanMax: number;
+  readonly particleCount: number;
+  readonly particleDepth: number;
+  readonly coreColor: number;
+  readonly ringColor?: number;
+  readonly flashScale: number;
+  readonly ringScale: number;
+}
+
+const IMPACT_VISUALS: Record<ProjectileImpactKind, ProjectileImpactConfig> = {
+  fireball: {
+    lightRadius: 50,
+    maxRadius: 50,
+    intensity: 10,
+    lightColor: 0xff5500,
+    duration: 1000,
+    particleTexture: "fireball",
+    particleSpeedMin: 30,
+    particleSpeedMax: 120,
+    particleLifespanMin: 600,
+    particleLifespanMax: 700,
+    particleCount: 25,
+    particleDepth: 260,
+    coreColor: 0xff5500,
+    flashScale: 2.0,
+    ringScale: 1.0
+  },
+  small: {
+    lightRadius: 90,
+    maxRadius: 58,
+    intensity: 6,
+    lightColor: 0x8fdcff,
+    duration: 420,
+    particleTexture: "weapon-blue-spark",
+    particleSpeedMin: 40,
+    particleSpeedMax: 130,
+    particleLifespanMin: 220,
+    particleLifespanMax: 360,
+    particleCount: 14,
+    particleDepth: 261,
+    coreColor: 0xeaf9ff,
+    ringColor: 0x84cfff,
+    flashScale: 1.6,
+    ringScale: 3.2
+  },
+  large: {
+    lightRadius: 180,
+    maxRadius: 108,
+    intensity: 8,
+    lightColor: 0x8fdcff,
+    duration: 650,
+    particleTexture: "weapon-blue-spark",
+    particleSpeedMin: 60,
+    particleSpeedMax: 180,
+    particleLifespanMin: 320,
+    particleLifespanMax: 520,
+    particleCount: 24,
+    particleDepth: 261,
+    coreColor: 0xf6ffff,
+    ringColor: 0x66bfff,
+    flashScale: 1.6,
+    ringScale: 3.2
+  },
+  huge: {
+    lightRadius: 320,
+    maxRadius: 168,
+    intensity: 12,
+    lightColor: 0x8fdcff,
+    duration: 980,
+    particleTexture: "weapon-blue-spark",
+    particleSpeedMin: 90,
+    particleSpeedMax: 260,
+    particleLifespanMin: 420,
+    particleLifespanMax: 780,
+    particleCount: 40,
+    particleDepth: 261,
+    coreColor: 0xffffff,
+    ringColor: 0x9ce8ff,
+    flashScale: 1.9,
+    ringScale: 3.2
   }
 };
 
@@ -152,4 +246,100 @@ export function createProjectileVisuals(
     syncLight,
     cleanup
   };
+}
+
+/**
+ * Shared impact burst for remote projectiles and local weapons.
+ */
+export function createProjectileImpactVisuals(
+  scene: Phaser.Scene,
+  x: number,
+  y: number,
+  kind: ProjectileImpactKind
+): void {
+  const profile = IMPACT_VISUALS[kind];
+  const explosionLight = scene.lights.addLight(x, y, profile.lightRadius, profile.lightColor, profile.intensity);
+  const flash = scene.add.circle(x, y, profile.maxRadius * 0.18, profile.coreColor, 0.95);
+  flash.setDepth(profile.particleDepth - 1);
+  flash.setBlendMode(Phaser.BlendModes.ADD);
+
+  const ring = profile.ringColor
+    ? scene.add.circle(x, y, profile.maxRadius * 0.45, profile.ringColor, 0.35)
+    : undefined;
+  ring?.setDepth(profile.particleDepth - 2);
+  ring?.setBlendMode(Phaser.BlendModes.ADD);
+
+  const particles = scene.add.particles(x, y, profile.particleTexture, {
+    speed: { min: profile.particleSpeedMin, max: profile.particleSpeedMax },
+    angle: { min: 0, max: 360 },
+    scale: { start: kind === "fireball" ? 2 : 1.6, end: 0 },
+    alpha: { start: 0.95, end: 0 },
+    blendMode: "ADD",
+    lifespan: { min: profile.particleLifespanMin, max: profile.particleLifespanMax },
+    maxParticles: profile.particleCount
+  });
+  particles.setDepth(profile.particleDepth);
+
+  const explosionObj = { x, y, radius: profile.maxRadius };
+  let elapsed = 0;
+  let isCleanedUp = false;
+  const particleDestroyTimer = scene.time.delayedCall(profile.duration + 260, () => {
+    destroyParticles();
+  });
+
+  const destroyParticles = () => {
+    try {
+      particles.destroy();
+    } catch {
+      // Safe guard.
+    }
+  };
+
+  const cleanUp = () => {
+    if (isCleanedUp) {
+      return;
+    }
+
+    isCleanedUp = true;
+    scene.events.off("update", updateLight);
+
+    try {
+      scene.lights.removeLight(explosionLight);
+    } catch {
+      // Safe guard.
+    }
+
+    flash.destroy();
+    ring?.destroy();
+
+    particleDestroyTimer.remove(false);
+    destroyParticles();
+  };
+
+  const updateLight = (_time: number, delta: number) => {
+    if (scene.scene.isPaused()) {
+      return;
+    }
+
+    elapsed += delta;
+    const progress = Math.min(elapsed / profile.duration, 1);
+
+    explosionLight.radius = profile.lightRadius + progress * profile.maxRadius * 2.15;
+    explosionLight.intensity = profile.intensity * (1 - progress);
+    explosionObj.radius = explosionLight.radius;
+
+    flash.setScale(1 + progress * profile.flashScale);
+    flash.setAlpha(Math.max(0, 0.95 * (1 - progress * 1.3)));
+    if (ring) {
+      ring.setScale(1 + progress * profile.ringScale);
+      ring.setAlpha(Math.max(0, 0.35 * (1 - progress)));
+    }
+
+    if (progress >= 1) {
+      cleanUp();
+    }
+  };
+
+  scene.events.on("update", updateLight);
+  scene.events.once(Phaser.Scenes.Events.SHUTDOWN, cleanUp);
 }
