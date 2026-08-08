@@ -6,7 +6,7 @@ import { RemoteProjectiles } from "./RemoteProjectile";
 import { type SyncMessage, type WeaponKind } from "./SyncMessages";
 
 const APP_ID = "bontaway";
-const ARENA_ROOM = "bontaway-arena";
+const DEFAULT_ROOM_ID = "bontaway-arena";
 
 // 20 Hz position feed; anything faster is wasted on the interpolation.
 const POS_BROADCAST_INTERVAL_MS = 50;
@@ -14,9 +14,9 @@ const POS_EPSILON = 0.5;
 const ROTATION_EPSILON = 0.01;
 
 /**
- * Wires the arena into the P2P mesh. Lives only while the arena scene lives. Each peer owns
+ * Wires a shared level into the P2P mesh. Lives only while the level scene lives. Each peer owns
  * itself: this broadcasts the local player's position and shots, and renders everyone else as
- * interpolated replicas. No authority, no reconciliation — the arena has no shared world state.
+ * interpolated replicas. No authority, no reconciliation — the level has no shared world state.
  */
 export class ArenaNetSystem {
   private readonly scene: Phaser.Scene;
@@ -24,6 +24,7 @@ export class ArenaNetSystem {
   private readonly network = new NetworkManager();
   private readonly remotePlayers = new Map<string, RemotePlayer>();
   private readonly remoteProjectiles: RemoteProjectiles;
+  private readonly roomId: string;
 
   private lastBroadcastAt = 0;
   private lastSentX = Number.NaN;
@@ -31,15 +32,21 @@ export class ArenaNetSystem {
   private lastSentRotation = Number.NaN;
   private isDestroyed = false;
 
-  constructor(scene: Phaser.Scene, player: Player, walls: Phaser.Physics.Arcade.StaticGroup) {
+  constructor(
+    scene: Phaser.Scene,
+    player: Player,
+    walls: Phaser.Physics.Arcade.StaticGroup,
+    roomId: string = DEFAULT_ROOM_ID
+  ) {
     this.scene = scene;
     this.player = player;
+    this.roomId = roomId;
     this.remoteProjectiles = new RemoteProjectiles(scene, walls);
 
     this.network.onMessage((message, peerId) => this.handleMessage(message, peerId));
     this.network.onPeerJoin(peerId => this.greetPeer(peerId));
     this.network.onPeerLeave(peerId => this.removePeer(peerId));
-    this.network.join(APP_ID, ARENA_ROOM);
+    this.network.join(APP_ID, this.roomId);
   }
 
   /** Called by GameScene right after a local cast so peers can retrace the shot. */

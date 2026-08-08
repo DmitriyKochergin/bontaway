@@ -8,7 +8,7 @@ import { DevModeOverlay } from "../systems/DevModeOverlay";
 import { DungeonSystem } from "../systems/DungeonSystem";
 import { FieldOfViewSystem } from "../systems/FieldOfViewSystem";
 import { PlayerControlsSystem } from "../systems/PlayerControlsSystem";
-import { loadPlayerProgress, savePlayerProgress, type PlayerProgressState } from "../systems/PlayerProgressManager";
+import { loadPlayerProgress, type PlayerProgressState, savePlayerProgress } from "../systems/PlayerProgressManager";
 import { PlayerTeleport } from "../systems/PlayerTeleport";
 import { WeaponSystem } from "../systems/WeaponSystem";
 import { type PhaserRaycasterPlugin } from "../types/phaser-raycaster";
@@ -26,7 +26,7 @@ export default class GameScene extends BaseScene {
   private playerControlSystem!: PlayerControlsSystem;
   private weaponSystem!: WeaponSystem;
   private playerTeleport!: PlayerTeleport;
-  private arenaNet?: ArenaNetSystem;
+  private sharedNet?: ArenaNetSystem;
   private localChatBubble?: ChatBubble;
   private isChatTyping = false;
   private devModeEnabled = false;
@@ -76,8 +76,8 @@ export default class GameScene extends BaseScene {
       this.events.off("toggle-dev-mode", this.toggleDevMode, this);
       this.npcs.forEach(npc => npc.destroy());
       this.npcs = [];
-      this.arenaNet?.destroy();
-      this.arenaNet = undefined;
+      this.sharedNet?.destroy();
+      this.sharedNet = undefined;
       this.localChatBubble?.destroy();
       this.localChatBubble = undefined;
       this.isChatTyping = false;
@@ -156,10 +156,11 @@ export default class GameScene extends BaseScene {
 
     this.cameras.main.startFollow(this.player, true, 0.1, 0.1);
 
-    // Arena is a shared, static, fog-free room with no NPCs — the one level where peers can
-    // simply see each other. Other levels stay single-player.
-    if (this.levelId === "arena") {
-      this.arenaNet = new ArenaNetSystem(this, this.player, this.dungeonSystem.getPhysicsWalls());
+    // Arena and Trademeet are shared, static rooms with no NPC-authority sync — the levels where
+    // peers can simply see each other. Other levels stay single-player.
+    const multiplayerRoomId = this.getMultiplayerRoomId();
+    if (multiplayerRoomId) {
+      this.sharedNet = new ArenaNetSystem(this, this.player, this.dungeonSystem.getPhysicsWalls(), multiplayerRoomId);
     }
 
     this.localChatBubble = new ChatBubble(this);
@@ -199,21 +200,29 @@ export default class GameScene extends BaseScene {
     return mainScene.getSelectedWeaponSlot?.() ?? 0;
   }
 
+  private getMultiplayerRoomId(): string | undefined {
+    if (this.levelId !== "arena" && this.levelId !== "trademeet") {
+      return undefined;
+    }
+
+    return `bontaway-${this.levelId}`;
+  }
+
   private castSelectedPrimaryWeapon(targetX: number, targetY: number): void {
     if (this.getSelectedWeaponSlot() === 1) {
       this.weaponSystem.castRay(targetX, targetY);
-      this.arenaNet?.broadcastFire("ray", this.player.x, this.player.y, targetX, targetY);
+      this.sharedNet?.broadcastFire("ray", this.player.x, this.player.y, targetX, targetY);
       return;
     }
 
     this.weaponSystem.castFireball(targetX, targetY);
-    this.arenaNet?.broadcastFire("fireball", this.player.x, this.player.y, targetX, targetY);
+    this.sharedNet?.broadcastFire("fireball", this.player.x, this.player.y, targetX, targetY);
   }
 
   private castSelectedSecondaryWeapon(targetX: number, targetY: number): void {
     if (this.getSelectedWeaponSlot() === 1) {
       this.weaponSystem.castSphere(targetX, targetY);
-      this.arenaNet?.broadcastFire("sphere", this.player.x, this.player.y, targetX, targetY);
+      this.sharedNet?.broadcastFire("sphere", this.player.x, this.player.y, targetX, targetY);
       return;
     }
 
@@ -244,7 +253,7 @@ export default class GameScene extends BaseScene {
     }
 
     this.localChatBubble?.show(trimmed);
-    this.arenaNet?.broadcastChat(trimmed);
+    this.sharedNet?.broadcastChat(trimmed);
   }
 
   update(_time: number, delta: number) {
@@ -272,7 +281,7 @@ export default class GameScene extends BaseScene {
     }
 
     this.fovSystem.update(delta);
-    this.arenaNet?.update(_time);
+    this.sharedNet?.update(_time);
     this.localChatBubble?.follow(this.player.x, this.player.y);
     this.devModeOverlay?.update();
   }
@@ -350,10 +359,7 @@ export default class GameScene extends BaseScene {
     this.lastSavedPlayerProgress = currentPlayerProgress;
   }
 
-  private isSamePlayerProgress(
-    currentProgress: PlayerProgressState,
-    savedProgress?: PlayerProgressState
-  ): boolean {
+  private isSamePlayerProgress(currentProgress: PlayerProgressState, savedProgress?: PlayerProgressState): boolean {
     if (!savedProgress) {
       return false;
     }

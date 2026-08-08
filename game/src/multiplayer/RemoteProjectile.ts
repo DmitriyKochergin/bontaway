@@ -44,6 +44,7 @@ export class RemoteProjectiles {
   private readonly pool: Phaser.Physics.Arcade.Group;
   private readonly lights = new Map<Phaser.Physics.Arcade.Sprite, Phaser.GameObjects.Light>();
   private readonly lifetimeTimers = new Map<Phaser.Physics.Arcade.Sprite, Phaser.Time.TimerEvent>();
+  private isDestroyed = false;
 
   constructor(scene: Phaser.Scene, walls: Phaser.Physics.Arcade.StaticGroup) {
     this.scene = scene;
@@ -131,6 +132,12 @@ export class RemoteProjectiles {
   }
 
   destroy(): void {
+    if (this.isDestroyed) {
+      return;
+    }
+
+    this.isDestroyed = true;
+
     for (const light of this.lights.values()) {
       try {
         this.scene.lights?.removeLight(light);
@@ -145,7 +152,10 @@ export class RemoteProjectiles {
     }
     this.lifetimeTimers.clear();
 
-    this.pool.clear(true, true);
-    this.pool.destroy(true);
+    try {
+      this.pool.destroy(true);
+    } catch {
+      // Scene physics may already be torn down during a level restart.
+    }
   }
 }
