@@ -1,5 +1,6 @@
 import Phaser from "phaser";
 import { ChatBubble } from "./ChatBubble";
+import { type Player } from "../entities/Player";
 
 const POSITION_LERP = 0.25;
 const ROTATION_LERP = 0.25;
@@ -17,24 +18,36 @@ export class RemotePlayer extends Phaser.GameObjects.Sprite {
   private targetRotation: number;
   private torchLight?: Phaser.GameObjects.Light;
   private chatBubble?: ChatBubble;
+  private collisionCollider?: Phaser.Physics.Arcade.Collider;
 
   constructor(
     scene: Phaser.Scene,
     x: number,
     y: number,
     rotation: number,
+    player: Player,
     visibilityMask?: Phaser.Display.Masks.BitmapMask
   ) {
     super(scene, x, y, "player");
 
     scene.add.existing(this);
+    scene.physics.add.existing(this);
     this.setDepth(REMOTE_DEPTH);
     this.setPipeline("Light2D");
     this.setTint(SPECTRAL_TINT);
     this.rotation = rotation;
+    const body = this.body as Phaser.Physics.Arcade.Body | null;
+    if (body) {
+      body.setCircle(14);
+      body.setOffset(2, 2);
+      body.setAllowGravity(false);
+      body.setImmovable(true);
+    }
     if (visibilityMask) {
       this.setMask(visibilityMask);
     }
+
+    this.collisionCollider = scene.physics.add.collider(player, this);
 
     this.targetX = x;
     this.targetY = y;
@@ -98,6 +111,9 @@ export class RemotePlayer extends Phaser.GameObjects.Sprite {
   }
 
   destroy(fromScene?: boolean): void {
+    this.collisionCollider?.destroy();
+    this.collisionCollider = undefined;
+
     this.chatBubble?.destroy();
     this.chatBubble = undefined;
 

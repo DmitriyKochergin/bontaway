@@ -162,7 +162,7 @@ export class ArenaNetSystem {
   private resolveRemotePlayer(peerId: string, x: number, y: number, rotation: number): RemotePlayer {
     let remotePlayer = this.remotePlayers.get(peerId);
     if (!remotePlayer) {
-      remotePlayer = new RemotePlayer(this.scene, x, y, rotation, this.visibilityMask);
+      remotePlayer = new RemotePlayer(this.scene, x, y, rotation, this.player, this.visibilityMask);
       this.remotePlayers.set(peerId, remotePlayer);
     }
     return remotePlayer;
