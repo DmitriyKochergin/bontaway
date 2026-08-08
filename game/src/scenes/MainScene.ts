@@ -60,7 +60,7 @@ export default class MainScene extends BaseScene {
     this.bindRtwpKeys();
     this.bindDevModeKey();
     this.createPausedLabel();
-    this.createMessageControls();
+    this.syncMessageControls();
     this.scene.bringToTop();
   }
 
@@ -74,6 +74,7 @@ export default class MainScene extends BaseScene {
         ? new FlatGameHUD(this, gameScene, () => this.toggleSettings(), selectedWeaponSlot)
         : new StoneGameHUD(this, gameScene, () => this.toggleSettings(), selectedWeaponSlot);
     this.gameHUD.create();
+    this.syncMessageControls();
     this.scene.bringToTop();
   }
 
@@ -165,13 +166,28 @@ export default class MainScene extends BaseScene {
     this.openSettings();
   }
 
-  private createMessageControls(): void {
-    this.chatOverlay = new ChatInputOverlay(
+  private syncMessageControls(): void {
+    const gameScene = this.scene.get("GameScene") as GameScene;
+    const isGlobalLevel = gameScene.getLevelId() === "arena" || gameScene.getLevelId() === "trademeet";
+
+    if (!isGlobalLevel) {
+      this.closeChat();
+      this.messageButton?.destroy();
+      this.messageButton = undefined;
+      this.chatOverlay?.destroy();
+      this.chatOverlay = undefined;
+      return;
+    }
+
+    this.chatOverlay ??= new ChatInputOverlay(
       text => this.submitChatMessage(text),
       () => this.closeChat()
     );
-    this.messageButton = new MessageButton(this, () => this.openChat());
-    this.messageButton.create();
+
+    if (!this.messageButton) {
+      this.messageButton = new MessageButton(this, () => this.openChat());
+      this.messageButton.create();
+    }
   }
 
   private openChat(): void {
