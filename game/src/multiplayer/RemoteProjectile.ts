@@ -24,19 +24,21 @@ interface ProjectileState {
 export class RemoteProjectiles {
   private readonly scene: Phaser.Scene;
   private readonly pool: Phaser.Physics.Arcade.Group;
+  private readonly visibilityMask?: Phaser.Display.Masks.BitmapMask;
   private readonly lifetimeTimers = new Map<Phaser.Physics.Arcade.Sprite, Phaser.Time.TimerEvent>();
   private readonly activeProjectiles = new Map<Phaser.Physics.Arcade.Sprite, ProjectileState>();
   private isDestroyed = false;
 
-  constructor(scene: Phaser.Scene, walls: Phaser.Physics.Arcade.StaticGroup) {
+  constructor(scene: Phaser.Scene, walls: Phaser.Physics.Arcade.StaticGroup, visibilityMask?: Phaser.Display.Masks.BitmapMask) {
     this.scene = scene;
+    this.visibilityMask = visibilityMask;
     this.pool = scene.physics.add.group();
 
     scene.physics.add.collider(this.pool, walls, projectile => {
       const sprite = projectile as Phaser.Physics.Arcade.Sprite;
       const state = this.activeProjectiles.get(sprite);
       if (state && !state.isCleanedUp) {
-        createProjectileImpactVisuals(this.scene, sprite.x, sprite.y, state.impactKind);
+        createProjectileImpactVisuals(this.scene, sprite.x, sprite.y, state.impactKind, this.visibilityMask);
       }
       this.deactivate(sprite);
     });
@@ -59,8 +61,15 @@ export class RemoteProjectiles {
     projectile.setDepth(weapon === "ray" ? 255 : weapon === "sphere" ? 253 : 250);
     projectile.setPipeline("Light2D");
     projectile.setAlpha(weapon === "ray" ? 0.98 : weapon === "sphere" ? 0.94 : 1);
-    const visuals = createProjectileVisuals(this.scene, projectile, kind);
+    const visuals = createProjectileVisuals(this.scene, projectile, kind, {
+      visibilityMask: this.visibilityMask,
+      createLight: !this.visibilityMask
+    });
     this.scene.physics.moveTo(projectile, targetX, targetY, weapon === "ray" ? 980 : weapon === "sphere" ? 280 : 300);
+
+    if (this.visibilityMask) {
+      projectile.setMask(this.visibilityMask);
+    }
 
     const state: ProjectileState = {
       sprite: projectile,
@@ -107,6 +116,10 @@ export class RemoteProjectiles {
     state.isCleanedUp = true;
     state.visuals.cleanup(this.isDestroyed);
     this.activeProjectiles.delete(projectile);
+
+    if (this.visibilityMask) {
+      projectile.clearMask(false);
+    }
 
     this.lifetimeTimers.get(projectile)?.remove(false);
     this.lifetimeTimers.delete(projectile);

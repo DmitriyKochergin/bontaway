@@ -13,6 +13,11 @@ interface ProjectileVisualConfig {
   readonly particleDestroyDelayMs: number;
 }
 
+interface ProjectileVisualOptions {
+  readonly visibilityMask?: Phaser.Display.Masks.BitmapMask;
+  readonly createLight?: boolean;
+}
+
 const PROJECTILE_VISUALS: Record<ProjectileVisualKind, ProjectileVisualConfig> = {
   fireball: {
     particleTexture: "fireball",
@@ -175,17 +180,24 @@ export interface ProjectileVisualBundle {
 export function createProjectileVisuals(
   scene: Phaser.Scene,
   projectile: Phaser.Physics.Arcade.Sprite,
-  kind: ProjectileVisualKind
+  kind: ProjectileVisualKind,
+  options: ProjectileVisualOptions = {}
 ): ProjectileVisualBundle {
   const config = PROJECTILE_VISUALS[kind];
+  const { visibilityMask, createLight = true } = options;
 
-  const light = scene.lights
+  const light = createLight && scene.lights
     ? scene.lights.addLight(projectile.x, projectile.y, config.lightRadius, config.lightColor, config.lightIntensity)
     : undefined;
 
   const particles = scene.add.particles(0, 0, config.particleTexture, config.particleConfig);
   particles.setDepth(config.particleDepth);
   particles.startFollow(projectile);
+
+  if (visibilityMask) {
+    projectile.setMask(visibilityMask);
+    particles.setMask(visibilityMask);
+  }
 
   let isCleanedUp = false;
   let particleDestroyTimer: Phaser.Time.TimerEvent | undefined;
@@ -255,10 +267,13 @@ export function createProjectileImpactVisuals(
   scene: Phaser.Scene,
   x: number,
   y: number,
-  kind: ProjectileImpactKind
+  kind: ProjectileImpactKind,
+  visibilityMask?: Phaser.Display.Masks.BitmapMask
 ): void {
   const profile = IMPACT_VISUALS[kind];
-  const explosionLight = scene.lights.addLight(x, y, profile.lightRadius, profile.lightColor, profile.intensity);
+  const explosionLight = !visibilityMask && scene.lights
+    ? scene.lights.addLight(x, y, profile.lightRadius, profile.lightColor, profile.intensity)
+    : undefined;
   const flash = scene.add.circle(x, y, profile.maxRadius * 0.18, profile.coreColor, 0.95);
   flash.setDepth(profile.particleDepth - 1);
   flash.setBlendMode(Phaser.BlendModes.ADD);
@@ -268,6 +283,11 @@ export function createProjectileImpactVisuals(
     : undefined;
   ring?.setDepth(profile.particleDepth - 2);
   ring?.setBlendMode(Phaser.BlendModes.ADD);
+
+  if (visibilityMask) {
+    flash.setMask(visibilityMask);
+    ring?.setMask(visibilityMask);
+  }
 
   const particles = scene.add.particles(x, y, profile.particleTexture, {
     speed: { min: profile.particleSpeedMin, max: profile.particleSpeedMax },
@@ -279,6 +299,10 @@ export function createProjectileImpactVisuals(
     maxParticles: profile.particleCount
   });
   particles.setDepth(profile.particleDepth);
+
+  if (visibilityMask) {
+    particles.setMask(visibilityMask);
+  }
 
   const explosionObj = { x, y, radius: profile.maxRadius };
   let elapsed = 0;
@@ -303,10 +327,12 @@ export function createProjectileImpactVisuals(
     isCleanedUp = true;
     scene.events.off("update", updateLight);
 
-    try {
-      scene.lights.removeLight(explosionLight);
-    } catch {
-      // Safe guard.
+    if (explosionLight && scene.lights) {
+      try {
+        scene.lights.removeLight(explosionLight);
+      } catch {
+        // Safe guard.
+      }
     }
 
     flash.destroy();
@@ -324,9 +350,11 @@ export function createProjectileImpactVisuals(
     elapsed += delta;
     const progress = Math.min(elapsed / profile.duration, 1);
 
-    explosionLight.radius = profile.lightRadius + progress * profile.maxRadius * 2.15;
-    explosionLight.intensity = profile.intensity * (1 - progress);
-    explosionObj.radius = explosionLight.radius;
+    if (explosionLight) {
+      explosionLight.radius = profile.lightRadius + progress * profile.maxRadius * 2.15;
+      explosionLight.intensity = profile.intensity * (1 - progress);
+      explosionObj.radius = explosionLight.radius;
+    }
 
     flash.setScale(1 + progress * profile.flashScale);
     flash.setAlpha(Math.max(0, 0.95 * (1 - progress * 1.3)));
