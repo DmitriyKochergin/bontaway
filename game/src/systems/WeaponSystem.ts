@@ -452,12 +452,13 @@ export class WeaponSystem {
     const profile = EXPLOSION_PROFILES[tier];
     const explosionLight = this.scene.lights.addLight(x, y, profile.lightRadius, 0x8fdcff, profile.intensity);
 
+    // Keep impact FX below active projectile sprites so the blast can't hide a live shot mid-flight.
     const flash = this.scene.add.circle(x, y, profile.maxRadius * 0.18, profile.coreColor, 0.95);
-    flash.setDepth(260);
+    flash.setDepth(232);
     flash.setBlendMode(Phaser.BlendModes.ADD);
 
     const ring = this.scene.add.circle(x, y, profile.maxRadius * 0.45, profile.ringColor, 0.35);
-    ring.setDepth(259);
+    ring.setDepth(231);
     ring.setBlendMode(Phaser.BlendModes.ADD);
 
     const particles = this.scene.add.particles(x, y, WEAPON_TEXTURES.spark, {
@@ -469,7 +470,7 @@ export class WeaponSystem {
       lifespan: { min: profile.particleLifespanMin, max: profile.particleLifespanMax },
       maxParticles: profile.particleCount
     });
-    particles.setDepth(261);
+    particles.setDepth(233);
     this.applyVisibilityMask(flash);
     this.applyVisibilityMask(ring);
     this.applyVisibilityMask(particles);
@@ -555,7 +556,7 @@ export class WeaponSystem {
       lifespan: { min: 600, max: 700 },
       maxParticles: 25
     });
-    particles.setDepth(260);
+    particles.setDepth(232);
     this.applyVisibilityMask(particles);
 
     const particleDestroyTimer = this.scene.time.delayedCall(1200, () => {
