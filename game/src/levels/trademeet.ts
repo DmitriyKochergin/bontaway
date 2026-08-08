@@ -5,7 +5,7 @@ export const trademeetLevel: LevelDefinition = {
   name: "Trademeet",
   columns: 48,
   rows: 48,
-  fogOfWarEnabled: false,
+  fogOfWarEnabled: true,
   doorPlacements: [], // No doors in an open arena
   obstaclePlacements: [
     // Surrounding center pillars
@@ -93,4 +93,3 @@ export const trademeetLevel: LevelDefinition = {
     };
   }
 };
-
