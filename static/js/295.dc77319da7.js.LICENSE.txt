@@ -1,3 +1,5 @@
+/*! noble-secp256k1 - MIT License (c) 2019 Paul Miller (paulmillr.com) */
+
 /**
 * @author       Marcin Walczak <contact@marcin-walczak.pl>
 * @copyright    2026 Marcin Walczak
