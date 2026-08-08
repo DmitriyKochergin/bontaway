@@ -25,6 +25,7 @@ export class ArenaNetSystem {
   private readonly remotePlayers = new Map<string, RemotePlayer>();
   private readonly remoteProjectiles: RemoteProjectiles;
   private readonly roomId: string;
+  private readonly visibilityMask?: Phaser.Display.Masks.BitmapMask;
 
   private lastBroadcastAt = 0;
   private lastSentX = Number.NaN;
@@ -36,10 +37,12 @@ export class ArenaNetSystem {
     scene: Phaser.Scene,
     player: Player,
     walls: Phaser.Physics.Arcade.StaticGroup,
+    visibilityMask?: Phaser.Display.Masks.BitmapMask,
     roomId: string = DEFAULT_ROOM_ID
   ) {
     this.scene = scene;
     this.player = player;
+    this.visibilityMask = visibilityMask;
     this.roomId = roomId;
     this.remoteProjectiles = new RemoteProjectiles(scene, walls);
 
@@ -159,7 +162,7 @@ export class ArenaNetSystem {
   private resolveRemotePlayer(peerId: string, x: number, y: number, rotation: number): RemotePlayer {
     let remotePlayer = this.remotePlayers.get(peerId);
     if (!remotePlayer) {
-      remotePlayer = new RemotePlayer(this.scene, x, y, rotation);
+      remotePlayer = new RemotePlayer(this.scene, x, y, rotation, this.visibilityMask);
       this.remotePlayers.set(peerId, remotePlayer);
     }
     return remotePlayer;

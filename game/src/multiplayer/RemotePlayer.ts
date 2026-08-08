@@ -18,7 +18,13 @@ export class RemotePlayer extends Phaser.GameObjects.Sprite {
   private torchLight?: Phaser.GameObjects.Light;
   private chatBubble?: ChatBubble;
 
-  constructor(scene: Phaser.Scene, x: number, y: number, rotation: number) {
+  constructor(
+    scene: Phaser.Scene,
+    x: number,
+    y: number,
+    rotation: number,
+    visibilityMask?: Phaser.Display.Masks.BitmapMask
+  ) {
     super(scene, x, y, "player");
 
     scene.add.existing(this);
@@ -26,6 +32,9 @@ export class RemotePlayer extends Phaser.GameObjects.Sprite {
     this.setPipeline("Light2D");
     this.setTint(SPECTRAL_TINT);
     this.rotation = rotation;
+    if (visibilityMask) {
+      this.setMask(visibilityMask);
+    }
 
     this.targetX = x;
     this.targetY = y;

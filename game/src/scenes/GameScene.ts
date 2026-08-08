@@ -160,7 +160,13 @@ export default class GameScene extends BaseScene {
     // peers can simply see each other. Other levels stay single-player.
     const multiplayerRoomId = this.getMultiplayerRoomId();
     if (multiplayerRoomId) {
-      this.sharedNet = new ArenaNetSystem(this, this.player, this.dungeonSystem.getPhysicsWalls(), multiplayerRoomId);
+      this.sharedNet = new ArenaNetSystem(
+        this,
+        this.player,
+        this.dungeonSystem.getPhysicsWalls(),
+        this.fovSystem.getNpcVisibilityMask(),
+        multiplayerRoomId
+      );
     }
 
     this.localChatBubble = new ChatBubble(this);
