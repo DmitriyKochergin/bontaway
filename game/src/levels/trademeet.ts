@@ -1,8 +1,8 @@
 import { type LevelDefinition, type LevelLayout } from "./types";
 
-export const arenaLevel: LevelDefinition = {
-  id: "arena",
-  name: "Arena",
+export const trademeetLevel: LevelDefinition = {
+  id: "trademeet",
+  name: "Trademeet",
   columns: 48,
   rows: 48,
   fogOfWarEnabled: false,
@@ -25,6 +25,52 @@ export const arenaLevel: LevelDefinition = {
     { tileX: 37.5, tileY: 9.5, width: 32, height: 32 },
     { tileX: 9.5, tileY: 37.5, width: 32, height: 32 },
     { tileX: 37.5, tileY: 37.5, width: 32, height: 32 }
+  ],
+  npcPlacements: [
+    {
+      tileX: 23.5,
+      tileY: 15.5,
+      type: "scholar",
+      name: "Scholar Elion",
+      dialogue: [
+        "The monoliths... they hum with memories of a deleted sky.",
+        "Do not trust the light. It only profiles what the shadows want to target.",
+        "This arena was not built for glory. It was a holding pen."
+      ]
+    },
+    {
+      tileX: 15.5,
+      tileY: 23.5,
+      type: "guard",
+      name: "Watcher Vael",
+      dialogue: [
+        "Vigilance is a heavier burden than iron.",
+        "State your business, traveler. Or stand silent like the pillars around us.",
+        "I have watched this gate for forty cycles. Nothing has walked through. Until you."
+      ]
+    },
+    {
+      tileX: 7.5,
+      tileY: 7.5,
+      type: "wanderer",
+      name: "The Nameless Entity",
+      dialogue: [
+        "We are all files in a system destined for a hard wipe.",
+        "Do you feel the damp chill of the memory leak in the air?",
+        "A hundred trillion years... and yet, we standing stones remain."
+      ]
+    },
+    {
+      tileX: 23.5,
+      tileY: 21.5,
+      type: "merchant",
+      name: "Trader Olar",
+      dialogue: [
+        "A few thoughts for a coin... or a soul link for your sanity.",
+        "These stone cracks tell a story of an old world. Interested?",
+        "The dark sells cheap. The light costs your mind."
+      ]
+    }
   ],
   generateLayout(tileSize: number): LevelLayout {
     const cols = 48;
