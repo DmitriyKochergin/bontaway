@@ -1,6 +1,8 @@
 import Phaser from "phaser";
 import { SettingsManager } from "../systems/SettingsManager";
+import { ChatInputOverlay } from "../ui/ChatInputOverlay";
 import { FlatGameHUD } from "../ui/FlatGameHUD";
+import { MessageButton } from "../ui/MessageButton";
 import { type GameHudController, StoneGameHUD } from "../ui/StoneGameHUD";
 import { BaseScene } from "./BaseScene";
 import GameScene from "./GameScene";
@@ -18,6 +20,8 @@ export default class MainScene extends BaseScene {
   private pausedLabelResizeHandler?: (gameSize: Phaser.Structs.Size) => void;
   private gameplayPaused = false;
   private gameHUD?: StoneGameHUD | FlatGameHUD;
+  private messageButton?: MessageButton;
+  private chatOverlay?: ChatInputOverlay;
 
   constructor() {
     super("MainScene");
@@ -31,6 +35,10 @@ export default class MainScene extends BaseScene {
       this.scene.get("GameScene")?.events.off(Phaser.Scenes.Events.CREATE, this.rebuildHud, this);
       this.gameHUD?.destroy();
       this.gameHUD = undefined;
+      this.messageButton?.destroy();
+      this.messageButton = undefined;
+      this.chatOverlay?.destroy();
+      this.chatOverlay = undefined;
     });
 
     this.input?.mouse?.disableContextMenu();
@@ -52,6 +60,7 @@ export default class MainScene extends BaseScene {
     this.bindRtwpKeys();
     this.bindDevModeKey();
     this.createPausedLabel();
+    this.createMessageControls();
     this.scene.bringToTop();
   }
 
@@ -154,6 +163,36 @@ export default class MainScene extends BaseScene {
     }
 
     this.openSettings();
+  }
+
+  private createMessageControls(): void {
+    this.chatOverlay = new ChatInputOverlay(
+      text => this.submitChatMessage(text),
+      () => this.closeChat()
+    );
+    this.messageButton = new MessageButton(this, () => this.openChat());
+    this.messageButton.create();
+  }
+
+  private openChat(): void {
+    if (this.scene.isActive("SettingsScene") || this.chatOverlay?.isOpen) {
+      return;
+    }
+
+    const gameScene = this.scene.get("GameScene") as GameScene;
+    gameScene.getAudioSystem()?.play("sfx_tablet", 0.4);
+    gameScene.setChatTyping(true);
+    this.chatOverlay?.open();
+  }
+
+  private submitChatMessage(text: string): void {
+    (this.scene.get("GameScene") as GameScene).sendArenaChat(text);
+    this.closeChat();
+  }
+
+  private closeChat(): void {
+    this.chatOverlay?.close();
+    (this.scene.get("GameScene") as GameScene).setChatTyping(false);
   }
 
   private toggleRtwpPause(): void {

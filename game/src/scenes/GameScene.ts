@@ -3,6 +3,7 @@ import { NPC } from "../entities/NPC";
 import { Player } from "../entities/Player";
 import { getLevelDefinition } from "../levels";
 import { ArenaNetSystem } from "../multiplayer/ArenaNetSystem";
+import { ChatBubble } from "../multiplayer/ChatBubble";
 import { DevModeOverlay } from "../systems/DevModeOverlay";
 import { DungeonSystem } from "../systems/DungeonSystem";
 import { FieldOfViewSystem } from "../systems/FieldOfViewSystem";
@@ -26,6 +27,8 @@ export default class GameScene extends BaseScene {
   private weaponSystem!: WeaponSystem;
   private playerTeleport!: PlayerTeleport;
   private arenaNet?: ArenaNetSystem;
+  private localChatBubble?: ChatBubble;
+  private isChatTyping = false;
   private devModeEnabled = false;
   private devModeOverlay?: DevModeOverlay;
   private levelId = "arena";
@@ -75,6 +78,9 @@ export default class GameScene extends BaseScene {
       this.npcs = [];
       this.arenaNet?.destroy();
       this.arenaNet = undefined;
+      this.localChatBubble?.destroy();
+      this.localChatBubble = undefined;
+      this.isChatTyping = false;
       this.devModeOverlay?.destroy();
       this.devModeOverlay = undefined;
       this.devModeEnabled = false;
@@ -155,6 +161,8 @@ export default class GameScene extends BaseScene {
     if (this.levelId === "arena") {
       this.arenaNet = new ArenaNetSystem(this, this.player, this.dungeonSystem.getPhysicsWalls());
     }
+
+    this.localChatBubble = new ChatBubble(this);
   }
 
   /**
@@ -217,6 +225,28 @@ export default class GameScene extends BaseScene {
     return this.devModeEnabled;
   }
 
+  /** Suspend player movement while the chat input is focused (typed keys must not steer). */
+  public setChatTyping(active: boolean): void {
+    this.isChatTyping = active;
+    if (active) {
+      this.player?.setVelocity(0, 0);
+      if (this.player) {
+        this.player.joystickVector = null;
+      }
+    }
+  }
+
+  /** Show the line above the local player and broadcast it to arena peers. */
+  public sendArenaChat(text: string): void {
+    const trimmed = text.trim();
+    if (trimmed.length === 0) {
+      return;
+    }
+
+    this.localChatBubble?.show(trimmed);
+    this.arenaNet?.broadcastChat(trimmed);
+  }
+
   update(_time: number, delta: number) {
     if (!this.player || !this.player.body) return;
 
@@ -225,8 +255,13 @@ export default class GameScene extends BaseScene {
       return;
     }
 
-    this.playerControlSystem.syncPlayerKeys();
-    this.player.update(_time, delta);
+    if (this.isChatTyping) {
+      // Suspend movement while the chat box is open so typed keys don't drive the player.
+      this.player.setVelocity(0, 0);
+    } else {
+      this.playerControlSystem.syncPlayerKeys();
+      this.player.update(_time, delta);
+    }
     this.saveCurrentPlayerProgress();
 
     // Update standing NPCs in real-time
@@ -238,6 +273,7 @@ export default class GameScene extends BaseScene {
 
     this.fovSystem.update(delta);
     this.arenaNet?.update(_time);
+    this.localChatBubble?.follow(this.player.x, this.player.y);
     this.devModeOverlay?.update();
   }
 

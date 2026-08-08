@@ -39,4 +39,10 @@ export type PlayerFireMessage = {
   readonly ty: number;
 };
 
-export type SyncMessage = PlayerHelloMessage | PlayerPosMessage | PlayerFireMessage;
+/** A line of chat. Rendered above the sender's avatar for a few seconds. */
+export type PlayerChatMessage = {
+  readonly type: "chat";
+  readonly text: string;
+};
+
+export type SyncMessage = PlayerHelloMessage | PlayerPosMessage | PlayerFireMessage | PlayerChatMessage;

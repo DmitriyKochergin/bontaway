@@ -51,6 +51,15 @@ export class ArenaNetSystem {
     this.network.broadcast({ type: "fire", weapon, ox: originX, oy: originY, tx: targetX, ty: targetY });
   }
 
+  /** Called by GameScene when the local player sends a chat line. */
+  broadcastChat(text: string): void {
+    if (this.isDestroyed) {
+      return;
+    }
+
+    this.network.broadcast({ type: "chat", text });
+  }
+
   update(time: number): void {
     if (this.isDestroyed) {
       return;
@@ -133,6 +142,9 @@ export class ArenaNetSystem {
       case "fire":
         this.remoteProjectiles.spawn(message.weapon, message.ox, message.oy, message.tx, message.ty);
         this.remotePlayers.get(peerId)?.flash();
+        break;
+      case "chat":
+        this.remotePlayers.get(peerId)?.say(message.text);
         break;
     }
   }

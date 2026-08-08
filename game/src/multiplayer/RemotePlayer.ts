@@ -1,4 +1,5 @@
 import Phaser from "phaser";
+import { ChatBubble } from "./ChatBubble";
 
 const POSITION_LERP = 0.25;
 const ROTATION_LERP = 0.25;
@@ -15,6 +16,7 @@ export class RemotePlayer extends Phaser.GameObjects.Sprite {
   private targetY: number;
   private targetRotation: number;
   private torchLight?: Phaser.GameObjects.Light;
+  private chatBubble?: ChatBubble;
 
   constructor(scene: Phaser.Scene, x: number, y: number, rotation: number) {
     super(scene, x, y, "player");
@@ -57,6 +59,19 @@ export class RemotePlayer extends Phaser.GameObjects.Sprite {
       this.torchLight.x = this.x;
       this.torchLight.y = this.y;
     }
+
+    this.chatBubble?.follow(this.x, this.y);
+  }
+
+  /** Show a chat line above this peer's head. */
+  say(text: string): void {
+    if (!this.scene) {
+      return;
+    }
+
+    this.chatBubble ??= new ChatBubble(this.scene);
+    this.chatBubble.show(text);
+    this.chatBubble.follow(this.x, this.y);
   }
 
   /** Brief flash when this peer casts, echoing the local muzzle feedback. */
@@ -74,6 +89,9 @@ export class RemotePlayer extends Phaser.GameObjects.Sprite {
   }
 
   destroy(fromScene?: boolean): void {
+    this.chatBubble?.destroy();
+    this.chatBubble = undefined;
+
     if (this.torchLight && this.scene?.lights) {
       try {
         this.scene.lights.removeLight(this.torchLight);
