@@ -47,7 +47,7 @@ export class NPC extends Phaser.Physics.Arcade.Sprite {
     scene.add.existing(this);
     scene.physics.add.existing(this, true); // Create as static body
 
-    this.setDepth(250); // Deep behind player (300) but above obstacles/walls (200)
+    this.setDepth(270); // Above weapon/explosion FX, but still below player (300) and speech bubbles (350)
     this.setPipeline("Light2D");
 
     // Collisions
