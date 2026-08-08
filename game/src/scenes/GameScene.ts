@@ -2,6 +2,7 @@ import Phaser from "phaser";
 import { NPC } from "../entities/NPC";
 import { Player } from "../entities/Player";
 import { getLevelDefinition } from "../levels";
+import { ArenaNetSystem } from "../multiplayer/ArenaNetSystem";
 import { DevModeOverlay } from "../systems/DevModeOverlay";
 import { DungeonSystem } from "../systems/DungeonSystem";
 import { FieldOfViewSystem } from "../systems/FieldOfViewSystem";
@@ -24,6 +25,7 @@ export default class GameScene extends BaseScene {
   private playerControlSystem!: PlayerControlsSystem;
   private weaponSystem!: WeaponSystem;
   private playerTeleport!: PlayerTeleport;
+  private arenaNet?: ArenaNetSystem;
   private devModeEnabled = false;
   private devModeOverlay?: DevModeOverlay;
   private levelId = "arena";
@@ -71,6 +73,8 @@ export default class GameScene extends BaseScene {
       this.events.off("toggle-dev-mode", this.toggleDevMode, this);
       this.npcs.forEach(npc => npc.destroy());
       this.npcs = [];
+      this.arenaNet?.destroy();
+      this.arenaNet = undefined;
       this.devModeOverlay?.destroy();
       this.devModeOverlay = undefined;
       this.devModeEnabled = false;
@@ -145,6 +149,12 @@ export default class GameScene extends BaseScene {
     this.physics.add.collider(this.player, this.npcGroup);
 
     this.cameras.main.startFollow(this.player, true, 0.1, 0.1);
+
+    // Arena is a shared, static, fog-free room with no NPCs — the one level where peers can
+    // simply see each other. Other levels stay single-player.
+    if (this.levelId === "arena") {
+      this.arenaNet = new ArenaNetSystem(this, this.player, this.dungeonSystem.getPhysicsWalls());
+    }
   }
 
   /**
@@ -184,15 +194,18 @@ export default class GameScene extends BaseScene {
   private castSelectedPrimaryWeapon(targetX: number, targetY: number): void {
     if (this.getSelectedWeaponSlot() === 1) {
       this.weaponSystem.castRay(targetX, targetY);
+      this.arenaNet?.broadcastFire("ray", this.player.x, this.player.y, targetX, targetY);
       return;
     }
 
     this.weaponSystem.castFireball(targetX, targetY);
+    this.arenaNet?.broadcastFire("fireball", this.player.x, this.player.y, targetX, targetY);
   }
 
   private castSelectedSecondaryWeapon(targetX: number, targetY: number): void {
     if (this.getSelectedWeaponSlot() === 1) {
       this.weaponSystem.castSphere(targetX, targetY);
+      this.arenaNet?.broadcastFire("sphere", this.player.x, this.player.y, targetX, targetY);
       return;
     }
 
@@ -224,6 +237,7 @@ export default class GameScene extends BaseScene {
     }
 
     this.fovSystem.update(delta);
+    this.arenaNet?.update(_time);
     this.devModeOverlay?.update();
   }
 

@@ -30,6 +30,7 @@
   "packageManager": "yarn@4.14.1",
   "dependencies": {
     "phaser": "^3.83.0",
-    "phaser-raycaster": "0.11.0"
+    "phaser-raycaster": "0.11.0",
+    "trystero": "^0.22.0"
   }
 }
