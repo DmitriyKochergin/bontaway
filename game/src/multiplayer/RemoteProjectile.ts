@@ -1,38 +1,18 @@
 import Phaser from "phaser";
+import {
+  createProjectileVisuals,
+  type ProjectileVisualBundle,
+  type ProjectileVisualKind
+} from "../systems/ProjectileVisuals";
 import { type WeaponKind } from "./SyncMessages";
 
-interface RemoteWeaponConfig {
-  readonly texture: string;
-  readonly speed: number;
-  readonly depth: number;
-  readonly lightColor: number;
-  readonly lightRadius: number;
-  readonly lightIntensity: number;
-}
-
-// Textures are owned by WeaponSystem: "fireball" is a preloaded asset, the blue keys are generated
-// in its constructor. ArenaNetSystem is built after WeaponSystem, so all three exist by spawn time.
-const WEAPON_CONFIG: Record<WeaponKind, RemoteWeaponConfig> = {
-  fireball: { texture: "fireball", speed: 300, depth: 250, lightColor: 0xff5500, lightRadius: 150, lightIntensity: 3 },
-  ray: {
-    texture: "weapon-blue-ray",
-    speed: 980,
-    depth: 255,
-    lightColor: 0x93dfff,
-    lightRadius: 120,
-    lightIntensity: 3.4
-  },
-  sphere: {
-    texture: "weapon-blue-sphere",
-    speed: 280,
-    depth: 253,
-    lightColor: 0x5eb7ff,
-    lightRadius: 190,
-    lightIntensity: 5.2
-  }
-};
-
 const MAX_LIFETIME_MS = 6000;
+
+interface ProjectileState {
+  readonly sprite: Phaser.Physics.Arcade.Sprite;
+  readonly visuals: ProjectileVisualBundle;
+  isCleanedUp: boolean;
+}
 
 /**
  * Pooled, purely cosmetic replicas of other players' shots. They fly the same arc at the same
@@ -42,8 +22,8 @@ const MAX_LIFETIME_MS = 6000;
 export class RemoteProjectiles {
   private readonly scene: Phaser.Scene;
   private readonly pool: Phaser.Physics.Arcade.Group;
-  private readonly lights = new Map<Phaser.Physics.Arcade.Sprite, Phaser.GameObjects.Light>();
   private readonly lifetimeTimers = new Map<Phaser.Physics.Arcade.Sprite, Phaser.Time.TimerEvent>();
+  private readonly activeProjectiles = new Map<Phaser.Physics.Arcade.Sprite, ProjectileState>();
   private isDestroyed = false;
 
   constructor(scene: Phaser.Scene, walls: Phaser.Physics.Arcade.StaticGroup) {
@@ -56,31 +36,32 @@ export class RemoteProjectiles {
   }
 
   spawn(weapon: WeaponKind, originX: number, originY: number, targetX: number, targetY: number): void {
-    const config = WEAPON_CONFIG[weapon];
-    if (!config || !this.scene.textures.exists(config.texture)) {
+    const kind = weapon as ProjectileVisualKind;
+    const textureKey = weapon === "fireball" ? "fireball" : weapon === "ray" ? "weapon-blue-ray" : "weapon-blue-sphere";
+    if (!this.scene.textures.exists(textureKey)) {
       return;
     }
 
-    const projectile = this.pool.get(originX, originY, config.texture) as Phaser.Physics.Arcade.Sprite | null;
+    const projectile = this.pool.get(originX, originY, textureKey) as Phaser.Physics.Arcade.Sprite | null;
     if (!projectile) {
       return;
     }
 
     projectile.enableBody(true, originX, originY, true, true);
-    projectile.setTexture(config.texture);
-    projectile.setDepth(config.depth);
+    projectile.setTexture(textureKey);
+    projectile.setDepth(weapon === "ray" ? 255 : weapon === "sphere" ? 253 : 250);
     projectile.setPipeline("Light2D");
-    this.scene.physics.moveTo(projectile, targetX, targetY, config.speed);
+    projectile.setAlpha(weapon === "ray" ? 0.98 : weapon === "sphere" ? 0.94 : 1);
+    const visuals = createProjectileVisuals(this.scene, projectile, kind);
+    this.scene.physics.moveTo(projectile, targetX, targetY, weapon === "ray" ? 980 : weapon === "sphere" ? 280 : 300);
 
-    // A recycled sprite has already been through deactivate(), so it carries no light — always
-    // mint a fresh one here.
-    if (this.scene.lights) {
-      this.lights.set(
-        projectile,
-        this.scene.lights.addLight(originX, originY, config.lightRadius, config.lightColor, config.lightIntensity)
-      );
-    }
+    const state: ProjectileState = {
+      sprite: projectile,
+      visuals,
+      isCleanedUp: false
+    };
 
+    this.activeProjectiles.set(projectile, state);
     this.lifetimeTimers.get(projectile)?.remove(false);
     this.lifetimeTimers.set(
       projectile,
@@ -92,13 +73,12 @@ export class RemoteProjectiles {
     const worldBounds = this.scene.physics.world.bounds;
     const strayProjectiles: Phaser.Physics.Arcade.Sprite[] = [];
 
-    for (const [projectile, light] of this.lights) {
+    for (const [projectile, state] of this.activeProjectiles) {
       if (!projectile.active) {
         continue;
       }
 
-      light.x = projectile.x;
-      light.y = projectile.y;
+      state.visuals.syncLight();
 
       if (!Phaser.Geom.Rectangle.Contains(worldBounds, projectile.x, projectile.y)) {
         strayProjectiles.push(projectile);
@@ -111,19 +91,14 @@ export class RemoteProjectiles {
   }
 
   private deactivate(projectile: Phaser.Physics.Arcade.Sprite): void {
-    if (!projectile.active) {
+    const state = this.activeProjectiles.get(projectile);
+    if (!state || state.isCleanedUp) {
       return;
     }
 
-    const light = this.lights.get(projectile);
-    if (light && this.scene.lights) {
-      try {
-        this.scene.lights.removeLight(light);
-      } catch {
-        // Scene lights may already be gone during shutdown.
-      }
-    }
-    this.lights.delete(projectile);
+    state.isCleanedUp = true;
+    state.visuals.cleanup(this.isDestroyed);
+    this.activeProjectiles.delete(projectile);
 
     this.lifetimeTimers.get(projectile)?.remove(false);
     this.lifetimeTimers.delete(projectile);
@@ -138,14 +113,10 @@ export class RemoteProjectiles {
 
     this.isDestroyed = true;
 
-    for (const light of this.lights.values()) {
-      try {
-        this.scene.lights?.removeLight(light);
-      } catch {
-        // Scene lights may already be gone during shutdown.
-      }
+    for (const state of this.activeProjectiles.values()) {
+      state.visuals.cleanup(true);
     }
-    this.lights.clear();
+    this.activeProjectiles.clear();
 
     for (const timer of this.lifetimeTimers.values()) {
       timer.remove(false);

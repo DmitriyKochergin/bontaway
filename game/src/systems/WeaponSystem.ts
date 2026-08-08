@@ -3,6 +3,7 @@ import { type Player } from "../entities/Player";
 import { type AudioSystem } from "./AudioSystem";
 import { type DungeonSystem } from "./DungeonSystem";
 import { type FieldOfViewSystem } from "./FieldOfViewSystem";
+import { createProjectileVisuals } from "./ProjectileVisuals";
 
 type ProjectileKind = "ray" | "sphere";
 type ExplosionTier = "small" | "large" | "huge";
@@ -10,8 +11,7 @@ type ExplosionTier = "small" | "large" | "huge";
 interface ProjectileState {
   readonly kind: ProjectileKind;
   readonly sprite: Phaser.Types.Physics.Arcade.SpriteWithDynamicBody;
-  readonly light: Phaser.GameObjects.Light;
-  readonly particles: Phaser.GameObjects.Particles.ParticleEmitter;
+  readonly visuals: ReturnType<typeof createProjectileVisuals>;
   readonly collisionRadius: number;
   cleanup: () => void;
   lightningGraphics?: Phaser.GameObjects.Graphics;
@@ -140,27 +140,11 @@ export class WeaponSystem {
 
     this.fovSystem.addProjectile(projectile);
 
-    const spellLight = this.scene.lights.addLight(projectile.x, projectile.y, 150, 0xff5500, 3);
-
-    const particles = this.scene.add.particles(0, 0, "fireball", {
-      speed: 20,
-      scale: { start: 1, end: 0 },
-      blendMode: "ADD",
-      lifespan: 300
-    });
-    particles.setDepth(240);
-    particles.startFollow(projectile);
+    const visuals = createProjectileVisuals(this.scene, projectile, "fireball");
 
     this.scene.physics.moveTo(projectile, targetX, targetY, 300);
 
     let isCleanedUp = false;
-    const destroyParticles = () => {
-      try {
-        particles.destroy();
-      } catch {
-        // Safe guard.
-      }
-    };
 
     const cleanUp = () => {
       if (isCleanedUp) {
@@ -171,26 +155,7 @@ export class WeaponSystem {
       this.activeCleanups.delete(cleanUp);
       this.fovSystem.removeProjectile(projectile);
 
-      try {
-        this.scene.lights.removeLight(spellLight);
-      } catch {
-        // Safe guard.
-      }
-
-      try {
-        particles.stop();
-        particles.stopFollow();
-      } catch {
-        // Safe guard in case particles or scene were already destroyed.
-      }
-
-      if (this.isDestroyed) {
-        destroyParticles();
-      } else {
-        this.scene.time.delayedCall(500, () => {
-          destroyParticles();
-        });
-      }
+      visuals.cleanup(this.isDestroyed);
 
       try {
         projectile.destroy();
@@ -219,8 +184,7 @@ export class WeaponSystem {
       }
 
       if (projectile.active) {
-        spellLight.x = projectile.x;
-        spellLight.y = projectile.y;
+        visuals.syncLight();
       } else {
         cleanUp();
       }
@@ -265,36 +229,14 @@ export class WeaponSystem {
 
     this.fovSystem.addProjectile(projectile);
 
-    const light = this.scene.lights.addLight(
-      projectile.x,
-      projectile.y,
-      kind === "ray" ? 120 : 190,
-      kind === "ray" ? 0x93dfff : 0x5eb7ff,
-      kind === "ray" ? 3.4 : 5.2
-    );
-
-    const particles = this.scene.add.particles(0, 0, WEAPON_TEXTURES.spark, {
-      speed: kind === "ray" ? { min: 25, max: 90 } : { min: 45, max: 165 },
-      angle: kind === "ray" ? undefined : { min: 0, max: 360 },
-      scale: kind === "ray" ? { start: 0.35, end: 0 } : { start: 0.6, end: 0 },
-      alpha: { start: kind === "ray" ? 0.75 : 0.95, end: 0 },
-      lifespan: kind === "ray" ? { min: 100, max: 160 } : { min: 120, max: 320 },
-      quantity: kind === "ray" ? 1 : 4,
-      frequency: kind === "ray" ? -1 : 20,
-      rotate: kind === "ray" ? undefined : { min: 0, max: 360 },
-      emitting: kind === "ray",
-      blendMode: "ADD"
-    });
-    particles.setDepth(kind === "ray" ? 246 : 248);
-    particles.startFollow(projectile);
+    const visuals = createProjectileVisuals(this.scene, projectile, kind);
 
     this.scene.physics.moveTo(projectile, targetX, targetY, speed);
 
     const state: ProjectileState = {
       kind,
       sprite: projectile,
-      light,
-      particles,
+      visuals,
       collisionRadius: kind === "ray" ? 12 : 26,
       cleanup: () => undefined,
       isCleanedUp: false
@@ -307,16 +249,7 @@ export class WeaponSystem {
     }
 
     let elapsed = 0;
-    let particleDestroyTimer: Phaser.Time.TimerEvent | undefined;
     let updateListener: (_time: number, delta: number) => void = () => undefined;
-
-    const destroyParticles = () => {
-      try {
-        particles.destroy();
-      } catch {
-        // Safe guard.
-      }
-    };
 
     const cleanUp = () => {
       if (state.isCleanedUp) {
@@ -329,30 +262,9 @@ export class WeaponSystem {
       this.activeSpheres.delete(state);
       this.fovSystem.removeProjectile(projectile);
 
-      try {
-        this.scene.lights.removeLight(light);
-      } catch {
-        // Safe guard.
-      }
-
-      try {
-        particles.stop();
-        particles.stopFollow();
-      } catch {
-        // Safe guard in case particles or scene were already destroyed.
-      }
+      visuals.cleanup(this.isDestroyed);
 
       state.lightningGraphics?.destroy();
-
-      if (this.isDestroyed) {
-        particleDestroyTimer?.remove(false);
-        destroyParticles();
-      } else {
-        const particleCleanupDelay = kind === "ray" ? 240 : 360;
-        particleDestroyTimer = this.scene.time.delayedCall(particleCleanupDelay, () => {
-          destroyParticles();
-        });
-      }
 
       try {
         projectile.destroy();
@@ -397,8 +309,7 @@ export class WeaponSystem {
       }
 
       elapsed += delta;
-      light.x = projectile.x;
-      light.y = projectile.y;
+      visuals.syncLight();
 
       if (kind === "ray") {
         this.resolveRaySphereImpact(state);
@@ -456,10 +367,15 @@ export class WeaponSystem {
       return;
     }
 
+    const light = state.visuals.light;
+    if (!light) {
+      return;
+    }
+
     const pulse = 0.5 + Math.sin(elapsed * 0.007) * 0.5;
     const flicker = 0.5 + Math.sin(elapsed * 0.035) * 0.5;
-    state.light.radius = 170 + pulse * 45;
-    state.light.intensity = 4.8 + pulse * 1.4 + flicker * 0.8;
+    light.radius = 170 + pulse * 45;
+    light.intensity = 4.8 + pulse * 1.4 + flicker * 0.8;
 
     graphics.clear();
 
