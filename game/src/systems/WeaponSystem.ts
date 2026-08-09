@@ -3,19 +3,31 @@ import { type Player } from "../entities/Player";
 import { type AudioSystem } from "./AudioSystem";
 import { type DungeonSystem } from "./DungeonSystem";
 import { type FieldOfViewSystem } from "./FieldOfViewSystem";
-import { createProjectileVisuals } from "./ProjectileVisuals";
+import { createProjectileVisuals, type ProjectileVisualKind } from "./ProjectileVisuals";
 
-type ProjectileKind = "ray" | "sphere";
+type ProjectileKind = ProjectileVisualKind;
 type ExplosionTier = "small" | "large" | "huge";
 
 interface ProjectileState {
   readonly kind: ProjectileKind;
   readonly sprite: Phaser.Types.Physics.Arcade.SpriteWithDynamicBody;
-  readonly visuals: ReturnType<typeof createProjectileVisuals>;
   readonly collisionRadius: number;
   cleanup: () => void;
+  visuals?: ReturnType<typeof createProjectileVisuals>;
+  launchedAt: number;
+  expiresAt: number;
   lightningGraphics?: Phaser.GameObjects.Graphics;
-  isCleanedUp: boolean;
+  isActive: boolean;
+}
+
+interface ProjectileProfile {
+  readonly textureKey: string;
+  readonly depth: number;
+  readonly alpha: number;
+  readonly speed: number;
+  readonly lifetime: number;
+  readonly collisionRadius: number;
+  readonly explosionTier: ExplosionTier | "fireball";
 }
 
 interface ExplosionProfile {
@@ -37,6 +49,36 @@ const WEAPON_TEXTURES = {
   sphere: "weapon-blue-sphere",
   spark: "weapon-blue-spark"
 } as const;
+
+const PROJECTILE_PROFILES: Record<ProjectileKind, ProjectileProfile> = {
+  fireball: {
+    textureKey: "fireball",
+    depth: 250,
+    alpha: 1,
+    speed: 300,
+    lifetime: 10000,
+    collisionRadius: 0,
+    explosionTier: "fireball"
+  },
+  ray: {
+    textureKey: WEAPON_TEXTURES.ray,
+    depth: 255,
+    alpha: 0.98,
+    speed: 980,
+    lifetime: 5200,
+    collisionRadius: 12,
+    explosionTier: "small"
+  },
+  sphere: {
+    textureKey: WEAPON_TEXTURES.sphere,
+    depth: 253,
+    alpha: 0.94,
+    speed: 280,
+    lifetime: 7000,
+    collisionRadius: 26,
+    explosionTier: "large"
+  }
+};
 
 const EXPLOSION_PROFILES: Record<ExplosionTier, ExplosionProfile> = {
   small: {
@@ -87,8 +129,14 @@ export class WeaponSystem {
   private readonly fovSystem: FieldOfViewSystem;
   private readonly audioSystem?: AudioSystem;
   private readonly activeCleanups = new Set<() => void>();
+  private readonly activeProjectiles = new Set<ProjectileState>();
   private readonly activeRays = new Set<ProjectileState>();
   private readonly activeSpheres = new Set<ProjectileState>();
+  private readonly projectilePools: Record<ProjectileKind, ProjectileState[]> = {
+    fireball: [],
+    ray: [],
+    sphere: []
+  };
   private isDestroyed = false;
 
   constructor(
@@ -106,6 +154,7 @@ export class WeaponSystem {
 
     this.ensureWeaponTextures();
 
+    this.scene.events.on("update", this.updateProjectiles, this);
     this.scene.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       this.destroy();
     });
@@ -123,8 +172,17 @@ export class WeaponSystem {
     }
 
     this.activeCleanups.clear();
+    this.activeProjectiles.clear();
     this.activeRays.clear();
     this.activeSpheres.clear();
+    this.scene.events.off("update", this.updateProjectiles, this);
+
+    for (const pool of Object.values(this.projectilePools)) {
+      for (const state of pool) {
+        state.lightningGraphics?.destroy();
+        state.sprite.destroy();
+      }
+    }
   }
 
   public castFireball(targetX: number, targetY: number, originX = this.player.x, originY = this.player.y): void {
@@ -134,63 +192,7 @@ export class WeaponSystem {
 
     this.audioSystem?.playFireballCast(0.45);
 
-    const projectile = this.scene.physics.add.sprite(originX, originY, "fireball");
-    projectile.setPipeline("Light2D");
-    projectile.setDepth(250);
-
-    this.fovSystem.addProjectile(projectile);
-
-    const visuals = createProjectileVisuals(this.scene, projectile, "fireball");
-
-    this.scene.physics.moveTo(projectile, targetX, targetY, 300);
-
-    let isCleanedUp = false;
-
-    const cleanUp = () => {
-      if (isCleanedUp) {
-        return;
-      }
-
-      isCleanedUp = true;
-      this.activeCleanups.delete(cleanUp);
-      this.fovSystem.removeProjectile(projectile);
-
-      visuals.cleanup(this.isDestroyed);
-
-      try {
-        projectile.destroy();
-      } catch {
-        // Safe guard.
-      }
-
-      this.scene.events.off("update", updateListener);
-    };
-
-    this.activeCleanups.add(cleanUp);
-
-    this.scene.physics.add.collider(projectile, this.dungeonSystem.getPhysicsWalls(), () => {
-      this.audioSystem?.playFireballHit(0.55);
-      this.createFireballExplosion(projectile.x, projectile.y);
-      cleanUp();
-    });
-
-    this.scene.time.delayedCall(10000, () => {
-      cleanUp();
-    });
-
-    const updateListener = () => {
-      if (this.scene.scene.isPaused()) {
-        return;
-      }
-
-      if (projectile.active) {
-        visuals.syncLight();
-      } else {
-        cleanUp();
-      }
-    };
-
-    this.scene.events.on("update", updateListener);
+    this.launchProjectile("fireball", targetX, targetY, originX, originY);
   }
 
   public castRay(targetX: number, targetY: number, originX = this.player.x, originY = this.player.y): void {
@@ -217,129 +219,162 @@ export class WeaponSystem {
       return;
     }
 
-    const textureKey = kind === "ray" ? WEAPON_TEXTURES.ray : WEAPON_TEXTURES.sphere;
-    const explosionTier = kind === "ray" ? "small" : "large";
-    const speed = kind === "ray" ? 980 : 280;
-
     if (kind === "ray") {
       this.audioSystem?.playShockRifleFire(0.35);
     } else {
       this.audioSystem?.playShockRifleAltFire(0.55);
     }
 
-    const projectile = this.scene.physics.add.sprite(originX, originY, textureKey);
-    projectile.setPipeline("Light2D");
-    projectile.setDepth(kind === "ray" ? 255 : 253);
-    projectile.setCollideWorldBounds(false);
-    projectile.setAlpha(kind === "ray" ? 0.98 : 0.94);
+    this.launchProjectile(kind, targetX, targetY, originX, originY);
+  }
 
-    this.fovSystem.addProjectile(projectile);
+  private launchProjectile(
+    kind: ProjectileKind,
+    targetX: number,
+    targetY: number,
+    originX: number,
+    originY: number
+  ): void {
+    const profile = PROJECTILE_PROFILES[kind];
+    const state = this.acquireProjectile(kind);
+    const { sprite } = state;
 
-    const visuals = createProjectileVisuals(this.scene, projectile, kind);
+    sprite.setPosition(originX, originY);
+    sprite.setTexture(profile.textureKey);
+    sprite.setPipeline("Light2D");
+    sprite.setDepth(profile.depth);
+    sprite.setAlpha(profile.alpha);
+    sprite.setCollideWorldBounds(false);
+    sprite.setActive(true);
+    sprite.setVisible(true);
+    sprite.body.enable = true;
+    sprite.body.reset(originX, originY);
+    this.scene.physics.moveTo(sprite, targetX, targetY, profile.speed);
 
-    this.scene.physics.moveTo(projectile, targetX, targetY, speed);
+    state.launchedAt = this.scene.time.now;
+    state.expiresAt = state.launchedAt + profile.lifetime;
+    state.visuals = createProjectileVisuals(this.scene, sprite, kind);
+    state.lightningGraphics?.setVisible(true);
+
+    this.fovSystem.addProjectile(sprite);
+    this.activeCleanups.add(state.cleanup);
+    this.activeProjectiles.add(state);
+
+    if (kind === "ray") {
+      this.activeRays.add(state);
+    } else if (kind === "sphere") {
+      this.activeSpheres.add(state);
+    }
+  }
+
+  private acquireProjectile(kind: ProjectileKind): ProjectileState {
+    const pool = this.projectilePools[kind];
+    const reusableState = pool.find(state => !state.isActive);
+    if (reusableState) {
+      reusableState.isActive = true;
+      return reusableState;
+    }
+
+    const profile = PROJECTILE_PROFILES[kind];
+    const sprite = this.scene.physics.add.sprite(0, 0, profile.textureKey);
+    sprite.setActive(false);
+    sprite.setVisible(false);
+    sprite.body.enable = false;
 
     const state: ProjectileState = {
       kind,
-      sprite: projectile,
-      visuals,
-      collisionRadius: kind === "ray" ? 12 : 26,
-      cleanup: () => undefined,
-      isCleanedUp: false
+      sprite,
+      collisionRadius: profile.collisionRadius,
+      cleanup: () => this.releaseProjectile(state),
+      launchedAt: 0,
+      expiresAt: 0,
+      isActive: true
     };
 
     if (kind === "sphere") {
       state.lightningGraphics = this.scene.add.graphics();
       state.lightningGraphics.setDepth(249);
       state.lightningGraphics.setBlendMode(Phaser.BlendModes.ADD);
+      state.lightningGraphics.setVisible(false);
     }
 
-    let elapsed = 0;
-    let updateListener: (_time: number, delta: number) => void = () => undefined;
-
-    const cleanUp = () => {
-      if (state.isCleanedUp) {
-        return;
-      }
-
-      state.isCleanedUp = true;
-      this.activeCleanups.delete(cleanUp);
-      this.activeRays.delete(state);
-      this.activeSpheres.delete(state);
-      this.fovSystem.removeProjectile(projectile);
-
-      visuals.cleanup(this.isDestroyed);
-
-      state.lightningGraphics?.destroy();
-
-      try {
-        projectile.destroy();
-      } catch {
-        // Safe guard.
-      }
-
-      this.scene.events.off("update", updateListener);
-    };
-
-    state.cleanup = cleanUp;
-    this.activeCleanups.add(cleanUp);
-
-    if (kind === "ray") {
-      this.activeRays.add(state);
-    } else {
-      this.activeSpheres.add(state);
-    }
-
-    this.scene.physics.add.collider(projectile, this.dungeonSystem.getPhysicsWalls(), () => {
-      if (state.isCleanedUp) {
-        return;
-      }
-
-      if (kind === "ray") {
-        // this.audioSystem?.playFireballHit(0.4);
-      } else {
-        this.audioSystem?.playShockRifleHit(0.65);
-      }
-      this.createExplosion(projectile.x, projectile.y, explosionTier);
-      cleanUp();
+    this.scene.physics.add.collider(sprite, this.dungeonSystem.getPhysicsWalls(), () => {
+      this.handleProjectileWallCollision(state);
     });
-
-    updateListener = (_time: number, delta: number) => {
-      if (this.scene.scene.isPaused()) {
-        return;
-      }
-
-      if (!projectile.active || !projectile.body) {
-        cleanUp();
-        return;
-      }
-
-      elapsed += delta;
-      visuals.syncLight();
-
-      if (kind === "ray") {
-        this.resolveRaySphereImpact(state);
-        return;
-      }
-
-      this.updateSphereEffects(state, elapsed);
-    };
-
-    this.scene.events.on("update", updateListener);
-
-    const lifetime = kind === "ray" ? 5200 : 7000;
-    this.scene.time.delayedCall(lifetime, () => {
-      cleanUp();
-    });
+    pool.push(state);
+    return state;
   }
 
-  private resolveRaySphereImpact(rayState: ProjectileState): void {
-    if (rayState.isCleanedUp) {
+  private releaseProjectile(state: ProjectileState): void {
+    if (!state.isActive) {
       return;
     }
 
-    for (const sphereState of [...this.activeSpheres]) {
-      if (sphereState.isCleanedUp || !sphereState.sprite.active) {
+    state.isActive = false;
+    state.launchedAt = 0;
+    state.expiresAt = 0;
+    this.activeCleanups.delete(state.cleanup);
+    this.activeProjectiles.delete(state);
+    this.activeRays.delete(state);
+    this.activeSpheres.delete(state);
+    this.fovSystem.removeProjectile(state.sprite);
+    state.visuals?.cleanup(this.isDestroyed);
+    state.visuals = undefined;
+    state.lightningGraphics?.clear();
+    state.lightningGraphics?.setVisible(false);
+    state.sprite.setVelocity(0, 0);
+    state.sprite.body.enable = false;
+    state.sprite.setActive(false);
+    state.sprite.setVisible(false);
+  }
+
+  private handleProjectileWallCollision(state: ProjectileState): void {
+    if (!state.isActive) {
+      return;
+    }
+
+    const { sprite } = state;
+    if (state.kind === "fireball") {
+      this.audioSystem?.playFireballHit(0.55);
+      this.createFireballExplosion(sprite.x, sprite.y);
+    } else {
+      if (state.kind === "sphere") {
+        this.audioSystem?.playShockRifleHit(0.65);
+      }
+      this.createExplosion(sprite.x, sprite.y, PROJECTILE_PROFILES[state.kind].explosionTier as ExplosionTier);
+    }
+
+    this.releaseProjectile(state);
+  }
+
+  private updateProjectiles(time: number, _delta: number): void {
+    if (this.scene.scene.isPaused()) {
+      return;
+    }
+
+    for (const state of this.activeProjectiles) {
+      if (!state.sprite.active || !state.sprite.body || time >= state.expiresAt) {
+        this.releaseProjectile(state);
+        continue;
+      }
+
+      state.visuals?.syncLight();
+
+      if (state.kind === "ray") {
+        this.resolveRaySphereImpact(state);
+      } else if (state.kind === "sphere") {
+        this.updateSphereEffects(state, time - state.launchedAt);
+      }
+    }
+  }
+
+  private resolveRaySphereImpact(rayState: ProjectileState): void {
+    if (!rayState.isActive) {
+      return;
+    }
+
+    for (const sphereState of this.activeSpheres) {
+      if (!sphereState.isActive || !sphereState.sprite.active) {
         continue;
       }
 
@@ -361,8 +396,8 @@ export class WeaponSystem {
         "huge"
       );
 
-      rayState.cleanup();
-      sphereState.cleanup();
+      this.releaseProjectile(rayState);
+      this.releaseProjectile(sphereState);
       return;
     }
   }
@@ -373,7 +408,7 @@ export class WeaponSystem {
       return;
     }
 
-    const light = state.visuals.light;
+    const light = state.visuals?.light;
     if (!light) {
       return;
     }

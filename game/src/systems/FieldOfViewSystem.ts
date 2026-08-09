@@ -28,8 +28,8 @@ export class FieldOfViewSystem {
   private maskScrollX = 0;
   private maskScrollY = 0;
 
-  private activeProjectiles: Phaser.Types.Physics.Arcade.SpriteWithDynamicBody[] = [];
-  private activeExplosions: { x: number; y: number; radius: number }[] = [];
+  private readonly activeProjectiles = new Set<Phaser.Types.Physics.Arcade.SpriteWithDynamicBody>();
+  private readonly activeExplosions = new Set<{ x: number; y: number; radius: number }>();
   private enabled: boolean;
   // Reused each redraw to hold only the occluders whose AABB overlaps the FOV reach box. castCircle
   // runs an O(objects^2) pairwise pass plus a per-ray cast over every object it is given, so handing
@@ -127,19 +127,19 @@ export class FieldOfViewSystem {
   }
 
   public addProjectile(projectile: Phaser.Types.Physics.Arcade.SpriteWithDynamicBody) {
-    this.activeProjectiles.push(projectile);
+    this.activeProjectiles.add(projectile);
   }
 
   public removeProjectile(projectile: Phaser.Types.Physics.Arcade.SpriteWithDynamicBody) {
-    this.activeProjectiles = this.activeProjectiles.filter(p => p !== projectile);
+    this.activeProjectiles.delete(projectile);
   }
 
   public addExplosion(explosion: { x: number; y: number; radius: number }) {
-    this.activeExplosions.push(explosion);
+    this.activeExplosions.add(explosion);
   }
 
   public removeExplosion(explosion: { x: number; y: number; radius: number }) {
-    this.activeExplosions = this.activeExplosions.filter(e => e !== explosion);
+    this.activeExplosions.delete(explosion);
   }
 
   public setEnabled(enabled: boolean): void {
@@ -370,7 +370,7 @@ export class FieldOfViewSystem {
     const originY = this.player.y;
     const playerMoved =
       Math.abs(originX - this.lastRedrawOriginX) > 0.25 || Math.abs(originY - this.lastRedrawOriginY) > 0.25;
-    const hasDynamicLights = this.activeProjectiles.length > 0 || this.activeExplosions.length > 0;
+    const hasDynamicLights = this.activeProjectiles.size > 0 || this.activeExplosions.size > 0;
 
     // Safety valve: if the camera drifted toward the fog border, re-bake now regardless of the
     // throttle so the oversized mask never runs out and shows the raw screen edge.
