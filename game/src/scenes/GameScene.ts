@@ -163,7 +163,7 @@ export default class GameScene extends BaseScene {
       this.sharedNet = new ArenaNetSystem(
         this,
         this.player,
-        this.dungeonSystem.getPhysicsWalls(),
+        this.weaponSystem,
         this.fovSystem.getNpcVisibilityMask(),
         multiplayerRoomId
       );

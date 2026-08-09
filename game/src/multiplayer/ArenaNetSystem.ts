@@ -1,8 +1,8 @@
 import Phaser from "phaser";
 import { type Player } from "../entities/Player";
+import { WeaponSystem } from "../systems/WeaponSystem";
 import { NetworkManager } from "./NetworkManager";
 import { RemotePlayer } from "./RemotePlayer";
-import { RemoteProjectiles } from "./RemoteProjectile";
 import { type SyncMessage, type WeaponKind } from "./SyncMessages";
 
 const APP_ID = "bontaway";
@@ -23,7 +23,7 @@ export class ArenaNetSystem {
   private readonly player: Player;
   private readonly network = new NetworkManager();
   private readonly remotePlayers = new Map<string, RemotePlayer>();
-  private readonly remoteProjectiles: RemoteProjectiles;
+  private readonly weaponSystem: WeaponSystem;
   private readonly roomId: string;
   private readonly visibilityMask?: Phaser.Display.Masks.BitmapMask;
 
@@ -36,15 +36,15 @@ export class ArenaNetSystem {
   constructor(
     scene: Phaser.Scene,
     player: Player,
-    walls: Phaser.Physics.Arcade.StaticGroup,
+    weaponSystem: WeaponSystem,
     visibilityMask?: Phaser.Display.Masks.BitmapMask,
     roomId: string = DEFAULT_ROOM_ID
   ) {
     this.scene = scene;
     this.player = player;
+    this.weaponSystem = weaponSystem;
     this.visibilityMask = visibilityMask;
     this.roomId = roomId;
-    this.remoteProjectiles = new RemoteProjectiles(scene, walls);
 
     this.network.onMessage((message, peerId) => this.handleMessage(message, peerId));
     this.network.onPeerJoin(peerId => this.greetPeer(peerId));
@@ -80,8 +80,6 @@ export class ArenaNetSystem {
     for (const remotePlayer of this.remotePlayers.values()) {
       remotePlayer.tick();
     }
-
-    this.remoteProjectiles.update();
   }
 
   destroy(): void {
@@ -96,8 +94,6 @@ export class ArenaNetSystem {
       remotePlayer.destroy();
     }
     this.remotePlayers.clear();
-
-    this.remoteProjectiles.destroy();
   }
 
   private broadcastPosition(time: number): void {
@@ -150,7 +146,13 @@ export class ArenaNetSystem {
         );
         break;
       case "fire":
-        this.remoteProjectiles.spawn(message.weapon, message.ox, message.oy, message.tx, message.ty);
+        if (message.weapon === "fireball") {
+          this.weaponSystem.castFireball(message.tx, message.ty, message.ox, message.oy);
+        } else if (message.weapon === "ray") {
+          this.weaponSystem.castRay(message.tx, message.ty, message.ox, message.oy);
+        } else if (message.weapon === "sphere") {
+          this.weaponSystem.castSphere(message.tx, message.ty, message.ox, message.oy);
+        }
         this.remotePlayers.get(peerId)?.flash();
         break;
       case "chat":

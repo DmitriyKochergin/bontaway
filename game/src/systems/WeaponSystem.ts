@@ -127,14 +127,14 @@ export class WeaponSystem {
     this.activeSpheres.clear();
   }
 
-  public castFireball(targetX: number, targetY: number): void {
+  public castFireball(targetX: number, targetY: number, originX = this.player.x, originY = this.player.y): void {
     if (this.isDestroyed) {
       return;
     }
 
     this.audioSystem?.playFireballCast(0.45);
 
-    const projectile = this.scene.physics.add.sprite(this.player.x, this.player.y, "fireball");
+    const projectile = this.scene.physics.add.sprite(originX, originY, "fireball");
     projectile.setPipeline("Light2D");
     projectile.setDepth(250);
 
@@ -193,20 +193,26 @@ export class WeaponSystem {
     this.scene.events.on("update", updateListener);
   }
 
-  public castRay(targetX: number, targetY: number): void {
-    this.castProjectile("ray", targetX, targetY);
+  public castRay(targetX: number, targetY: number, originX = this.player.x, originY = this.player.y): void {
+    this.castProjectile("ray", targetX, targetY, originX, originY);
   }
 
-  public castSphere(targetX: number, targetY: number): void {
-    this.castProjectile("sphere", targetX, targetY);
+  public castSphere(targetX: number, targetY: number, originX = this.player.x, originY = this.player.y): void {
+    this.castProjectile("sphere", targetX, targetY, originX, originY);
   }
 
-  private castProjectile(kind: ProjectileKind, targetX: number, targetY: number): void {
+  private castProjectile(
+    kind: ProjectileKind,
+    targetX: number,
+    targetY: number,
+    originX = this.player.x,
+    originY = this.player.y
+  ): void {
     if (this.isDestroyed) {
       return;
     }
 
-    const distance = Phaser.Math.Distance.Between(this.player.x, this.player.y, targetX, targetY);
+    const distance = Phaser.Math.Distance.Between(originX, originY, targetX, targetY);
     if (distance < 4) {
       return;
     }
@@ -221,7 +227,7 @@ export class WeaponSystem {
       this.audioSystem?.playShockRifleAltFire(0.55);
     }
 
-    const projectile = this.scene.physics.add.sprite(this.player.x, this.player.y, textureKey);
+    const projectile = this.scene.physics.add.sprite(originX, originY, textureKey);
     projectile.setPipeline("Light2D");
     projectile.setDepth(kind === "ray" ? 255 : 253);
     projectile.setCollideWorldBounds(false);
