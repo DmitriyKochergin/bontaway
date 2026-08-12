@@ -5,7 +5,7 @@ export const arenaLevel: LevelDefinition = {
   name: "Arena",
   columns: 48,
   rows: 48,
-  fogOfWarEnabled: false,
+  fogOfWarEnabled: true,
   doorPlacements: [], // No doors in an open arena
   obstaclePlacements: [
     // Surrounding center pillars
@@ -47,4 +47,3 @@ export const arenaLevel: LevelDefinition = {
     };
   }
 };
-
