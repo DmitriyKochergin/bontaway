@@ -75,6 +75,7 @@ export default class MainScene extends BaseScene {
         : new StoneGameHUD(this, gameScene, () => this.toggleSettings(), selectedWeaponSlot);
     this.gameHUD.create();
     this.syncMessageControls();
+    this.syncGameplayPauseState();
     this.scene.bringToTop();
   }
 
@@ -109,6 +110,10 @@ export default class MainScene extends BaseScene {
       event.preventDefault();
 
       if (this.scene.isActive("SettingsScene")) {
+        return;
+      }
+
+      if (!this.canUseGameplayPause()) {
         return;
       }
 
@@ -212,9 +217,37 @@ export default class MainScene extends BaseScene {
   }
 
   private toggleRtwpPause(): void {
+    if (!this.canUseGameplayPause()) {
+      this.gameplayPaused = false;
+      this.updatePausedLabel();
+      return;
+    }
+
     this.gameplayPaused = !this.gameplayPaused;
     this.applyGameplayPauseState();
     this.updatePausedLabel();
+  }
+
+  private syncGameplayPauseState(): void {
+    if (this.canUseGameplayPause()) {
+      return;
+    }
+
+    if (this.gameplayPaused) {
+      this.gameplayPaused = false;
+      this.updatePausedLabel();
+    }
+
+    if (!this.scene.isActive("SettingsScene")) {
+      this.scene.resume("GameScene");
+    }
+  }
+
+  private canUseGameplayPause(): boolean {
+    const gameScene = this.scene.get("GameScene") as GameScene;
+    const levelId = gameScene.getLevelId();
+
+    return levelId !== "arena" && levelId !== "trademeet";
   }
 
   private applyGameplayPauseState(): void {
