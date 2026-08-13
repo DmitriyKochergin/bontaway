@@ -8,6 +8,10 @@ import { NPC_STYLES, type NpcStyle } from "../entities/NpcStyle";
  * Builds shared textures, then hands control to `MainScene` for gameplay orchestration.
  */
 export default class PreloadScene extends Phaser.Scene {
+  // Vertical centre of the eye region; eyebrow strokes are point-reflected about
+  // this (top-down slimes look "up", so the brow marker belongs toward body centre).
+  private static readonly EYE_BROW_PIVOT_Y = 12.5;
+
   constructor() {
     super("PreloadScene");
   }
@@ -317,10 +321,30 @@ export default class PreloadScene extends Phaser.Scene {
       npc.fillRoundedRect(cx - eyeSpread - 1.5, ey, 5, eh, er);
       npc.fillRoundedRect(cx + eyeSpread - 3.5, ey, 5, eh, er);
     } else if (emotion === "angry" || emotion === "sad" || emotion === "devastated") {
-      // Standard eye shapes with specific brow/tears overlays
+      // Standard eye shapes; browed faces layer brows/tears on top, browless faces
+      // instead carve the eyes (see below) so the emotion still reads.
       npc.fillStyle(eyeColor, 0.9);
       npc.fillRoundedRect(cx - eyeSpread - 1.5, ey, 5, eh, er);
       npc.fillRoundedRect(cx + eyeSpread - 3.5, ey, 5, eh, er);
+
+      // Slimes are viewed from above and "look up" (eyes at the top edge), so the
+      // expressive cut lives on the inner side toward the body centre — the eyes'
+      // lower edge for angry, upper edge for the sad droop.
+      if (style.showBrows === false && !isClosed) {
+        const leftInnerX = cx - eyeSpread + 3.5;
+        const rightInnerX = cx + eyeSpread - 3.5;
+        const cutWidth = 3;
+        if (emotion === "angry") {
+          const cutHeight = Math.min(eh * 0.75, 5);
+          this.carveEyeCorner(npc, leftInnerX, ey + eh, -1, -1, style.bodyColor, cutWidth, cutHeight);
+          this.carveEyeCorner(npc, rightInnerX, ey + eh, 1, -1, style.bodyColor, cutWidth, cutHeight);
+        } else {
+          const isDevastated = emotion === "devastated";
+          const cutHeight = Math.min(eh * (isDevastated ? 0.9 : 0.65), isDevastated ? 7 : 5);
+          this.carveEyeCorner(npc, leftInnerX, ey, -1, 1, style.bodyColor, cutWidth, cutHeight);
+          this.carveEyeCorner(npc, rightInnerX, ey, 1, 1, style.bodyColor, cutWidth, cutHeight);
+        }
+      }
     } else if (emotion === "happy") {
       // Curved upward arc for happy eyes
       npc.lineStyle(2, eyeColor, 0.9);
@@ -442,6 +466,14 @@ export default class PreloadScene extends Phaser.Scene {
     this.drawEyebrowsAndDetails(npc, cx, eyeSpread, emotion, isClosed, showBrows);
   }
 
+  /**
+   * Draws eyebrows plus emotion extras (tears, blush) for browed faces.
+   *
+   * Slimes are seen from above and "look up" (eyes hug the top edge). Anatomically
+   * the expressive brow belongs between the eyes and the body centre, so the brow
+   * strokes are point-reflected 180° about the eye pivot. Tears/blush keep their
+   * natural orientation and are drawn outside the transform.
+   */
   private drawEyebrowsAndDetails(
     npc: Phaser.GameObjects.Graphics,
     cx: number,
@@ -455,6 +487,43 @@ export default class PreloadScene extends Phaser.Scene {
       return;
     }
 
+    npc.save();
+    npc.translateCanvas(cx, PreloadScene.EYE_BROW_PIVOT_Y);
+    npc.rotateCanvas(Math.PI);
+    npc.translateCanvas(-cx, -PreloadScene.EYE_BROW_PIVOT_Y);
+    this.drawEmotionBrows(npc, cx, eyeSpread, emotion);
+    npc.restore();
+
+    this.drawEmotionExtras(npc, cx, eyeSpread, emotion, isEyeClosed);
+  }
+
+  /** Carves a diagonal chamfer out of an eye corner using the body colour. */
+  private carveEyeCorner(
+    npc: Phaser.GameObjects.Graphics,
+    cornerX: number,
+    cornerY: number,
+    horizontalDir: number,
+    verticalDir: number,
+    bodyColor: number,
+    cutWidth: number,
+    cutHeight: number
+  ): void {
+    npc.fillStyle(bodyColor, 1);
+    npc.beginPath();
+    npc.moveTo(cornerX, cornerY);
+    npc.lineTo(cornerX + horizontalDir * cutWidth, cornerY);
+    npc.lineTo(cornerX, cornerY + verticalDir * cutHeight);
+    npc.closePath();
+    npc.fillPath();
+  }
+
+  /** Emotion-specific eyebrow strokes, drawn inside the 180° brow transform. */
+  private drawEmotionBrows(
+    npc: Phaser.GameObjects.Graphics,
+    cx: number,
+    eyeSpread: number,
+    emotion: NpcEmotion
+  ): void {
     const browColor = 0x111111;
     const browAlpha = 0.95;
 
@@ -480,14 +549,6 @@ export default class PreloadScene extends Phaser.Scene {
       npc.moveTo(cx + 0.5, 5);
       npc.lineTo(cx + eyeSpread + 3, 7.5);
       npc.strokePath();
-
-      if (emotion === "devastated" && !isEyeClosed) {
-        npc.fillStyle(0x00ccff, 0.8);
-        npc.fillCircle(cx - eyeSpread, 16, 1.8);
-        npc.fillCircle(cx + eyeSpread, 16, 1.8);
-        npc.fillRect(cx - eyeSpread - 0.8, 16, 1.6, 6);
-        npc.fillRect(cx + eyeSpread - 0.8, 16, 1.6, 6);
-      }
     } else if (emotion === "happy") {
       npc.lineStyle(1.5, browColor, browAlpha);
       this.drawQuadraticCurve(npc, cx - eyeSpread - 3, 6, cx - eyeSpread, 4, cx - 0.5, 6);
@@ -586,16 +647,33 @@ export default class PreloadScene extends Phaser.Scene {
       npc.moveTo(cx + 0.5, 4);
       npc.lineTo(cx + eyeSpread + 3, 5);
       npc.strokePath();
-
-      if (!isEyeClosed) {
-        npc.fillStyle(0xff8093, 0.55);
-        npc.fillCircle(cx - eyeSpread - 3, 14, 2);
-        npc.fillCircle(cx + eyeSpread + 3, 14, 2);
-      }
     } else if (emotion === "pleading") {
       npc.lineStyle(1.5, browColor, browAlpha);
       this.drawQuadraticCurve(npc, cx - eyeSpread - 2.5, 5, cx - eyeSpread, 3.5, cx - 0.5, 5);
       this.drawQuadraticCurve(npc, cx + 0.5, 5, cx + eyeSpread, 3.5, cx + eyeSpread + 2.5, 5);
+    }
+  }
+
+  /** Non-brow overlays (tears, blush) rendered in natural orientation. */
+  private drawEmotionExtras(
+    npc: Phaser.GameObjects.Graphics,
+    cx: number,
+    eyeSpread: number,
+    emotion: NpcEmotion,
+    isEyeClosed: boolean
+  ): void {
+    if (isEyeClosed) return;
+
+    if (emotion === "devastated") {
+      npc.fillStyle(0x00ccff, 0.8);
+      npc.fillCircle(cx - eyeSpread, 16, 1.8);
+      npc.fillCircle(cx + eyeSpread, 16, 1.8);
+      npc.fillRect(cx - eyeSpread - 0.8, 16, 1.6, 6);
+      npc.fillRect(cx + eyeSpread - 0.8, 16, 1.6, 6);
+    } else if (emotion === "shy") {
+      npc.fillStyle(0xff8093, 0.55);
+      npc.fillCircle(cx - eyeSpread - 3, 14, 2);
+      npc.fillCircle(cx + eyeSpread + 3, 14, 2);
     }
   }
 
