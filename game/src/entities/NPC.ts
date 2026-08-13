@@ -10,6 +10,7 @@ export class NPC extends Phaser.Physics.Arcade.Sprite {
   private currentLineIndex = 0;
   private isBlinking = false;
   private nextBlinkTime = 0;
+  private canBlink = true;
 
   // Eye-follow: NPC body rotates to face the player while in activation radius, eases back to rest otherwise
   private targetRotation = 0;
@@ -43,6 +44,7 @@ export class NPC extends Phaser.Physics.Arcade.Sprite {
     this.npcType = npcType;
     this.npcName = npcName;
     this.dialogueLines = dialogueLines;
+    this.canBlink = emotion === undefined || emotion === "neutral";
 
     scene.add.existing(this);
     scene.physics.add.existing(this, true); // Create as static body
@@ -64,7 +66,9 @@ export class NPC extends Phaser.Physics.Arcade.Sprite {
       }
     });
 
-    this.scheduleNextBlink(scene.time?.now || 0);
+    if (this.canBlink) {
+      this.scheduleNextBlink(scene.time?.now || 0);
+    }
     this.createSpeechBubble();
   }
 
@@ -150,7 +154,7 @@ export class NPC extends Phaser.Physics.Arcade.Sprite {
 
   public update(playerX: number, playerY: number, currentTime: number, _delta: number): void {
     // Blinking trigger logic
-    if (!this.isBlinking && currentTime >= this.nextBlinkTime) {
+    if (this.canBlink && !this.isBlinking && currentTime >= this.nextBlinkTime) {
       this.isBlinking = true;
       this.anims.play(`${this.texture.key}_blink`);
       this.scheduleNextBlink(currentTime);
