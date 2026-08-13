@@ -25,7 +25,6 @@ export interface NpcPlacement {
   restTarget?: { x: number; y: number };
 }
 
-
 export interface LevelLayout {
   walkable: boolean[][];
   spawnX: number;
@@ -43,4 +42,3 @@ export interface LevelDefinition {
   npcPlacements?: NpcPlacement[];
   generateLayout: (tileSize: number) => LevelLayout;
 }
-

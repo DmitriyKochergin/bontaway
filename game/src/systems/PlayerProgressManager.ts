@@ -18,7 +18,8 @@ function isPlayerProgressState(value: unknown): value is PlayerProgressState {
 
   const candidate = value as Partial<PlayerProgressState>;
   return (
-    typeof candidate.levelId === "string" && candidate.levelId.length > 0 &&
+    typeof candidate.levelId === "string" &&
+    candidate.levelId.length > 0 &&
     isFiniteNumber(candidate.x) &&
     isFiniteNumber(candidate.y) &&
     isFiniteNumber(candidate.rotation)
@@ -51,4 +52,3 @@ export function savePlayerProgress(progress: PlayerProgressState): void {
     console.warn("Failed to save player progress:", error);
   }
 }
-

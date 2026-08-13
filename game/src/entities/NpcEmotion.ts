@@ -50,5 +50,5 @@ export const NPC_EMOTIONS: NpcEmotion[] = [
   "shy",
   "pleading",
   "soulless",
-  "hypnotized",
+  "hypnotized"
 ];

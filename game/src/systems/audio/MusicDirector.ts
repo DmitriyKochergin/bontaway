@@ -165,11 +165,14 @@ export class MusicDirector {
 
     this.playMelodyNote();
     const [minDelay, maxDelay] = this.getNoteDelayRange();
-    this.melodyTimeoutId = window.setTimeout(() => {
-      this.melodyTimeoutId = null;
-      this.generateNextNote();
-      this.scheduleNextNote();
-    }, minDelay + Math.random() * (maxDelay - minDelay));
+    this.melodyTimeoutId = window.setTimeout(
+      () => {
+        this.melodyTimeoutId = null;
+        this.generateNextNote();
+        this.scheduleNextNote();
+      },
+      minDelay + Math.random() * (maxDelay - minDelay)
+    );
   }
 
   private generateNextNote(): void {
@@ -262,4 +265,3 @@ export class MusicDirector {
     this.melodyGain = null;
   }
 }
-

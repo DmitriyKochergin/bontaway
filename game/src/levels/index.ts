@@ -16,4 +16,3 @@ export function getLevels(): LevelDefinition[] {
 export function getLevelDefinition(id: string): LevelDefinition | undefined {
   return levels.find(lvl => lvl.id === id);
 }
-
