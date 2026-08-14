@@ -334,25 +334,41 @@ export default class PreloadScene extends Phaser.Scene {
       if (style.showBrows === false && !isClosed) {
         const leftInnerX = centerX - eyeSpread + 3.5;
         const rightInnerX = centerX + eyeSpread - 3.5;
-        const leftOuterX = centerX + eyeSpread - 3.5;
-        const rightOuterX = centerX - eyeSpread + 3.5;
+        const leftOuterX = centerX + eyeSpread + 1.5;
+        const rightOuterX = centerX - eyeSpread - 1.5;
         const cutWidth = 3;
         if (emotion === "angry") {
-          const cutHeight = Math.min(eyeHeight * 0.75, 5);
+          const cutHeight = Math.min(eyeHeight * 0.35, 5);
           this.carveEyeCorner(npc, leftInnerX, eyeY + eyeHeight, -1, -1, style.bodyColor, cutWidth, cutHeight);
           this.carveEyeCorner(npc, rightInnerX, eyeY + eyeHeight, 1, -1, style.bodyColor, cutWidth, cutHeight);
         } else {
-          const cutHeight = Math.min(eyeHeight * 0.95, 5);
-          this.carveEyeCorner(npc, leftOuterX, eyeY, 1, 1, style.bodyColor, cutWidth, cutHeight);
-          this.carveEyeCorner(npc, rightOuterX, eyeY, -1, 1, style.bodyColor, cutWidth, cutHeight);
+          const cutHeight = Math.min(eyeHeight * 0.35, 5);
+          this.carveEyeCorner(npc, leftOuterX, eyeY + eyeHeight, -1, -1, style.bodyColor, cutWidth, cutHeight);
+          this.carveEyeCorner(npc, rightOuterX, eyeY + eyeHeight, 1, -1, style.bodyColor, cutWidth, cutHeight);
         }
       }
     } else if (emotion === "happy") {
       // Curved upward arc for happy eyes
       npc.lineStyle(2, eyeColor, 0.9);
       const arcHeight = isHalf ? eyeHeight / 2 : eyeHeight;
-      this.drawQuadraticCurve(npc, centerX - eyeSpread - 2.5, eyeY + arcHeight, centerX - eyeSpread + 1, eyeY, centerX - 0.5, eyeY + arcHeight);
-      this.drawQuadraticCurve(npc, centerX + 0.5, eyeY + arcHeight, centerX + eyeSpread - 1, eyeY, centerX + eyeSpread + 2.5, eyeY + arcHeight);
+      this.drawQuadraticCurve(
+        npc,
+        centerX - eyeSpread - 2.5,
+        eyeY + arcHeight,
+        centerX - eyeSpread + 1,
+        eyeY,
+        centerX - 0.5,
+        eyeY + arcHeight
+      );
+      this.drawQuadraticCurve(
+        npc,
+        centerX + 0.5,
+        eyeY + arcHeight,
+        centerX + eyeSpread - 1,
+        eyeY,
+        centerX + eyeSpread + 2.5,
+        eyeY + arcHeight
+      );
     } else if (emotion === "surprised") {
       // Large circular eyes
       const radius = isHalf ? 2 : 3.5;
@@ -415,8 +431,24 @@ export default class PreloadScene extends Phaser.Scene {
       // Curved downward eyes (relaxed)
       npc.lineStyle(2, eyeColor, 0.9);
       const arcHeight = isHalf ? eyeHeight / 2 : eyeHeight;
-      this.drawQuadraticCurve(npc, centerX - eyeSpread - 2.5, eyeY, centerX - eyeSpread + 1, eyeY + arcHeight, centerX - 0.5, eyeY);
-      this.drawQuadraticCurve(npc, centerX + 0.5, eyeY, centerX + eyeSpread - 1, eyeY + arcHeight, centerX + eyeSpread + 2.5, eyeY);
+      this.drawQuadraticCurve(
+        npc,
+        centerX - eyeSpread - 2.5,
+        eyeY,
+        centerX - eyeSpread + 1,
+        eyeY + arcHeight,
+        centerX - 0.5,
+        eyeY
+      );
+      this.drawQuadraticCurve(
+        npc,
+        centerX + 0.5,
+        eyeY,
+        centerX + eyeSpread - 1,
+        eyeY + arcHeight,
+        centerX + eyeSpread + 2.5,
+        eyeY
+      );
     } else if (emotion === "manic") {
       // Mismatched size
       npc.fillStyle(eyeColor, 0.9);
