@@ -333,16 +333,17 @@ export default class PreloadScene extends Phaser.Scene {
       if (style.showBrows === false && !isClosed) {
         const leftInnerX = cx - eyeSpread + 3.5;
         const rightInnerX = cx + eyeSpread - 3.5;
+        const leftOuterX = cx + eyeSpread - 3.5;
+        const rightOuterX = cx - eyeSpread + 3.5;
         const cutWidth = 3;
         if (emotion === "angry") {
           const cutHeight = Math.min(eh * 0.75, 5);
           this.carveEyeCorner(npc, leftInnerX, ey + eh, -1, -1, style.bodyColor, cutWidth, cutHeight);
           this.carveEyeCorner(npc, rightInnerX, ey + eh, 1, -1, style.bodyColor, cutWidth, cutHeight);
         } else {
-          const isDevastated = emotion === "devastated";
-          const cutHeight = Math.min(eh * (isDevastated ? 0.9 : 0.65), isDevastated ? 7 : 5);
-          this.carveEyeCorner(npc, leftInnerX, ey, -1, 1, style.bodyColor, cutWidth, cutHeight);
-          this.carveEyeCorner(npc, rightInnerX, ey, 1, 1, style.bodyColor, cutWidth, cutHeight);
+          const cutHeight = Math.min(eh * 0.95, 5);
+          this.carveEyeCorner(npc, leftOuterX, ey, 1, 1, style.bodyColor, cutWidth, cutHeight);
+          this.carveEyeCorner(npc, rightOuterX, ey, -1, 1, style.bodyColor, cutWidth, cutHeight);
         }
       }
     } else if (emotion === "happy") {
@@ -518,12 +519,7 @@ export default class PreloadScene extends Phaser.Scene {
   }
 
   /** Emotion-specific eyebrow strokes, drawn inside the 180° brow transform. */
-  private drawEmotionBrows(
-    npc: Phaser.GameObjects.Graphics,
-    cx: number,
-    eyeSpread: number,
-    emotion: NpcEmotion
-  ): void {
+  private drawEmotionBrows(npc: Phaser.GameObjects.Graphics, cx: number, eyeSpread: number, emotion: NpcEmotion): void {
     const browColor = 0x111111;
     const browAlpha = 0.95;
 
