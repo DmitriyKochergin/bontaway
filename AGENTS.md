@@ -20,3 +20,4 @@
 - **Discovery:** Never suggest adding tutorials or manuals; implement environmental cues instead.
 - **Tactics:** Combat should be designed around the "Pause" mechanic — assume the player will use it for complex actions.
 - **Vibe:** Maintain a dark, mysterious, and slightly surreal (SCP/Liminal) atmosphere.
+- **Naming:** Prefer descriptive locals for geometry and drawing code; avoid cryptic abbreviations like `cx`, `ey`, `h`, and `r` unless the scope is tiny and the meaning stays obvious.

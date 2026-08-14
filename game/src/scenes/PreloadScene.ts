@@ -192,22 +192,22 @@ export default class PreloadScene extends Phaser.Scene {
     const player = this.add.graphics();
 
     const frames = [
-      { y: 8, h: 9, r: 2.5 }, // Frame 0: Open
-      { y: 10, h: 5, r: 2.0 }, // Frame 1: Half closed
-      { y: 12, h: 1.5, r: 0.75 }, // Frame 2: Closed slit
-      { y: 10, h: 5, r: 2.0 } // Frame 3: Half open
+      { y: 8, height: 9, radius: 2.5 }, // Frame 0: Open
+      { y: 10, height: 5, radius: 2.0 }, // Frame 1: Half closed
+      { y: 12, height: 1.5, radius: 0.75 }, // Frame 2: Closed slit
+      { y: 10, height: 5, radius: 2.0 } // Frame 3: Half open
     ];
 
     for (let i = 0; i < frames.length; i++) {
-      const frame = frames[i];
+      const eyeFrame = frames[i];
       const offsetX = i * 32;
 
       player.fillStyle(0x777777);
       player.fillCircle(offsetX + 16, 16, 14);
 
       player.fillStyle(0x111111, 0.9);
-      player.fillRoundedRect(offsetX + 9, frame.y, 5, frame.h, frame.r);
-      player.fillRoundedRect(offsetX + 18, frame.y, 5, frame.h, frame.r);
+      player.fillRoundedRect(offsetX + 9, eyeFrame.y, 5, eyeFrame.height, eyeFrame.radius);
+      player.fillRoundedRect(offsetX + 18, eyeFrame.y, 5, eyeFrame.height, eyeFrame.radius);
     }
 
     player.generateTexture("player", 128, 32);
@@ -250,14 +250,14 @@ export default class PreloadScene extends Phaser.Scene {
 
     const npc = this.add.graphics();
     const frames = [
-      { y: 8, h: 9, r: 2.5 }, // Frame 0: Open
-      { y: 10, h: 5, r: 2.0 }, // Frame 1: Half closed
-      { y: 12, h: 1.5, r: 0.75 }, // Frame 2: Closed slit
-      { y: 10, h: 5, r: 2.0 } // Frame 3: Half open
+      { y: 8, height: 9, radius: 2.5 }, // Frame 0: Open
+      { y: 10, height: 5, radius: 2.0 }, // Frame 1: Half closed
+      { y: 12, height: 1.5, radius: 0.75 }, // Frame 2: Closed slit
+      { y: 10, height: 5, radius: 2.0 } // Frame 3: Half open
     ];
 
     for (let i = 0; i < frames.length; i++) {
-      const frame = frames[i];
+      const eyeFrame = frames[i];
       const offsetX = i * 32;
 
       // Body
@@ -268,7 +268,7 @@ export default class PreloadScene extends Phaser.Scene {
       npc.strokeCircle(offsetX + 16, 16, 14);
 
       // Face elements (eyes, brows, tears, blush, etc.)
-      this.drawNpcFace(npc, offsetX, frame, style, emotion, i);
+      this.drawNpcFace(npc, offsetX, eyeFrame, style, emotion, i);
     }
 
     npc.generateTexture(textureKey, 128, 32);
@@ -292,179 +292,180 @@ export default class PreloadScene extends Phaser.Scene {
   private drawNpcFace(
     npc: Phaser.GameObjects.Graphics,
     offsetX: number,
-    frame: { y: number; h: number; r: number },
+    eyeFrame: { y: number; height: number; radius: number },
     style: NpcStyle,
     emotion: NpcEmotion | null,
     blinkFrameIndex: number
   ): void {
     const { eyeColor, eyeSpread, showBrows = true } = style;
-    const cx = offsetX + 16;
+    // Shared eye center. Blink frames hang off this anchor.
+    const centerX = offsetX + 16;
     const isClosed = blinkFrameIndex === 2;
     const isHalf = blinkFrameIndex === 1 || blinkFrameIndex === 3;
 
-    const ey = frame.y;
-    const eh = frame.h;
-    const er = frame.r;
+    const eyeY = eyeFrame.y;
+    const eyeHeight = eyeFrame.height;
+    const eyeRadius = eyeFrame.radius;
 
     if (isClosed) {
       // Draw closed slit for eyes
       npc.fillStyle(eyeColor, 0.9);
-      npc.fillRoundedRect(cx - eyeSpread - 1.5, 12, 5, 1.5, 0.75);
-      npc.fillRoundedRect(cx + eyeSpread - 3.5, 12, 5, 1.5, 0.75);
+      npc.fillRoundedRect(centerX - eyeSpread - 1.5, 12, 5, 1.5, 0.75);
+      npc.fillRoundedRect(centerX + eyeSpread - 3.5, 12, 5, 1.5, 0.75);
 
-      this.drawEyebrowsAndDetails(npc, cx, eyeSpread, emotion, true, showBrows);
+      this.drawEyebrowsAndDetails(npc, centerX, eyeSpread, emotion, true, showBrows);
       return;
     }
 
     if (!emotion || emotion === "neutral") {
       npc.fillStyle(eyeColor, 0.9);
-      npc.fillRoundedRect(cx - eyeSpread - 1.5, ey, 5, eh, er);
-      npc.fillRoundedRect(cx + eyeSpread - 3.5, ey, 5, eh, er);
+      npc.fillRoundedRect(centerX - eyeSpread - 1.5, eyeY, 5, eyeHeight, eyeRadius);
+      npc.fillRoundedRect(centerX + eyeSpread - 3.5, eyeY, 5, eyeHeight, eyeRadius);
     } else if (emotion === "angry" || emotion === "sad" || emotion === "devastated") {
       // Standard eye shapes; browed faces layer brows/tears on top, browless faces
       // instead carve the eyes (see below) so the emotion still reads.
       npc.fillStyle(eyeColor, 0.9);
-      npc.fillRoundedRect(cx - eyeSpread - 1.5, ey, 5, eh, er);
-      npc.fillRoundedRect(cx + eyeSpread - 3.5, ey, 5, eh, er);
+      npc.fillRoundedRect(centerX - eyeSpread - 1.5, eyeY, 5, eyeHeight, eyeRadius);
+      npc.fillRoundedRect(centerX + eyeSpread - 3.5, eyeY, 5, eyeHeight, eyeRadius);
 
       // Slimes are viewed from above and "look up" (eyes at the top edge), so the
       // expressive cut lives on the inner side toward the body centre — the eyes'
       // lower edge for angry, upper edge for the sad droop.
       if (style.showBrows === false && !isClosed) {
-        const leftInnerX = cx - eyeSpread + 3.5;
-        const rightInnerX = cx + eyeSpread - 3.5;
-        const leftOuterX = cx + eyeSpread - 3.5;
-        const rightOuterX = cx - eyeSpread + 3.5;
+        const leftInnerX = centerX - eyeSpread + 3.5;
+        const rightInnerX = centerX + eyeSpread - 3.5;
+        const leftOuterX = centerX + eyeSpread - 3.5;
+        const rightOuterX = centerX - eyeSpread + 3.5;
         const cutWidth = 3;
         if (emotion === "angry") {
-          const cutHeight = Math.min(eh * 0.75, 5);
-          this.carveEyeCorner(npc, leftInnerX, ey + eh, -1, -1, style.bodyColor, cutWidth, cutHeight);
-          this.carveEyeCorner(npc, rightInnerX, ey + eh, 1, -1, style.bodyColor, cutWidth, cutHeight);
+          const cutHeight = Math.min(eyeHeight * 0.75, 5);
+          this.carveEyeCorner(npc, leftInnerX, eyeY + eyeHeight, -1, -1, style.bodyColor, cutWidth, cutHeight);
+          this.carveEyeCorner(npc, rightInnerX, eyeY + eyeHeight, 1, -1, style.bodyColor, cutWidth, cutHeight);
         } else {
-          const cutHeight = Math.min(eh * 0.95, 5);
-          this.carveEyeCorner(npc, leftOuterX, ey, 1, 1, style.bodyColor, cutWidth, cutHeight);
-          this.carveEyeCorner(npc, rightOuterX, ey, -1, 1, style.bodyColor, cutWidth, cutHeight);
+          const cutHeight = Math.min(eyeHeight * 0.95, 5);
+          this.carveEyeCorner(npc, leftOuterX, eyeY, 1, 1, style.bodyColor, cutWidth, cutHeight);
+          this.carveEyeCorner(npc, rightOuterX, eyeY, -1, 1, style.bodyColor, cutWidth, cutHeight);
         }
       }
     } else if (emotion === "happy") {
       // Curved upward arc for happy eyes
       npc.lineStyle(2, eyeColor, 0.9);
-      const arcH = isHalf ? eh / 2 : eh;
-      this.drawQuadraticCurve(npc, cx - eyeSpread - 2.5, ey + arcH, cx - eyeSpread + 1, ey, cx - 0.5, ey + arcH);
-      this.drawQuadraticCurve(npc, cx + 0.5, ey + arcH, cx + eyeSpread - 1, ey, cx + eyeSpread + 2.5, ey + arcH);
+      const arcHeight = isHalf ? eyeHeight / 2 : eyeHeight;
+      this.drawQuadraticCurve(npc, centerX - eyeSpread - 2.5, eyeY + arcHeight, centerX - eyeSpread + 1, eyeY, centerX - 0.5, eyeY + arcHeight);
+      this.drawQuadraticCurve(npc, centerX + 0.5, eyeY + arcHeight, centerX + eyeSpread - 1, eyeY, centerX + eyeSpread + 2.5, eyeY + arcHeight);
     } else if (emotion === "surprised") {
       // Large circular eyes
       const radius = isHalf ? 2 : 3.5;
       npc.fillStyle(eyeColor, 0.9);
-      npc.fillCircle(cx - eyeSpread, ey + eh / 2, radius);
-      npc.fillCircle(cx + eyeSpread, ey + eh / 2, radius);
+      npc.fillCircle(centerX - eyeSpread, eyeY + eyeHeight / 2, radius);
+      npc.fillCircle(centerX + eyeSpread, eyeY + eyeHeight / 2, radius);
     } else if (emotion === "fear") {
       // Tiny pupils
       const radius = isHalf ? 1 : 1.5;
       npc.fillStyle(eyeColor, 0.9);
-      npc.fillCircle(cx - eyeSpread, ey + eh / 2, radius);
-      npc.fillCircle(cx + eyeSpread, ey + eh / 2, radius);
+      npc.fillCircle(centerX - eyeSpread, eyeY + eyeHeight / 2, radius);
+      npc.fillCircle(centerX + eyeSpread, eyeY + eyeHeight / 2, radius);
     } else if (emotion === "disgusted") {
       // Squinted tiny slots
       const height = isHalf ? 1.5 : 3;
       npc.fillStyle(eyeColor, 0.9);
-      npc.fillRect(cx - eyeSpread - 2, ey + eh / 2 - height / 2, 5, height);
-      npc.fillRect(cx + eyeSpread - 3, ey + eh / 2 - height / 2, 5, height);
+      npc.fillRect(centerX - eyeSpread - 2, eyeY + eyeHeight / 2 - height / 2, 5, height);
+      npc.fillRect(centerX + eyeSpread - 3, eyeY + eyeHeight / 2 - height / 2, 5, height);
     } else if (emotion === "suspicious") {
       // Left eye normal, right eye squinted
       const rHeight = isHalf ? 1.5 : 2.5;
       npc.fillStyle(eyeColor, 0.9);
-      npc.fillRoundedRect(cx - eyeSpread - 1.5, ey, 5, eh, er);
-      npc.fillRect(cx + eyeSpread - 3.5, ey + eh / 2 - rHeight / 2, 5, rHeight);
+      npc.fillRoundedRect(centerX - eyeSpread - 1.5, eyeY, 5, eyeHeight, eyeRadius);
+      npc.fillRect(centerX + eyeSpread - 3.5, eyeY + eyeHeight / 2 - rHeight / 2, 5, rHeight);
     } else if (emotion === "sleepy") {
       // Capped height for half-closed look
-      const reducedH = Math.min(eh, isHalf ? 2 : 4);
+      const reducedHeight = Math.min(eyeHeight, isHalf ? 2 : 4);
       npc.fillStyle(eyeColor, 0.9);
-      npc.fillRoundedRect(cx - eyeSpread - 1.5, ey + 2, 5, reducedH, er);
-      npc.fillRoundedRect(cx + eyeSpread - 3.5, ey + 2, 5, reducedH, er);
+      npc.fillRoundedRect(centerX - eyeSpread - 1.5, eyeY + 2, 5, reducedHeight, eyeRadius);
+      npc.fillRoundedRect(centerX + eyeSpread - 3.5, eyeY + 2, 5, reducedHeight, eyeRadius);
     } else if (emotion === "bored") {
       // Flat line eyes
       const height = isHalf ? 1 : 2;
       npc.fillStyle(eyeColor, 0.9);
-      npc.fillRect(cx - eyeSpread - 2, ey + eh / 2 - height / 2, 5, height);
-      npc.fillRect(cx + eyeSpread - 3, ey + eh / 2 - height / 2, 5, height);
+      npc.fillRect(centerX - eyeSpread - 2, eyeY + eyeHeight / 2 - height / 2, 5, height);
+      npc.fillRect(centerX + eyeSpread - 3, eyeY + eyeHeight / 2 - height / 2, 5, height);
     } else if (emotion === "excited") {
       // Cross/star shape
       npc.lineStyle(2, eyeColor, 0.9);
       const len = isHalf ? 2.5 : 4;
       npc.beginPath();
-      npc.moveTo(cx - eyeSpread - len / 2, ey + eh / 2);
-      npc.lineTo(cx - eyeSpread + len / 2, ey + eh / 2);
-      npc.moveTo(cx - eyeSpread, ey + eh / 2 - len / 2);
-      npc.lineTo(cx - eyeSpread, ey + eh / 2 + len / 2);
+      npc.moveTo(centerX - eyeSpread - len / 2, eyeY + eyeHeight / 2);
+      npc.lineTo(centerX - eyeSpread + len / 2, eyeY + eyeHeight / 2);
+      npc.moveTo(centerX - eyeSpread, eyeY + eyeHeight / 2 - len / 2);
+      npc.lineTo(centerX - eyeSpread, eyeY + eyeHeight / 2 + len / 2);
       npc.strokePath();
 
       npc.beginPath();
-      npc.moveTo(cx + eyeSpread - len / 2, ey + eh / 2);
-      npc.lineTo(cx + eyeSpread + len / 2, ey + eh / 2);
-      npc.moveTo(cx + eyeSpread, ey + eh / 2 - len / 2);
-      npc.lineTo(cx + eyeSpread, ey + eh / 2 + len / 2);
+      npc.moveTo(centerX + eyeSpread - len / 2, eyeY + eyeHeight / 2);
+      npc.lineTo(centerX + eyeSpread + len / 2, eyeY + eyeHeight / 2);
+      npc.moveTo(centerX + eyeSpread, eyeY + eyeHeight / 2 - len / 2);
+      npc.lineTo(centerX + eyeSpread, eyeY + eyeHeight / 2 + len / 2);
       npc.strokePath();
     } else if (emotion === "confused") {
       // Left eye high, right eye low
       npc.fillStyle(eyeColor, 0.9);
-      npc.fillRoundedRect(cx - eyeSpread - 1.5, ey - 2, 5, eh, er);
-      npc.fillRoundedRect(cx + eyeSpread - 3.5, ey + 2, 5, eh, er);
+      npc.fillRoundedRect(centerX - eyeSpread - 1.5, eyeY - 2, 5, eyeHeight, eyeRadius);
+      npc.fillRoundedRect(centerX + eyeSpread - 3.5, eyeY + 2, 5, eyeHeight, eyeRadius);
     } else if (emotion === "proud") {
       // Curved downward eyes (relaxed)
       npc.lineStyle(2, eyeColor, 0.9);
-      const arcH = isHalf ? eh / 2 : eh;
-      this.drawQuadraticCurve(npc, cx - eyeSpread - 2.5, ey, cx - eyeSpread + 1, ey + arcH, cx - 0.5, ey);
-      this.drawQuadraticCurve(npc, cx + 0.5, ey, cx + eyeSpread - 1, ey + arcH, cx + eyeSpread + 2.5, ey);
+      const arcHeight = isHalf ? eyeHeight / 2 : eyeHeight;
+      this.drawQuadraticCurve(npc, centerX - eyeSpread - 2.5, eyeY, centerX - eyeSpread + 1, eyeY + arcHeight, centerX - 0.5, eyeY);
+      this.drawQuadraticCurve(npc, centerX + 0.5, eyeY, centerX + eyeSpread - 1, eyeY + arcHeight, centerX + eyeSpread + 2.5, eyeY);
     } else if (emotion === "manic") {
       // Mismatched size
       npc.fillStyle(eyeColor, 0.9);
-      npc.fillCircle(cx - eyeSpread, ey + eh / 2, isHalf ? 2.5 : 4.5);
-      npc.fillCircle(cx + eyeSpread, ey + eh / 2, isHalf ? 1 : 1.5);
+      npc.fillCircle(centerX - eyeSpread, eyeY + eyeHeight / 2, isHalf ? 2.5 : 4.5);
+      npc.fillCircle(centerX + eyeSpread, eyeY + eyeHeight / 2, isHalf ? 1 : 1.5);
     } else if (emotion === "smug") {
       // Squinted and looking to the side
       const height = isHalf ? 2 : 3.5;
       npc.fillStyle(eyeColor, 0.9);
-      npc.fillRect(cx - eyeSpread - 0.5, ey + eh / 2 - height / 2, 4, height);
-      npc.fillRect(cx + eyeSpread - 2.5, ey + eh / 2 - height / 2, 4, height);
+      npc.fillRect(centerX - eyeSpread - 0.5, eyeY + eyeHeight / 2 - height / 2, 4, height);
+      npc.fillRect(centerX + eyeSpread - 2.5, eyeY + eyeHeight / 2 - height / 2, 4, height);
     } else if (emotion === "determined") {
       // Flat top eyes
       npc.fillStyle(eyeColor, 0.9);
-      npc.fillRect(cx - eyeSpread - 1.5, ey + 2, 5, eh - 2);
-      npc.fillRect(cx + eyeSpread - 3.5, ey + 2, 5, eh - 2);
+      npc.fillRect(centerX - eyeSpread - 1.5, eyeY + 2, 5, eyeHeight - 2);
+      npc.fillRect(centerX + eyeSpread - 3.5, eyeY + 2, 5, eyeHeight - 2);
     } else if (emotion === "shy") {
       // Smaller eyes
       npc.fillStyle(eyeColor, 0.9);
-      npc.fillRoundedRect(cx - eyeSpread - 1, ey + 1, 4, eh - 2, er);
-      npc.fillRoundedRect(cx + eyeSpread - 3, ey + 1, 4, eh - 2, er);
+      npc.fillRoundedRect(centerX - eyeSpread - 1, eyeY + 1, 4, eyeHeight - 2, eyeRadius);
+      npc.fillRoundedRect(centerX + eyeSpread - 3, eyeY + 1, 4, eyeHeight - 2, eyeRadius);
     } else if (emotion === "pleading") {
       // Large pleading eyes with reflection highlights
       const radius = isHalf ? 2.5 : 3.8;
       npc.fillStyle(eyeColor, 0.9);
-      npc.fillCircle(cx - eyeSpread, ey + eh / 2, radius);
-      npc.fillCircle(cx + eyeSpread, ey + eh / 2, radius);
+      npc.fillCircle(centerX - eyeSpread, eyeY + eyeHeight / 2, radius);
+      npc.fillCircle(centerX + eyeSpread, eyeY + eyeHeight / 2, radius);
 
       if (!isHalf) {
         npc.fillStyle(0xffffff, 0.95);
-        npc.fillCircle(cx - eyeSpread - 1, ey + eh / 2 - 1, 1);
-        npc.fillCircle(cx + eyeSpread - 1, ey + eh / 2 - 1, 1);
+        npc.fillCircle(centerX - eyeSpread - 1, eyeY + eyeHeight / 2 - 1, 1);
+        npc.fillCircle(centerX + eyeSpread - 1, eyeY + eyeHeight / 2 - 1, 1);
       }
     } else if (emotion === "soulless") {
       // Hollow outline eyes
       npc.lineStyle(1.5, 0x777777, 0.85);
-      npc.strokeCircle(cx - eyeSpread, ey + eh / 2, 3.5);
-      npc.strokeCircle(cx + eyeSpread, ey + eh / 2, 3.5);
+      npc.strokeCircle(centerX - eyeSpread, eyeY + eyeHeight / 2, 3.5);
+      npc.strokeCircle(centerX + eyeSpread, eyeY + eyeHeight / 2, 3.5);
     } else if (emotion === "hypnotized") {
       // Spiral concentric rings
       npc.lineStyle(1, eyeColor, 0.9);
       const rMax = isHalf ? 2.5 : 4;
-      npc.strokeCircle(cx - eyeSpread, ey + eh / 2, rMax);
-      npc.strokeCircle(cx - eyeSpread, ey + eh / 2, rMax / 2);
-      npc.strokeCircle(cx + eyeSpread, ey + eh / 2, rMax);
-      npc.strokeCircle(cx + eyeSpread, ey + eh / 2, rMax / 2);
+      npc.strokeCircle(centerX - eyeSpread, eyeY + eyeHeight / 2, rMax);
+      npc.strokeCircle(centerX - eyeSpread, eyeY + eyeHeight / 2, rMax / 2);
+      npc.strokeCircle(centerX + eyeSpread, eyeY + eyeHeight / 2, rMax);
+      npc.strokeCircle(centerX + eyeSpread, eyeY + eyeHeight / 2, rMax / 2);
     }
 
-    this.drawEyebrowsAndDetails(npc, cx, eyeSpread, emotion, isClosed, showBrows);
+    this.drawEyebrowsAndDetails(npc, centerX, eyeSpread, emotion, isClosed, showBrows);
   }
 
   /**
