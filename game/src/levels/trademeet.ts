@@ -26,6 +26,13 @@ export const trademeetLevel: LevelDefinition = {
     { tileX: 9.5, tileY: 37.5, width: 32, height: 32 },
     { tileX: 37.5, tileY: 37.5, width: 32, height: 32 }
   ],
+  torchPlacements: [
+    // One torch standing beside each NPC, offset so the flame does not overlap the speaker.
+    { tileX: 21.8, tileY: 15.5, radius: 150 }, // Scholar Elion
+    { tileX: 15.5, tileY: 21.8, radius: 150 }, // Watcher Vael
+    { tileX: 7.5, tileY: 9.2, radius: 150 }, // The Nameless Entity
+    { tileX: 25.2, tileY: 21.5, radius: 150 } // Trader Olar
+  ],
   npcPlacements: [
     {
       tileX: 23.5,

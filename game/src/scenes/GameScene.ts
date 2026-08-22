@@ -36,6 +36,7 @@ export default class GameScene extends BaseScene {
   private lastSavedPlayerProgress?: PlayerProgressState;
   private npcs: NPC[] = [];
   private npcGroup!: Phaser.Physics.Arcade.StaticGroup;
+  private torchLights: Phaser.GameObjects.Light[] = [];
 
   constructor() {
     super("GameScene");
@@ -76,6 +77,8 @@ export default class GameScene extends BaseScene {
       this.events.off("toggle-dev-mode", this.toggleDevMode, this);
       this.npcs.forEach(npc => npc.destroy());
       this.npcs = [];
+      this.torchLights.forEach(light => this.lights.removeLight(light));
+      this.torchLights = [];
       this.sharedNet?.destroy();
       this.sharedNet = undefined;
       this.localChatBubble?.destroy();
@@ -153,6 +156,8 @@ export default class GameScene extends BaseScene {
 
     this.spawnNPCs();
     this.physics.add.collider(this.player, this.npcGroup);
+
+    this.spawnTorches();
 
     this.cameras.main.startFollow(this.player, true, 0.1, 0.1);
 
@@ -290,6 +295,46 @@ export default class GameScene extends BaseScene {
     this.sharedNet?.update(_time);
     this.localChatBubble?.follow(this.player.x, this.player.y);
     this.devModeOverlay?.update();
+  }
+
+  private spawnTorches(): void {
+    const levelDef = getLevelDefinition(this.levelId);
+    if (!levelDef?.torchPlacements?.length) {
+      return;
+    }
+
+    const tileSize = this.dungeonSystem.getTileSize();
+    const defaultRadius = 150;
+
+    for (const placement of levelDef.torchPlacements) {
+      const worldX = placement.tileX * tileSize;
+      const worldY = placement.tileY * tileSize;
+      const radius = placement.radius ?? defaultRadius;
+
+      // Visible flame marker. Self-lit (ADD blend) so it reads as a light source, not a lit surface.
+      const torchSprite = this.add.image(worldX, worldY, "torch");
+      torchSprite.setDepth(210);
+      torchSprite.setBlendMode(Phaser.BlendModes.ADD);
+
+      // Warm glow on nearby Light2D surfaces. Phaser lights render regardless of the player's view
+      // radius, matching the fog reveal registered below.
+      const torchLight = this.lights.addLight(worldX, worldY, radius * 2, 0xff8844, 1.8);
+      this.torchLights.push(torchLight);
+
+      // Gentle flicker for atmosphere.
+      this.tweens.add({
+        targets: torchLight,
+        intensity: 1.4,
+        duration: 90,
+        yoyo: true,
+        repeat: -1,
+        repeatDelay: Phaser.Math.Between(40, 140),
+        ease: "Sine.inOut"
+      });
+
+      // Register the raycast fog reveal: ignores the player's view radius, still shadowed by walls.
+      this.fovSystem.addTorch(worldX, worldY, radius);
+    }
   }
 
   private spawnNPCs(): void {

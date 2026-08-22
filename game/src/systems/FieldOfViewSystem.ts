@@ -30,6 +30,10 @@ export class FieldOfViewSystem {
 
   private readonly activeProjectiles = new Set<Phaser.Types.Physics.Arcade.SpriteWithDynamicBody>();
   private readonly activeExplosions = new Set<{ x: number; y: number; radius: number }>();
+  // Static light sources (wall torches). Unlike the player FOV they ignore the view radius entirely,
+  // but their reveal is still raycast against the occluders once at setup so walls cast shadows. The
+  // torch and the occluders never move, so the visibility polygon is baked once in world space.
+  private readonly torches: { x: number; y: number; radius: number; visibilityPolygon: Phaser.Math.Vector2[] }[] = [];
   private enabled: boolean;
   // Reused each redraw to hold only the occluders whose AABB overlaps the FOV reach box. castCircle
   // runs an O(objects^2) pairwise pass plus a per-ray cast over every object it is given, so handing
@@ -142,6 +146,18 @@ export class FieldOfViewSystem {
     this.activeExplosions.delete(explosion);
   }
 
+  /**
+   * Register a static torch. Its fog reveal ignores the player's view radius but is raycast against
+   * the current occluders once (torch and walls never move), so walls still carve shadows into it.
+   */
+  public addTorch(x: number, y: number, radius: number): void {
+    this.torches.push({ x, y, radius, visibilityPolygon: this.computeVisibilityPolygon(x, y, radius) });
+
+    if (this.enabled) {
+      this.paintMask();
+    }
+  }
+
   public setEnabled(enabled: boolean): void {
     if (this.enabled === enabled) {
       return;
@@ -205,10 +221,18 @@ export class FieldOfViewSystem {
     const originY = this.player.y;
     const outerRadius = this.tileSize * (this.fovRadiusTiles + this.fovFadeTiles);
 
-    this.fovRay.setRay(originX, originY, 0, outerRadius);
+    this.cachedVisibilityPolygon = this.computeVisibilityPolygon(originX, originY, outerRadius);
+    this.lastRedrawOriginX = originX;
+    this.lastRedrawOriginY = originY;
+  }
+
+  // Cast the FOV ray in a circle from an arbitrary origin and return the shadow polygon in world
+  // space, sorted by angle around that origin. Shared by the player FOV and the static torches.
+  private computeVisibilityPolygon(originX: number, originY: number, radius: number): Phaser.Math.Vector2[] {
+    this.fovRay.setRay(originX, originY, 0, radius);
     this.raycaster.update();
     const intersections = this.fovRay.castCircle({
-      objects: this.collectOccludersInRange(originX, originY, outerRadius)
+      objects: this.collectOccludersInRange(originX, originY, radius)
     });
 
     // Angle sort is done in world space around the world origin. Projection to canvas space is a pure
@@ -218,9 +242,7 @@ export class FieldOfViewSystem {
         Math.atan2(left.y - originY, left.x - originX) - Math.atan2(right.y - originY, right.x - originX)
     );
 
-    this.cachedVisibilityPolygon = intersections;
-    this.lastRedrawOriginX = originX;
-    this.lastRedrawOriginY = originY;
+    return intersections;
   }
 
   // Repaint the mask canvas from the cached shadow polygon plus the current projectile / explosion
@@ -322,6 +344,43 @@ export class FieldOfViewSystem {
     }
 
     context.restore();
+
+    // Static torches: reveal a raycast pool of light that ignores the player's view radius but is
+    // clipped to each torch's baked shadow polygon, so walls still block the glow.
+    for (const torch of this.torches) {
+      const shadowPolygon = torch.visibilityPolygon;
+      if (shadowPolygon.length < 3) {
+        continue;
+      }
+
+      const torchCenterX = torch.x - scrollX + margin;
+      const torchCenterY = torch.y - scrollY + margin;
+
+      context.save();
+      context.beginPath();
+      context.moveTo(shadowPolygon[0].x - scrollX + margin, shadowPolygon[0].y - scrollY + margin);
+      for (let index = 1; index < shadowPolygon.length; index++) {
+        context.lineTo(shadowPolygon[index].x - scrollX + margin, shadowPolygon[index].y - scrollY + margin);
+      }
+      context.closePath();
+      context.clip();
+
+      context.globalCompositeOperation = "destination-out";
+      const torchGlow = context.createRadialGradient(
+        torchCenterX,
+        torchCenterY,
+        0,
+        torchCenterX,
+        torchCenterY,
+        torch.radius
+      );
+      torchGlow.addColorStop(0, "rgba(0, 0, 0, 1)");
+      torchGlow.addColorStop(0.55, "rgba(0, 0, 0, 0.7)");
+      torchGlow.addColorStop(1, "rgba(0, 0, 0, 0)");
+      context.fillStyle = torchGlow;
+      context.fillRect(0, 0, canvasWidth, canvasHeight);
+      context.restore();
+    }
 
     this.fovMaskTexture.refresh();
     this.repositionMask();

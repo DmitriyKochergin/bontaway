@@ -60,6 +60,7 @@ export default class PreloadScene extends Phaser.Scene {
     this.createFireballTexture();
     this.createFireballTileTexture();
     this.createGearTexture();
+    this.createTorchTexture();
   }
 
   private createLoadingUi(): {
@@ -797,8 +798,7 @@ export default class PreloadScene extends Phaser.Scene {
     graphics.destroy();
   }
 
-  private createGearTexture(): void {
-    const size = 32;
+  private createGearTexture(): void {    const size = 32;
     const half = size / 2;
     const gear = this.add.graphics();
 
@@ -835,5 +835,28 @@ export default class PreloadScene extends Phaser.Scene {
 
     gear.generateTexture("gear", size, size);
     gear.destroy();
+  }
+
+  private createTorchTexture(): void {
+    const size = 20;
+    const center = size / 2;
+    const torch = this.add.graphics();
+
+    // Iron sconce ring seen from above.
+    torch.fillStyle(0x2b2620, 1);
+    torch.fillCircle(center, center, 8);
+    torch.lineStyle(2, 0x120f0b, 1);
+    torch.strokeCircle(center, center, 8);
+
+    // Glowing embers, then a hot flame core.
+    torch.fillStyle(0xe65c00, 1);
+    torch.fillCircle(center, center, 5);
+    torch.fillStyle(0xffad00, 1);
+    torch.fillCircle(center, center, 3.2);
+    torch.fillStyle(0xfff2b2, 1);
+    torch.fillCircle(center, center, 1.6);
+
+    torch.generateTexture("torch", size, size);
+    torch.destroy();
   }
 }

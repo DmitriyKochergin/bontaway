@@ -13,6 +13,13 @@ export interface ObstaclePlacement {
   height: number;
 }
 
+export interface TorchPlacement {
+  tileX: number;
+  tileY: number;
+  /** Light reach in pixels. The fog reveal is raycast to this radius, so walls still cast shadows. */
+  radius?: number;
+}
+
 export interface NpcPlacement {
   tileX: number;
   tileY: number;
@@ -39,6 +46,7 @@ export interface LevelDefinition {
   fogOfWarEnabled?: boolean;
   doorPlacements: DoorPlacement[];
   obstaclePlacements: ObstaclePlacement[];
+  torchPlacements?: TorchPlacement[];
   npcPlacements?: NpcPlacement[];
   generateLayout: (tileSize: number) => LevelLayout;
 }
