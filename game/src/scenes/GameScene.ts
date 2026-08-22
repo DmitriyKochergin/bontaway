@@ -315,6 +315,7 @@ export default class GameScene extends BaseScene {
       const torchSprite = this.add.image(worldX, worldY, "torch");
       torchSprite.setDepth(210);
       torchSprite.setBlendMode(Phaser.BlendModes.ADD);
+      torchSprite.setMask(this.fovSystem.getNpcVisibilityMask());
 
       // Warm glow on nearby Light2D surfaces. Phaser lights render regardless of the player's view
       // radius, matching the fog reveal registered below.
@@ -331,9 +332,6 @@ export default class GameScene extends BaseScene {
         repeatDelay: Phaser.Math.Between(40, 140),
         ease: "Sine.inOut"
       });
-
-      // Register the raycast fog reveal: ignores the player's view radius, still shadowed by walls.
-      this.fovSystem.addTorch(worldX, worldY, radius);
     }
   }
 
