@@ -4,6 +4,7 @@ import { SettingsManager } from "../systems/SettingsManager";
 export class SettingsButton {
   private button: Phaser.GameObjects.Container | null = null;
   private resizeHandler: ((gameSize: Phaser.Structs.Size) => void) | null = null;
+  private readonly buttonSize = 46;
 
   constructor(
     private scene: Phaser.Scene,
@@ -23,46 +24,39 @@ export class SettingsButton {
 
     const background = this.scene.add.graphics();
     if (isStoneStyle) {
-      background.fillStyle(0x1c1d1f, 0.96);
-      background.fillRoundedRect(-22, -22, 44, 44, 5);
-      background.lineStyle(1, 0x73787c, 0.8);
-      background.strokeRoundedRect(-22, -22, 44, 44, 5);
-      background.lineStyle(2, 0x0c0d0e, 0.95);
-      background.lineBetween(-22, 22, 22, 22);
-      background.lineBetween(22, -22, 22, 22);
-      background.lineStyle(1, 0xffbb33, 0.75);
-      background.lineBetween(-22, -22, -10, -22);
-      background.lineBetween(-22, -22, -22, -10);
+      this.drawStoneButtonFrame(background, false);
     } else {
-      background.fillStyle(0x0a0a0a, 0.92);
-      background.fillRoundedRect(-22, -22, 44, 44, 6);
-      background.lineStyle(1, 0x444444, 0.9);
-      background.strokeRoundedRect(-22, -22, 44, 44, 6);
-      background.lineStyle(2, 0xff6600, 0.8);
-      background.lineBetween(-22, -10, -22, -22);
-      background.lineBetween(-22, -22, -10, -22);
+      this.drawFlatButtonFrame(background);
     }
 
     const gear = this.scene.add.image(0, 0, "gear").setScale(0.85);
-    const hitArea = this.scene.add.zone(0, 0, 44, 44).setInteractive({ useHandCursor: true });
+    const hitArea = this.scene.add.zone(0, 0, this.buttonSize, this.buttonSize).setInteractive({ useHandCursor: true });
     this.button.add([background, gear, hitArea]);
 
     hitArea.on("pointerover", () => {
-      this.scene.tweens.add({
-        targets: this.button,
-        scale: 1.25,
-        duration: 150,
-        ease: "Back.easeOut"
-      });
+      if (isStoneStyle) {
+        this.drawStoneButtonFrame(background, true);
+      } else {
+        this.scene.tweens.add({
+          targets: this.button,
+          scale: 1.25,
+          duration: 150,
+          ease: "Back.easeOut"
+        });
+      }
     });
 
     hitArea.on("pointerout", () => {
-      this.scene.tweens.add({
-        targets: this.button,
-        scale: 1.0,
-        duration: 150,
-        ease: "Power2.easeOut"
-      });
+      if (isStoneStyle) {
+        this.drawStoneButtonFrame(background, false);
+      } else {
+        this.scene.tweens.add({
+          targets: this.button,
+          scale: 1.0,
+          duration: 150,
+          ease: "Power2.easeOut"
+        });
+      }
     });
 
     hitArea.on(
@@ -89,5 +83,35 @@ export class SettingsButton {
 
     this.button?.destroy();
     this.button = null;
+  }
+
+  private drawFlatButtonFrame(background: Phaser.GameObjects.Graphics): void {
+    const half = this.buttonSize / 2;
+    background.clear();
+    background.fillStyle(0x0a0a0a, 0.92);
+    background.fillRoundedRect(-half, -half, this.buttonSize, this.buttonSize, 6);
+    background.lineStyle(1, 0x444444, 0.9);
+    background.strokeRoundedRect(-half, -half, this.buttonSize, this.buttonSize, 6);
+    background.lineStyle(2, 0xff6600, 0.8);
+    background.lineBetween(-half, -10, -half, -half);
+    background.lineBetween(-half, -half, -10, -half);
+  }
+
+  private drawStoneButtonFrame(background: Phaser.GameObjects.Graphics, isHighlighted: boolean): void {
+    const half = this.buttonSize / 2;
+    background.clear();
+    background.fillStyle(0x1c1d1f, 0.96);
+    background.fillRoundedRect(-half, -half, this.buttonSize, this.buttonSize, 4);
+    background.lineStyle(2, 0x73787c, 0.85);
+    background.lineBetween(-half + 1, -half + 1, half - 1, -half + 1);
+    background.lineBetween(-half + 1, -half + 1, -half + 1, half - 1);
+    background.lineStyle(2, 0x0c0d0e, 0.95);
+    background.lineBetween(-half + 1, half - 1, half - 1, half - 1);
+    background.lineBetween(half - 1, -half + 1, half - 1, half - 1);
+
+    if (isHighlighted) {
+      background.lineStyle(1, 0xffbb33, 0.85);
+      background.strokeRoundedRect(-half + 1, -half + 1, this.buttonSize - 2, this.buttonSize - 2, 4);
+    }
   }
 }
