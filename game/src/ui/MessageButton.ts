@@ -2,7 +2,7 @@ import Phaser from "phaser";
 import { SettingsManager } from "../systems/SettingsManager";
 
 const MARGIN_Y = 30;
-const MARGIN_RIGHT = 83;
+const MARGIN_RIGHT = 88;
 
 /**
  * Chat button in the top-right, immediately left of the settings gear. Styled to match

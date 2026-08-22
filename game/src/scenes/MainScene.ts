@@ -68,6 +68,8 @@ export default class MainScene extends BaseScene {
   private rebuildHud(): void {
     const selectedWeaponSlot = this.gameHUD?.getSelectedWeaponSlot() ?? 0;
     this.gameHUD?.destroy();
+    this.messageButton?.destroy();
+    this.messageButton = undefined;
     const gameScene = this.scene.get("GameScene") as unknown as GameHudController;
     this.gameHUD =
       SettingsManager.getHudStyle() === "flat"
