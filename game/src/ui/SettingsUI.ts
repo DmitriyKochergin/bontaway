@@ -137,8 +137,20 @@ export class SettingsUI {
     this.createActionButtons(halfH);
   }
 
+  private rebuildPanel(): void {
+    if (!this.panel) {
+      return;
+    }
+
+    this.panel.removeAll(true);
+    this.sliders = { master: null, music: null, sfx: null };
+    this.hudStyleButtonRedraw = undefined;
+    this.createPanel();
+    this.updateSliderValues();
+  }
+
   private isStoneStyle(): boolean {
-    return false;
+    return SettingsManager.getHudStyle() === "stone";
   }
 
   private drawPanelBackground(background: Phaser.GameObjects.Graphics, halfW: number, halfH: number): void {
@@ -517,7 +529,7 @@ export class SettingsUI {
       }
 
       SettingsManager.setHudStyle(style);
-      this.hudStyleButtonRedraw?.();
+      this.rebuildPanel();
       this.onHudStyleChange?.(style);
     });
 
@@ -531,12 +543,40 @@ export class SettingsUI {
     const btnHeight = 32;
     const y = halfH - 30;
 
-    this.createPanelButton("RESET", -90, y, btnWidth, btnHeight, 0x4a1a1a, 0x884444, 0x5a2a2a, 0xaa6666, () =>
-      this.resetDefaults()
+    const isStoneStyle = this.isStoneStyle();
+    const resetNormalBackground = isStoneStyle ? 0x2d3134 : 0x4a1a1a;
+    const resetNormalStroke = isStoneStyle ? 0x73787c : 0x884444;
+    const resetHoverBackground = isStoneStyle ? 0x4a3b28 : 0x5a2a2a;
+    const resetHoverStroke = isStoneStyle ? 0xffbb33 : 0xaa6666;
+    const closeNormalBackground = isStoneStyle ? 0x2d3134 : 0x1a1a1a;
+    const closeNormalStroke = isStoneStyle ? 0x73787c : 0x444444;
+    const closeHoverBackground = isStoneStyle ? 0x3b210d : 0x2a2a2a;
+    const closeHoverStroke = isStoneStyle ? 0xffbb33 : 0x666666;
+
+    this.createPanelButton(
+      "RESET",
+      -90,
+      y,
+      btnWidth,
+      btnHeight,
+      resetNormalBackground,
+      resetNormalStroke,
+      resetHoverBackground,
+      resetHoverStroke,
+      () => this.resetDefaults()
     );
 
-    this.createPanelButton("CLOSE", 90, y, btnWidth, btnHeight, 0x1a1a1a, 0x444444, 0x2a2a2a, 0x666666, () =>
-      this.close()
+    this.createPanelButton(
+      "CLOSE",
+      90,
+      y,
+      btnWidth,
+      btnHeight,
+      closeNormalBackground,
+      closeNormalStroke,
+      closeHoverBackground,
+      closeHoverStroke,
+      () => this.close()
     );
   }
 
@@ -620,8 +660,7 @@ export class SettingsUI {
       this.audioSystem.setSFXVolume(defaults.sfxVolume);
     }
 
-    this.updateSliderValues();
-    this.hudStyleButtonRedraw?.();
+    this.rebuildPanel();
     this.onHudStyleChange?.(defaults.hudStyle);
   }
 
