@@ -407,7 +407,7 @@ export class SettingsUI {
   private createControlsSection(halfW: number, halfH: number): void {
     if (!this.panel) return;
 
-    const sectionY = -halfH + 310;
+    const sectionY = -halfH + 285;
 
     const label = this.scene.add.text(-halfW + 25, sectionY, "CONTROLS", {
       fontSize: "12px",
