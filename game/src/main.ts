@@ -1,5 +1,6 @@
 import Phaser from "phaser";
 import { gameConfig } from "./config";
+import { EDITOR_MODE_ENABLED } from "./editorMode.js";
 
 window.addEventListener("load", () => {
   let container = document.getElementById("game-container");
@@ -11,4 +12,10 @@ window.addEventListener("load", () => {
   document.body.style.margin = "0";
   document.body.style.overflow = "hidden";
   new Phaser.Game(gameConfig);
+
+  if (EDITOR_MODE_ENABLED) {
+    void import("./editor/devBootstrap.js").then(({ initializeDevOnlyEditorMode }) => {
+      initializeDevOnlyEditorMode();
+    });
+  }
 });
