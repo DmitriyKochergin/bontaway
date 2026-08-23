@@ -1,6 +1,6 @@
 import Phaser from "phaser";
 import { gameConfig } from "./config";
-import { EDITOR_MODE_ENABLED } from "./editorMode.js";
+import { EDITOR_MODE_ENABLED } from "./editorMode";
 
 window.addEventListener("load", () => {
   let container = document.getElementById("game-container");
@@ -14,7 +14,7 @@ window.addEventListener("load", () => {
   new Phaser.Game(gameConfig);
 
   if (EDITOR_MODE_ENABLED) {
-    void import("./editor/devBootstrap.js").then(({ initializeDevOnlyEditorMode }) => {
+    void import("./editor/devBootstrap").then(({ initializeDevOnlyEditorMode }) => {
       initializeDevOnlyEditorMode();
     });
   }

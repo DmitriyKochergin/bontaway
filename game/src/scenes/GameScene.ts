@@ -1,9 +1,11 @@
 import Phaser from "phaser";
 import { NPC } from "../entities/NPC";
 import { Player } from "../entities/Player";
+import { EDITOR_MODE_ENABLED } from "../editorMode";
 import { getLevelDefinition } from "../levels";
 import { ArenaNetSystem } from "../multiplayer/ArenaNetSystem";
 import { ChatBubble } from "../multiplayer/ChatBubble";
+import { type LevelEditorController } from "../editor/LevelEditorController";
 import { DevModeOverlay } from "../systems/DevModeOverlay";
 import { DungeonSystem } from "../systems/DungeonSystem";
 import { FieldOfViewSystem } from "../systems/FieldOfViewSystem";
@@ -31,6 +33,7 @@ export default class GameScene extends BaseScene {
   private isChatTyping = false;
   private devModeEnabled = false;
   private devModeOverlay?: DevModeOverlay;
+  private levelEditorController?: LevelEditorController;
   private levelId = "arena";
   private savedPlayerProgress?: PlayerProgressState;
   private lastSavedPlayerProgress?: PlayerProgressState;
@@ -86,6 +89,8 @@ export default class GameScene extends BaseScene {
       this.isChatTyping = false;
       this.devModeOverlay?.destroy();
       this.devModeOverlay = undefined;
+      this.levelEditorController?.destroy();
+      this.levelEditorController = undefined;
       this.devModeEnabled = false;
     });
     this.events.on(Phaser.Scenes.Events.PAUSE, () => {
@@ -191,16 +196,38 @@ export default class GameScene extends BaseScene {
   }
 
   private toggleDevMode(): void {
+    if (!EDITOR_MODE_ENABLED) {
+      return;
+    }
+
     this.devModeEnabled = !this.devModeEnabled;
 
     this.devModeOverlay ??= new DevModeOverlay(this, this.dungeonSystem);
 
     if (this.devModeEnabled) {
       this.devModeOverlay.show();
+      void this.ensureLevelEditorController();
       return;
     }
 
     this.devModeOverlay.hide();
+    this.levelEditorController?.destroy();
+    this.levelEditorController = undefined;
+  }
+
+  private async ensureLevelEditorController(): Promise<void> {
+    if (!this.devModeEnabled || this.levelEditorController) {
+      return;
+    }
+
+    const { LevelEditorController } = await import("../editor/LevelEditorController");
+
+    if (!this.devModeEnabled || this.levelEditorController) {
+      return;
+    }
+
+    this.levelEditorController = new LevelEditorController(this, this.dungeonSystem, pointer => this.isPointerOverHud(pointer));
+    this.levelEditorController.setEnabled(false);
   }
 
   private getSelectedWeaponSlot(): number {
@@ -270,6 +297,14 @@ export default class GameScene extends BaseScene {
   update(_time: number, delta: number) {
     if (!this.player || !this.player.body) return;
 
+    this.levelEditorController?.update();
+    this.devModeOverlay?.update();
+
+    if (this.levelEditorController?.isEnabled()) {
+      this.player.setVelocity(0, 0);
+      return;
+    }
+
     if (this.scene.isPaused()) {
       this.player.setVelocity(0, 0);
       return;
@@ -294,7 +329,6 @@ export default class GameScene extends BaseScene {
     this.fovSystem.update(delta);
     this.sharedNet?.update(_time);
     this.localChatBubble?.follow(this.player.x, this.player.y);
-    this.devModeOverlay?.update();
   }
 
   private spawnTorches(): void {

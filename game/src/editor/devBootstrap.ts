@@ -1,4 +1,4 @@
-import { EDITOR_MODE_ENABLED } from "../editorMode.js";
+import { EDITOR_MODE_ENABLED } from "../editorMode";
 type EditorWindow = Window & { __BONTAWAY_EDITOR_MODE__?: boolean };
 
 export const initializeDevOnlyEditorMode = (): void => {
@@ -9,7 +9,6 @@ export const initializeDevOnlyEditorMode = (): void => {
   (window as EditorWindow).__BONTAWAY_EDITOR_MODE__ = true;
 };
 
-void initializeDevOnlyEditorMode;
 
 
 

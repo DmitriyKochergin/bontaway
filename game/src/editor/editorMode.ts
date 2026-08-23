@@ -1,4 +1,4 @@
-export { EDITOR_MODE_ENABLED } from "../editorMode.js";
+export { EDITOR_MODE_ENABLED } from "../editorMode";
 
 
 
