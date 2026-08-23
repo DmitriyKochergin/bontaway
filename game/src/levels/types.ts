@@ -43,6 +43,8 @@ export interface LevelDefinition {
   name: string;
   columns: number;
   rows: number;
+  spawnX?: number;
+  spawnY?: number;
   fogOfWarEnabled?: boolean;
   doorPlacements: DoorPlacement[];
   obstaclePlacements: ObstaclePlacement[];

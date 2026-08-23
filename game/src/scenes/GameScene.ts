@@ -2,6 +2,7 @@ import Phaser from "phaser";
 import { NPC } from "../entities/NPC";
 import { Player } from "../entities/Player";
 import { EDITOR_MODE_ENABLED } from "../editorMode";
+import { type LevelDocument, cloneLevelDocument } from "../editor/LevelDocument";
 import { getLevelDefinition } from "../levels";
 import { ArenaNetSystem } from "../multiplayer/ArenaNetSystem";
 import { ChatBubble } from "../multiplayer/ChatBubble";
@@ -34,6 +35,7 @@ export default class GameScene extends BaseScene {
   private devModeEnabled = false;
   private devModeOverlay?: DevModeOverlay;
   private levelEditorController?: LevelEditorController;
+  private currentLevelDocument?: LevelDocument;
   private levelId = "arena";
   private savedPlayerProgress?: PlayerProgressState;
   private lastSavedPlayerProgress?: PlayerProgressState;
@@ -65,6 +67,18 @@ export default class GameScene extends BaseScene {
 
   public getLevelId(): string {
     return this.levelId;
+  }
+
+  public getTileSize(): number {
+    return this.dungeonSystem.getTileSize();
+  }
+
+  public getDungeonColumns(): number {
+    return this.dungeonSystem.getDungeonColumns();
+  }
+
+  public getDungeonRows(): number {
+    return this.dungeonSystem.getDungeonRows();
   }
 
   /** Restart gameplay on a different level. Invoked by the HUD, which now lives on MainScene. */
@@ -128,6 +142,7 @@ export default class GameScene extends BaseScene {
 
     this.physics.world.setBounds(0, 0, this.dungeonSystem.getMapWidth(), this.dungeonSystem.getMapHeight());
     const levelDef = getLevelDefinition(this.levelId);
+    this.currentLevelDocument = this.buildLevelDocument();
 
     // Player
     const startingPlayerProgress = this.getStartingPlayerProgress();
@@ -226,7 +241,8 @@ export default class GameScene extends BaseScene {
       return;
     }
 
-    this.levelEditorController = new LevelEditorController(this, this.dungeonSystem, pointer => this.isPointerOverHud(pointer));
+    this.levelEditorController = new LevelEditorController(this, this, pointer => this.isPointerOverHud(pointer));
+    this.levelEditorController.attachDocument(this.getLevelDocument());
     this.levelEditorController.setEnabled(false);
   }
 
@@ -453,5 +469,78 @@ export default class GameScene extends BaseScene {
       Math.abs(currentProgress.y - savedProgress.y) < 0.5 &&
       Math.abs(Phaser.Math.Angle.Wrap(currentProgress.rotation - savedProgress.rotation)) < 0.01
     );
+  }
+
+  public getLevelDocument(): LevelDocument {
+    this.currentLevelDocument ??= this.buildLevelDocument();
+    return cloneLevelDocument(this.currentLevelDocument);
+  }
+
+  public applyLevelDocument(document: LevelDocument): void {
+    this.currentLevelDocument = cloneLevelDocument(document);
+    const levelDef = getLevelDefinition(this.levelId);
+
+    if (!levelDef || document.type === "matrix") {
+      return;
+    }
+
+    levelDef.doorPlacements = document.doorPlacements.map(placement => ({ ...placement }));
+    levelDef.obstaclePlacements = document.obstaclePlacements.map(placement => ({ ...placement }));
+    levelDef.torchPlacements = document.torchPlacements?.map(placement => ({ ...placement }));
+    levelDef.npcPlacements = document.npcPlacements?.map(placement => ({ ...placement }));
+    levelDef.spawnX = document.spawnX;
+    levelDef.spawnY = document.spawnY;
+  }
+
+  public refreshRuntimeObjects(): void {
+    this.torchLights.forEach(light => this.lights.removeLight(light));
+    this.torchLights = [];
+    this.npcs.forEach(npc => npc.destroy());
+    this.npcs = [];
+    this.npcGroup?.destroy(true);
+    this.spawnNPCs();
+    this.physics.add.collider(this.player, this.npcGroup);
+    this.spawnTorches();
+  }
+
+  public reloadLevel(): void {
+    this.scene.restart({ levelId: this.levelId });
+  }
+
+  public getLevelSourcePath(): string {
+    return `src/levels/${this.levelId}.ts`;
+  }
+
+  public getWorldPoint(pointer: Phaser.Input.Pointer): { column: number; row: number } {
+    const worldPoint = this.cameras.main.getWorldPoint(pointer.x, pointer.y);
+    const tileSize = this.dungeonSystem.getTileSize();
+    return {
+      column: worldPoint.x / tileSize,
+      row: worldPoint.y / tileSize
+    };
+  }
+
+  private buildLevelDocument(): LevelDocument {
+    const levelDef = getLevelDefinition(this.levelId);
+    const layout = levelDef.generateLayout(this.dungeonSystem.getTileSize());
+
+    return {
+      type: "ts",
+      id: levelDef.id,
+      name: levelDef.name,
+      columns: levelDef.columns,
+      rows: levelDef.rows,
+      spawnX: layout.spawnX,
+      spawnY: layout.spawnY,
+      fogOfWarEnabled: levelDef.fogOfWarEnabled,
+      doorPlacements: levelDef.doorPlacements.map(placement => ({ ...placement })),
+      obstaclePlacements: levelDef.obstaclePlacements.map(placement => ({ ...placement })),
+      torchPlacements: levelDef.torchPlacements?.map(placement => ({ ...placement })),
+      npcPlacements: levelDef.npcPlacements?.map(placement => ({ ...placement })),
+      layout: {
+        walkable: layout.walkable.map(row => [...row]),
+        blueprints: []
+      }
+    };
   }
 }

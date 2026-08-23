@@ -1,37 +1,54 @@
 import Phaser from "phaser";
 import {
   type GridPoint,
-  type GridRect,
   type GridSelection,
-  type MatrixLevelDocument
+  type LevelDocument,
+  cloneLevelDocument,
+  cloneGridSelection
 } from "./LevelDocument";
 import {
-  type MatrixClipboard,
   DEFAULT_MATRIX_EMPTY_TILE,
   DEFAULT_MATRIX_PALETTE,
-  copySelection,
-  createMatrixSelection,
   duplicateSelection,
   eraseSelection,
   isCellInsideSelection,
   moveSelection,
   normalizeGridRect,
   paintSelection,
-  pasteClipboard
+  pasteClipboard,
+  type MatrixClipboard
 } from "./MatrixEditing";
+import { EditorHistory } from "./EditorHistory";
 import { LevelEditorOverlay } from "./LevelEditorOverlay";
-import { DungeonSystem } from "../systems/DungeonSystem";
+import { saveLevelDocument } from "./DevSaveClient";
+import { type LevelSceneAdapter } from "./LevelSceneAdapter";
+import {
+  addPlacement,
+  deletePlacement,
+  hitTestPlacements,
+  movePlacement,
+  type PlacementHit,
+  type PlacementKind,
+  type SelectedPlacement
+} from "./LevelObjectEditing";
 
 export type LevelEditorTool = "select" | "move" | "paint" | "erase" | "place" | "duplicate";
 
 export interface LevelEditorSnapshot {
   enabled: boolean;
   tool: LevelEditorTool;
+  placementKind?: PlacementKind;
+  dirty: boolean;
+  canUndo: boolean;
+  canRedo: boolean;
+  saving: boolean;
+  saveError?: string;
   paletteTile: number;
   hasClipboard: boolean;
   matrixReady: boolean;
   hoveredCell?: GridPoint;
   selection?: GridSelection<number>;
+  selectedPlacement?: SelectedPlacement;
 }
 
 interface PointerCell {
@@ -39,23 +56,41 @@ interface PointerCell {
   row: number;
 }
 
-type DragMode = "select" | "move" | "paint" | "erase" | "duplicate";
+interface SelectionGraphics {
+  clear(): void;
+  setVisible(visible: boolean): void;
+  fillStyle(color: number, alpha?: number): void;
+  fillRect(x: number, y: number, width: number, height: number): void;
+  lineStyle(lineWidth: number, color: number, alpha?: number): void;
+  strokeRect(x: number, y: number, width: number, height: number): void;
+  strokeCircle(x: number, y: number, radius: number): void;
+  destroy(): void;
+}
+
+type DragMode = "select" | "move" | "paint" | "erase" | "duplicate" | "object";
 
 export class LevelEditorController {
   private overlay: LevelEditorOverlay;
-  private selectionGraphics: Phaser.GameObjects.Graphics;
+  private selectionGraphics: SelectionGraphics;
+  private history = new EditorHistory();
   private enabled = false;
   private activeTool: LevelEditorTool = "select";
+  private placementKind: PlacementKind = "torch";
   private hoveredCell?: PointerCell;
   private selection?: GridSelection<number>;
-  private matrixDocument?: MatrixLevelDocument;
+  private selectedPlacement?: { kind: PlacementKind; index: number };
   private matrixClipboard?: MatrixClipboard;
-  private paletteTile = DEFAULT_MATRIX_PALETTE[1] ?? 1;
+  private paletteTile: number = DEFAULT_MATRIX_PALETTE[1] ?? 1;
   private dragStartCell?: PointerCell;
   private dragCurrentCell?: PointerCell;
+  private dragWorldPoint?: GridPoint;
   private dragMode?: DragMode;
   private dragSelectionSnapshot?: GridSelection<number>;
-  private matrixChangeHandler?: (document: MatrixLevelDocument) => void;
+  private dragPlacementSnapshot?: PlacementHit;
+  private document?: LevelDocument;
+  private dirty = false;
+  private saving = false;
+  private saveError?: string;
   private keyDownHandler?: (event: KeyboardEvent) => void;
   private pointerDownHandler?: (pointer: Phaser.Input.Pointer) => void;
   private pointerMoveHandler?: (pointer: Phaser.Input.Pointer) => void;
@@ -64,12 +99,22 @@ export class LevelEditorController {
 
   constructor(
     private scene: Phaser.Scene,
-    private dungeonSystem: DungeonSystem,
+    private adapter: LevelSceneAdapter,
     private isPointerOverHud: (pointer: Phaser.Input.Pointer) => boolean
   ) {
-    this.overlay = new LevelEditorOverlay(scene, () => this.toggleEnabled(), tool => this.setTool(tool), tile => this.setPaletteTile(tile));
-    this.selectionGraphics = this.scene.add.graphics();
-    this.selectionGraphics.setDepth(1100);
+    this.document = cloneLevelDocument(this.adapter.getLevelDocument());
+    this.history.push(this.document);
+    this.overlay = new LevelEditorOverlay(
+      scene,
+      () => this.toggleEnabled(),
+      tool => this.setTool(tool),
+      tile => this.setPaletteTile(tile),
+      placement => this.setPlacementKind(placement),
+      () => this.undo(),
+      () => this.redo(),
+      () => this.save()
+    );
+    this.selectionGraphics = this.scene.add.graphics() as unknown as SelectionGraphics;
     this.selectionGraphics.setVisible(false);
 
     this.bindInput();
@@ -78,24 +123,28 @@ export class LevelEditorController {
     });
   }
 
+  public attachDocument(document: LevelDocument): void {
+    this.document = cloneLevelDocument(document);
+    this.history.clear();
+    this.history.push(this.document);
+    this.dirty = false;
+    this.matrixClipboard = undefined;
+    this.selection = undefined;
+    this.selectedPlacement = undefined;
+    this.overlay.update(this.getSnapshot());
+  }
+
   public isEnabled(): boolean {
     return this.enabled;
   }
 
-  public getTool(): LevelEditorTool {
-    return this.activeTool;
-  }
-
-  public attachMatrixDocument(document: MatrixLevelDocument, onChange?: (document: MatrixLevelDocument) => void): void {
-    this.matrixDocument = document;
-    this.matrixChangeHandler = onChange;
-    this.selection = undefined;
-    this.matrixClipboard = undefined;
+  public setTool(tool: LevelEditorTool): void {
+    this.activeTool = tool;
     this.overlay.update(this.getSnapshot());
   }
 
-  public setTool(tool: LevelEditorTool): void {
-    this.activeTool = tool;
+  public setPlacementKind(kind: PlacementKind): void {
+    this.placementKind = kind;
     this.overlay.update(this.getSnapshot());
   }
 
@@ -105,17 +154,13 @@ export class LevelEditorController {
     }
 
     this.paletteTile = tileValue;
-
-    if (this.matrixDocument && this.selection) {
-      paintSelection(this.matrixDocument, this.selection, this.paletteTile);
-      this.emitMatrixChange();
+    if (this.document?.type === "matrix" && this.selection) {
+      this.beginEdit();
+      paintSelection(this.document, this.selection, this.paletteTile);
+      this.commitDocumentChange();
     }
 
     this.overlay.update(this.getSnapshot());
-  }
-
-  public getPaletteTile(): number {
-    return this.paletteTile;
   }
 
   public toggleEnabled(): void {
@@ -130,8 +175,10 @@ export class LevelEditorController {
     this.enabled = enabled;
     this.dragStartCell = undefined;
     this.dragCurrentCell = undefined;
+    this.dragWorldPoint = undefined;
     this.dragMode = undefined;
     this.dragSelectionSnapshot = undefined;
+    this.dragPlacementSnapshot = undefined;
 
     if (this.enabled) {
       this.overlay.show();
@@ -145,71 +192,113 @@ export class LevelEditorController {
 
   public clearSelection(): void {
     this.selection = undefined;
+    this.selectedPlacement = undefined;
     this.dragStartCell = undefined;
     this.dragCurrentCell = undefined;
+    this.dragWorldPoint = undefined;
     this.dragMode = undefined;
     this.dragSelectionSnapshot = undefined;
+    this.dragPlacementSnapshot = undefined;
     this.selectionGraphics.clear();
     this.selectionGraphics.setVisible(this.enabled);
     this.overlay.update(this.getSnapshot());
   }
 
   public copySelection(): void {
-    if (!this.matrixDocument || !this.selection) {
+    if (this.document?.type !== "matrix" || !this.selection) {
       return;
     }
 
-    this.matrixClipboard = copySelection(this.matrixDocument, this.selection);
+    this.matrixClipboard = {
+      width: this.selection.bounds.right - this.selection.bounds.left + 1,
+      height: this.selection.bounds.bottom - this.selection.bounds.top + 1,
+      cells: this.selection.cells.map(row => [...row])
+    };
     this.overlay.update(this.getSnapshot());
   }
 
   public pasteClipboard(targetCell?: GridPoint): void {
-    if (!this.matrixDocument || !this.matrixClipboard) {
+    if (this.document?.type !== "matrix" || !this.matrixClipboard) {
       return;
     }
 
     const origin = targetCell ?? this.selection?.origin ?? { column: 0, row: 0 };
-    this.selection = pasteClipboard(this.matrixDocument, this.matrixClipboard, origin);
-    this.emitMatrixChange();
-    this.overlay.update(this.getSnapshot());
+    this.beginEdit();
+    this.selection = pasteClipboard(this.document, this.matrixClipboard, origin);
+    this.commitDocumentChange();
   }
 
   public duplicateSelection(targetCell?: GridPoint): void {
-    if (!this.matrixDocument || !this.selection) {
+    if (this.document?.type !== "matrix" || !this.selection) {
       return;
     }
 
-    const destination = targetCell ?? {
-      column: this.selection.bounds.left + 1,
-      row: this.selection.bounds.top + 1
-    };
+    const destination = targetCell ?? { column: this.selection.bounds.left + 1, row: this.selection.bounds.top + 1 };
+    const offset = { column: destination.column - this.selection.bounds.left, row: destination.row - this.selection.bounds.top };
+    this.beginEdit();
+    this.selection = duplicateSelection(this.document, this.selection, offset);
+    this.commitDocumentChange();
+  }
 
-    const offset = {
-      column: destination.column - this.selection.bounds.left,
-      row: destination.row - this.selection.bounds.top
-    };
+  public undo(): void {
+    if (!this.document) {
+      return;
+    }
 
-    this.selection = duplicateSelection(this.matrixDocument, this.selection, offset);
-    this.emitMatrixChange();
+    const snapshot = this.history.undo(this.document);
+    if (!snapshot) {
+      return;
+    }
+
+    this.document = snapshot;
+    this.adapter.applyLevelDocument(this.document);
+    this.adapter.refreshRuntimeObjects();
+    this.dirty = true;
     this.overlay.update(this.getSnapshot());
   }
 
-  public deleteSelection(): void {
-    if (!this.matrixDocument) {
+  public redo(): void {
+    if (!this.document) {
       return;
     }
 
-    if (!this.selection && this.hoveredCell) {
-      this.selection = this.buildSelection({ column: this.hoveredCell.column, row: this.hoveredCell.row }, { column: this.hoveredCell.column, row: this.hoveredCell.row });
-    }
-
-    if (!this.selection) {
+    const snapshot = this.history.redo(this.document);
+    if (!snapshot) {
       return;
     }
 
-    eraseSelection(this.matrixDocument, this.selection, DEFAULT_MATRIX_EMPTY_TILE);
-    this.emitMatrixChange();
+    this.document = snapshot;
+    this.adapter.applyLevelDocument(this.document);
+    this.adapter.refreshRuntimeObjects();
+    this.dirty = true;
     this.overlay.update(this.getSnapshot());
+  }
+
+  public async save(): Promise<void> {
+    if (!this.document) {
+      return;
+    }
+
+    this.saving = true;
+    this.saveError = undefined;
+    this.overlay.update(this.getSnapshot());
+
+    const result = await saveLevelDocument({
+      sourcePath: this.adapter.getLevelSourcePath(),
+      document: cloneLevelDocument(this.document)
+    });
+
+    this.saving = false;
+
+    if (!result.ok) {
+      this.saveError = result.error ?? "Unable to save level.";
+      this.overlay.update(this.getSnapshot());
+      return;
+    }
+
+    this.dirty = false;
+    this.overlay.update(this.getSnapshot());
+    this.adapter.reloadLevel();
   }
 
   public update(): void {
@@ -253,11 +342,18 @@ export class LevelEditorController {
     return {
       enabled: this.enabled,
       tool: this.activeTool,
+      placementKind: this.placementKind,
+      dirty: this.dirty,
+      canUndo: this.history.canUndo(),
+      canRedo: this.history.canRedo(),
+      saving: this.saving,
+      saveError: this.saveError,
       paletteTile: this.paletteTile,
       hasClipboard: Boolean(this.matrixClipboard),
-      matrixReady: Boolean(this.matrixDocument),
+      matrixReady: this.document?.type === "matrix",
       hoveredCell: this.hoveredCell ? { ...this.hoveredCell } : undefined,
-      selection: this.selection ? this.cloneSelection(this.selection) : undefined
+      selection: this.selection ? cloneGridSelection(this.selection) : undefined,
+      selectedPlacement: this.selectedPlacement ? { ...this.selectedPlacement } : undefined
     };
   }
 
@@ -270,6 +366,28 @@ export class LevelEditorController {
       if ((event.ctrlKey || event.metaKey) && event.code === "KeyE") {
         event.preventDefault();
         this.toggleEnabled();
+        return;
+      }
+
+      if ((event.ctrlKey || event.metaKey) && event.code === "KeyS") {
+        event.preventDefault();
+        void this.save();
+        return;
+      }
+
+      if ((event.ctrlKey || event.metaKey) && event.code === "KeyZ") {
+        event.preventDefault();
+        if (event.shiftKey) {
+          this.redo();
+        } else {
+          this.undo();
+        }
+        return;
+      }
+
+      if ((event.ctrlKey || event.metaKey) && event.code === "KeyY") {
+        event.preventDefault();
+        this.redo();
         return;
       }
 
@@ -320,6 +438,14 @@ export class LevelEditorController {
           this.setTool("duplicate");
           event.preventDefault();
           return;
+        case "Digit7":
+          this.setPlacementKind("torch");
+          event.preventDefault();
+          return;
+        case "Digit8":
+          this.setPlacementKind("npc");
+          event.preventDefault();
+          return;
         case "Escape":
           this.clearSelection();
           event.preventDefault();
@@ -338,48 +464,21 @@ export class LevelEditorController {
         return;
       }
 
-      const cell = this.getCellFromPointer(pointer);
-      if (!cell) {
-        this.clearSelection();
+      const worldPoint = this.adapter.getWorldPoint(pointer);
+      const cell = this.getCellFromWorld(worldPoint);
+
+      if (!cell || !this.document) {
         return;
       }
 
       this.hoveredCell = { ...cell };
 
-      if (!this.matrixDocument) {
-        this.beginDrag(cell, "select");
+      if (this.document.type === "matrix") {
+        this.handleMatrixPointerDown(cell);
         return;
       }
 
-      const insideSelection = this.selection ? isCellInsideSelection(cell, this.selection) : false;
-
-      switch (this.activeTool) {
-        case "move":
-          if (insideSelection && this.selection) {
-            this.beginDrag(cell, "move");
-            this.dragSelectionSnapshot = this.cloneSelection(this.selection);
-            return;
-          }
-          this.beginDrag(cell, "select");
-          return;
-        case "paint":
-          this.beginDrag(cell, insideSelection ? "paint" : "select");
-          return;
-        case "erase":
-          this.beginDrag(cell, insideSelection ? "erase" : "select");
-          return;
-        case "duplicate":
-          this.beginDrag(cell, insideSelection ? "duplicate" : "select");
-          if (insideSelection && this.selection) {
-            this.dragSelectionSnapshot = this.cloneSelection(this.selection);
-          }
-          return;
-        case "place":
-        case "select":
-        default:
-          this.beginDrag(cell, "select");
-          return;
-      }
+      this.handleObjectPointerDown(worldPoint);
     };
 
     this.pointerMoveHandler = pointer => {
@@ -387,34 +486,47 @@ export class LevelEditorController {
         return;
       }
 
-      const cell = this.getCellFromPointer(pointer);
+      const worldPoint = this.adapter.getWorldPoint(pointer);
+      const cell = this.getCellFromWorld(worldPoint);
       this.hoveredCell = cell ? { ...cell } : undefined;
 
-      if (!this.dragStartCell || !pointer.isDown || !cell) {
+      if (!this.dragStartCell || !pointer.isDown || !cell || !this.document) {
         this.overlay.update(this.getSnapshot());
         return;
       }
 
-      this.dragCurrentCell = { ...cell };
-      this.updateDragPreview();
+      if (this.document.type === "matrix") {
+        this.handleMatrixPointerMove(cell);
+      } else {
+        this.handleObjectPointerMove(worldPoint);
+      }
+
       this.overlay.update(this.getSnapshot());
     };
 
     this.pointerUpHandler = pointer => {
-      if (!this.enabled || !this.dragStartCell) {
+      if (!this.enabled || !this.dragStartCell || !this.document) {
         return;
       }
 
-      const cell = this.getCellFromPointer(pointer);
+      const worldPoint = this.adapter.getWorldPoint(pointer);
+      const cell = this.getCellFromWorld(worldPoint);
       if (cell) {
         this.dragCurrentCell = { ...cell };
       }
 
-      this.commitDrag();
+      if (this.document.type === "matrix") {
+        this.commitMatrixDrag();
+      } else {
+        this.commitObjectDrag();
+      }
+
       this.dragStartCell = undefined;
       this.dragCurrentCell = undefined;
+      this.dragWorldPoint = undefined;
       this.dragMode = undefined;
       this.dragSelectionSnapshot = undefined;
+      this.dragPlacementSnapshot = undefined;
       this.overlay.update(this.getSnapshot());
     };
 
@@ -424,23 +536,95 @@ export class LevelEditorController {
     this.scene.input.on(Phaser.Input.Events.POINTER_UP, this.pointerUpHandler);
   }
 
-  private beginDrag(cell: PointerCell, mode: DragMode): void {
-    this.dragStartCell = { ...cell };
-    this.dragCurrentCell = { ...cell };
-    this.dragMode = mode;
-
-    if (this.matrixDocument) {
-      this.selection = this.buildSelection(this.dragStartCell, this.dragCurrentCell);
-      this.overlay.update(this.getSnapshot());
-    }
-  }
-
-  private updateDragPreview(): void {
-    if (!this.dragStartCell || !this.dragCurrentCell) {
+  public deleteSelection(): void {
+    if (!this.document) {
       return;
     }
 
-    const previewRect = normalizeGridRect(this.dragStartCell, this.dragCurrentCell);
+    if (this.document.type === "matrix") {
+      if (!this.selection && this.hoveredCell) {
+        this.selection = this.buildSelection(this.hoveredCell, this.hoveredCell);
+      }
+
+      if (!this.selection) {
+        return;
+      }
+
+      this.beginEdit();
+      eraseSelection(this.document, this.selection, DEFAULT_MATRIX_EMPTY_TILE);
+      this.commitDocumentChange();
+      return;
+    }
+
+    if (this.selectedPlacement) {
+      this.beginEdit();
+      deletePlacement(this.document, { ...this.selectedPlacement, distance: 0 });
+      this.selectedPlacement = undefined;
+      this.commitDocumentChange();
+    }
+  }
+
+  private beginEdit(): void {
+    if (!this.document) {
+      return;
+    }
+
+    this.history.push(this.document);
+  }
+
+  private commitDocumentChange(): void {
+    if (!this.document) {
+      return;
+    }
+
+    this.dirty = true;
+    this.adapter.applyLevelDocument(this.document);
+    if (this.document.type !== "matrix") {
+      this.adapter.refreshRuntimeObjects();
+    }
+    this.overlay.update(this.getSnapshot());
+  }
+
+  private handleMatrixPointerDown(cell: PointerCell): void {
+    if (!this.document || this.document.type !== "matrix") {
+      return;
+    }
+
+    const insideSelection = this.selection ? isCellInsideSelection(cell, this.selection) : false;
+
+    switch (this.activeTool) {
+      case "move":
+        if (insideSelection && this.selection) {
+          this.beginDrag(cell, "move");
+          this.dragSelectionSnapshot = cloneGridSelection(this.selection);
+          return;
+        }
+        this.beginDrag(cell, "select");
+        return;
+      case "paint":
+        this.beginDrag(cell, insideSelection ? "paint" : "select");
+        return;
+      case "erase":
+        this.beginDrag(cell, insideSelection ? "erase" : "select");
+        return;
+      case "duplicate":
+        this.beginDrag(cell, insideSelection ? "duplicate" : "select");
+        if (insideSelection && this.selection) {
+          this.dragSelectionSnapshot = cloneGridSelection(this.selection);
+        }
+        return;
+      case "select":
+      case "place":
+      default:
+        this.beginDrag(cell, "select");
+        return;
+    }
+  }
+
+  private handleMatrixPointerMove(cell: PointerCell): void {
+    if (!this.dragStartCell || !this.dragCurrentCell || !this.document || this.document.type !== "matrix") {
+      return;
+    }
 
     if (this.dragMode === "move" && this.dragSelectionSnapshot) {
       const deltaColumn = this.dragCurrentCell.column - this.dragStartCell.column;
@@ -449,80 +633,113 @@ export class LevelEditorController {
       return;
     }
 
-    if (this.matrixDocument) {
-      this.selection = this.buildSelectionFromRect(previewRect);
-    }
+    this.selection = this.buildSelection(this.dragStartCell, cell);
   }
 
-  private commitDrag(): void {
-    if (!this.dragStartCell || !this.dragCurrentCell || !this.matrixDocument) {
+  private commitMatrixDrag(): void {
+    if (!this.document || this.document.type !== "matrix" || !this.dragStartCell || !this.dragCurrentCell) {
       return;
     }
 
     const deltaColumn = this.dragCurrentCell.column - this.dragStartCell.column;
     const deltaRow = this.dragCurrentCell.row - this.dragStartCell.row;
 
+    this.beginEdit();
+
     switch (this.dragMode) {
-      case "move": {
-        if (!this.dragSelectionSnapshot) {
-          return;
+      case "move":
+        if (this.dragSelectionSnapshot) {
+          this.selection = moveSelection(this.document, this.dragSelectionSnapshot, deltaColumn, deltaRow);
         }
-
-        this.selection = moveSelection(this.matrixDocument, this.dragSelectionSnapshot, deltaColumn, deltaRow);
-        this.emitMatrixChange();
-        return;
-      }
-      case "paint": {
+        break;
+      case "paint":
         this.selection = this.buildSelection(this.dragStartCell, this.dragCurrentCell);
-        paintSelection(this.matrixDocument, this.selection, this.paletteTile);
-        this.emitMatrixChange();
-        return;
-      }
-      case "erase": {
+        paintSelection(this.document, this.selection, this.paletteTile);
+        break;
+      case "erase":
         this.selection = this.buildSelection(this.dragStartCell, this.dragCurrentCell);
-        eraseSelection(this.matrixDocument, this.selection, DEFAULT_MATRIX_EMPTY_TILE);
-        this.emitMatrixChange();
-        return;
-      }
-      case "duplicate": {
-        const baseSelection = this.dragSelectionSnapshot ?? this.selection;
-        if (!baseSelection) {
-          return;
+        eraseSelection(this.document, this.selection, DEFAULT_MATRIX_EMPTY_TILE);
+        break;
+      case "duplicate":
+        if (this.dragSelectionSnapshot) {
+          this.selection = duplicateSelection(this.document, this.dragSelectionSnapshot, { column: deltaColumn, row: deltaRow });
         }
-
-        this.selection = duplicateSelection(this.matrixDocument, baseSelection, { column: deltaColumn, row: deltaRow });
-        this.emitMatrixChange();
-        return;
-      }
+        break;
       case "select":
-      default: {
+      default:
         this.selection = this.buildSelection(this.dragStartCell, this.dragCurrentCell);
-        if (this.activeTool === "paint") {
-          paintSelection(this.matrixDocument, this.selection, this.paletteTile);
-          this.emitMatrixChange();
-        } else if (this.activeTool === "erase") {
-          eraseSelection(this.matrixDocument, this.selection, DEFAULT_MATRIX_EMPTY_TILE);
-          this.emitMatrixChange();
-        } else if (this.activeTool === "duplicate" && this.selection) {
-          this.selection = duplicateSelection(this.matrixDocument, this.selection);
-          this.emitMatrixChange();
-        }
+        break;
+    }
+
+    this.commitDocumentChange();
+  }
+
+  private handleObjectPointerDown(worldPoint: GridPoint): void {
+    if (!this.document || this.document.type === "matrix") {
+      return;
+    }
+
+    const hit = hitTestPlacements(this.document, worldPoint);
+
+    if (hit && this.activeTool !== "place") {
+      this.selectedPlacement = { kind: hit.kind, index: hit.index };
+      if (this.activeTool === "move") {
+        this.beginDrag({ column: worldPoint.column, row: worldPoint.row }, "object");
+        this.dragPlacementSnapshot = hit;
+        this.beginEdit();
       }
+      this.overlay.update(this.getSnapshot());
+      return;
+    }
+
+    if (this.activeTool === "place") {
+      this.beginEdit();
+      this.selectedPlacement = addPlacement(this.document, this.placementKind, worldPoint);
+      this.commitDocumentChange();
+      return;
+    }
+
+    this.selectedPlacement = undefined;
+    this.overlay.update(this.getSnapshot());
+  }
+
+  private handleObjectPointerMove(worldPoint: GridPoint): void {
+    if (!this.document || this.document.type === "matrix" || this.dragMode !== "object" || !this.dragPlacementSnapshot) {
+      return;
+    }
+
+    this.dragWorldPoint = worldPoint;
+    movePlacement(this.document, this.dragPlacementSnapshot, worldPoint);
+    this.commitDocumentChange();
+  }
+
+  private commitObjectDrag(): void {
+    if (!this.document || this.document.type === "matrix") {
+      return;
+    }
+
+    if (this.dragMode !== "object") {
+      return;
+    }
+
+    if (this.dragPlacementSnapshot && this.dragWorldPoint) {
+      movePlacement(this.document, this.dragPlacementSnapshot, this.dragWorldPoint);
+      this.commitDocumentChange();
     }
   }
 
-  private getCellFromPointer(pointer: Phaser.Input.Pointer): PointerCell | undefined {
-    const camera = this.scene.cameras.main;
-    const worldPoint = camera.getWorldPoint(pointer.x, pointer.y);
-    const column = Math.floor(worldPoint.x / this.dungeonSystem.getTileSize());
-    const row = Math.floor(worldPoint.y / this.dungeonSystem.getTileSize());
+  private beginDrag(cell: PointerCell, mode: DragMode): void {
+    this.dragStartCell = { ...cell };
+    this.dragCurrentCell = { ...cell };
+    this.dragMode = mode;
+    this.overlay.update(this.getSnapshot());
+  }
 
-    if (
-      column < 0 ||
-      column >= this.dungeonSystem.getDungeonColumns() ||
-      row < 0 ||
-      row >= this.dungeonSystem.getDungeonRows()
-    ) {
+  private getCellFromWorld(worldPoint: GridPoint): PointerCell | undefined {
+    const column = Math.floor(worldPoint.column);
+    const row = Math.floor(worldPoint.row);
+
+    if (column < 0 || column >= this.adapter.getDungeonColumns() || row < 0 || row >= this.adapter.getDungeonRows()) {
       return undefined;
     }
 
@@ -531,14 +748,6 @@ export class LevelEditorController {
 
   private buildSelection(startCell: PointerCell, endCell: PointerCell): GridSelection<number> {
     const rect = normalizeGridRect(startCell, endCell);
-    return this.buildSelectionFromRect(rect);
-  }
-
-  private buildSelectionFromRect(rect: GridRect): GridSelection<number> {
-    if (this.matrixDocument) {
-      return createMatrixSelection(this.matrixDocument, rect);
-    }
-
     const width = rect.right - rect.left + 1;
     const height = rect.bottom - rect.top + 1;
     const cells = Array.from({ length: height }, () => Array.from({ length: width }, () => DEFAULT_MATRIX_EMPTY_TILE));
@@ -551,35 +760,19 @@ export class LevelEditorController {
   }
 
   private translateSelection(selection: GridSelection<number>, deltaColumn: number, deltaRow: number): GridSelection<number> {
-    const bounds = {
-      left: selection.bounds.left + deltaColumn,
-      top: selection.bounds.top + deltaRow,
-      right: selection.bounds.right + deltaColumn,
-      bottom: selection.bounds.bottom + deltaRow
-    };
-
     return {
-      bounds,
+      bounds: {
+        left: selection.bounds.left + deltaColumn,
+        top: selection.bounds.top + deltaRow,
+        right: selection.bounds.right + deltaColumn,
+        bottom: selection.bounds.bottom + deltaRow
+      },
       origin: {
         column: selection.origin.column + deltaColumn,
         row: selection.origin.row + deltaRow
       },
       cells: selection.cells.map(row => [...row])
     };
-  }
-
-  private cloneSelection(selection: GridSelection<number>): GridSelection<number> {
-    return {
-      bounds: { ...selection.bounds },
-      origin: { ...selection.origin },
-      cells: selection.cells.map(row => [...row])
-    };
-  }
-
-  private emitMatrixChange(): void {
-    if (this.matrixDocument && this.matrixChangeHandler) {
-      this.matrixChangeHandler(this.matrixDocument);
-    }
   }
 
   private drawSelectionState(): void {
@@ -589,11 +782,11 @@ export class LevelEditorController {
       return;
     }
 
-    const tileSize = this.dungeonSystem.getTileSize();
+    const tileSize = this.adapter.getTileSize();
     this.selectionGraphics.clear();
     this.selectionGraphics.setVisible(true);
 
-    if (this.selection) {
+    if (this.document?.type === "matrix" && this.selection) {
       const { left, top, right, bottom } = this.selection.bounds;
       const x = left * tileSize;
       const y = top * tileSize;
@@ -603,6 +796,21 @@ export class LevelEditorController {
       this.selectionGraphics.fillRect(x, y, width, height);
       this.selectionGraphics.lineStyle(2, 0x8fb4ff, 0.95);
       this.selectionGraphics.strokeRect(x + 1, y + 1, width - 2, height - 2);
+      return;
+    }
+
+    if (this.selectedPlacement && this.document?.type !== "matrix") {
+      const levelDocument = this.document;
+      if (!levelDocument) {
+        return;
+      }
+
+      const placements = this.selectedPlacement.kind === "torch" ? levelDocument.torchPlacements ?? [] : levelDocument.npcPlacements ?? [];
+      const placement = placements?.[this.selectedPlacement.index];
+      if (placement) {
+        this.selectionGraphics.lineStyle(2, 0xffb648, 0.95);
+        this.selectionGraphics.strokeCircle(placement.tileX * tileSize, placement.tileY * tileSize, 12);
+      }
       return;
     }
 

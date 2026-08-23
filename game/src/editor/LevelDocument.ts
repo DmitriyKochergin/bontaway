@@ -1,4 +1,4 @@
-import { type DoorPlacement, type NpcPlacement, type ObstaclePlacement, type TorchPlacement } from "../levels/types";
+import type { DoorPlacement, NpcPlacement, ObstaclePlacement, TorchPlacement } from "../levels/types";
 
 export type LevelSourceType = "ts" | "matrix";
 
@@ -50,6 +50,8 @@ export interface LevelDocumentBase {
   name: string;
   columns: number;
   rows: number;
+  spawnX?: number;
+  spawnY?: number;
   fogOfWarEnabled?: boolean;
   doorPlacements: DoorPlacement[];
   obstaclePlacements: ObstaclePlacement[];
@@ -69,3 +71,31 @@ export interface MatrixLevelDocument extends LevelDocumentBase {
 
 export type LevelDocument = TsLevelDocument | MatrixLevelDocument;
 
+export function cloneGridSelection<TCell>(selection: GridSelection<TCell>): GridSelection<TCell> {
+  return {
+    bounds: { ...selection.bounds },
+    origin: { ...selection.origin },
+    cells: selection.cells.map(row => [...row])
+  };
+}
+
+export function cloneTsLevelLayout(layout: TsLevelLayout): TsLevelLayout {
+  return {
+    walkable: layout.walkable.map(row => [...row]),
+    blueprints: layout.blueprints.map(blueprint => ({ ...blueprint }))
+  };
+}
+
+export function cloneLevelDocument(document: LevelDocument): LevelDocument {
+  if (document.type === "matrix") {
+    return {
+      ...document,
+      tiles: document.tiles.map(row => [...row])
+    };
+  }
+
+  return {
+    ...document,
+    layout: cloneTsLevelLayout(document.layout)
+  };
+}
