@@ -4,6 +4,12 @@ import { type SyncMessage } from "./SyncMessages";
 type MessageHandler = (message: SyncMessage, peerId: string) => void;
 type PeerHandler = (peerId: string) => void;
 
+const RELAY_URLS = [
+  "wss://relay.damus.io",
+  "wss://nos.lol",
+  "wss://relay.fountain.fm"
+];
+
 /**
  * Thin wrapper over Trystero's P2P room. GitHub Pages ships only static files, so there is no
  * signaling server of our own: Trystero borrows a public relay (BitTorrent/Nostr/MQTT) purely to
@@ -13,18 +19,35 @@ type PeerHandler = (peerId: string) => void;
  * host/guest roles, no reconnect, no room codes; the arena is a single shared room.
  */
 export class NetworkManager {
+  private static pendingLeave: Promise<void> | null = null;
+
   private room: Room | null = null;
   private sendSync: ((message: SyncMessage, targetPeerId?: string) => void) | null = null;
   private messageHandler: MessageHandler | null = null;
   private peerJoinHandler: PeerHandler | null = null;
   private peerLeaveHandler: PeerHandler | null = null;
+  private joinRequestId = 0;
 
   join(appId: string, roomId: string): void {
     if (this.room) {
       return;
     }
 
-    this.room = joinRoom({ appId }, roomId);
+    const requestId = ++this.joinRequestId;
+    void this.joinWhenReady(appId, roomId, requestId);
+  }
+
+  private async joinWhenReady(appId: string, roomId: string, requestId: number): Promise<void> {
+    const pendingLeave = NetworkManager.pendingLeave;
+    if (pendingLeave) {
+      await pendingLeave;
+    }
+
+    if (requestId !== this.joinRequestId || this.room) {
+      return;
+    }
+
+    this.room = joinRoom({ appId, relayUrls: RELAY_URLS, relayRedundancy: RELAY_URLS.length }, roomId);
     const [send, receive] = this.room.makeAction<SyncMessage>("sync");
 
     this.sendSync = (message: SyncMessage, targetPeerId?: string) => {
@@ -58,9 +81,22 @@ export class NetworkManager {
   }
 
   leave(): void {
+    this.joinRequestId++;
+
     if (this.room) {
       try {
-        this.room.leave();
+        const leavePromise = this.room.leave();
+        let trackedLeave: Promise<void>;
+        trackedLeave = Promise.resolve(leavePromise)
+          .catch(() => {
+            // Room may already be torn down.
+          })
+          .finally(() => {
+            if (NetworkManager.pendingLeave === trackedLeave) {
+              NetworkManager.pendingLeave = null;
+            }
+          });
+        NetworkManager.pendingLeave = trackedLeave;
       } catch {
         // Room may already be torn down.
       }
