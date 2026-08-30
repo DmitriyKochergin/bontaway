@@ -166,6 +166,7 @@ export class WeaponSystem {
     }
 
     this.isDestroyed = true;
+    this.scene.events.off("update", this.updateProjectiles, this);
 
     for (const cleanup of [...this.activeCleanups]) {
       cleanup();
@@ -175,7 +176,6 @@ export class WeaponSystem {
     this.activeProjectiles.clear();
     this.activeRays.clear();
     this.activeSpheres.clear();
-    this.scene.events.off("update", this.updateProjectiles, this);
 
     for (const pool of Object.values(this.projectilePools)) {
       for (const state of pool) {
@@ -317,15 +317,28 @@ export class WeaponSystem {
     this.activeProjectiles.delete(state);
     this.activeRays.delete(state);
     this.activeSpheres.delete(state);
-    this.fovSystem.removeProjectile(state.sprite);
+    const sprite = state.sprite;
     state.visuals?.cleanup(this.isDestroyed);
     state.visuals = undefined;
     state.lightningGraphics?.clear();
     state.lightningGraphics?.setVisible(false);
-    state.sprite.setVelocity(0, 0);
-    state.sprite.body.enable = false;
-    state.sprite.setActive(false);
-    state.sprite.setVisible(false);
+
+    if (!sprite) {
+      return;
+    }
+
+    this.fovSystem.removeProjectile(sprite);
+
+    if (!sprite.body) {
+      sprite.setActive(false);
+      sprite.setVisible(false);
+      return;
+    }
+
+    sprite.setVelocity(0, 0);
+    sprite.body.enable = false;
+    sprite.setActive(false);
+    sprite.setVisible(false);
   }
 
   private handleProjectileWallCollision(state: ProjectileState): void {
@@ -348,7 +361,7 @@ export class WeaponSystem {
   }
 
   private updateProjectiles(time: number, _delta: number): void {
-    if (this.scene.scene.isPaused()) {
+    if (this.isDestroyed || this.scene.scene.isPaused()) {
       return;
     }
 
