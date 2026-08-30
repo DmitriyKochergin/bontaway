@@ -374,14 +374,15 @@ export default class GameScene extends BaseScene {
       this.torchLights.push(torchLight);
       this.fovSystem.addTorch(torchLight, radius);
 
-      // Gentle flicker for atmosphere.
+      // Independent flicker. Each flame gets its own beat so the room stops breathing in sync.
       this.tweens.add({
         targets: torchLight,
-        intensity: 1.4,
-        duration: 90,
+        intensity: Phaser.Math.FloatBetween(1.25, 1.75),
+        duration: Phaser.Math.Between(55, 165),
+        delay: Phaser.Math.Between(0, 220),
         yoyo: true,
         repeat: -1,
-        repeatDelay: Phaser.Math.Between(40, 140),
+        repeatDelay: Phaser.Math.Between(25, 260),
         ease: "Sine.inOut"
       });
     }
