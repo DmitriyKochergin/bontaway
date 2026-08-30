@@ -1,12 +1,12 @@
 import Phaser from "phaser";
+import { cloneLevelDocument, type LevelDocument } from "../editor/LevelDocument";
+import { type LevelEditorController } from "../editor/LevelEditorController";
+import { EDITOR_MODE_ENABLED } from "../editorMode";
 import { NPC } from "../entities/NPC";
 import { Player } from "../entities/Player";
-import { EDITOR_MODE_ENABLED } from "../editorMode";
-import { type LevelDocument, cloneLevelDocument } from "../editor/LevelDocument";
 import { getLevelDefinition } from "../levels";
 import { ArenaNetSystem } from "../multiplayer/ArenaNetSystem";
 import { ChatBubble } from "../multiplayer/ChatBubble";
-import { type LevelEditorController } from "../editor/LevelEditorController";
 import { DevModeOverlay } from "../systems/DevModeOverlay";
 import { DungeonSystem } from "../systems/DungeonSystem";
 import { FieldOfViewSystem } from "../systems/FieldOfViewSystem";
@@ -370,19 +370,19 @@ export default class GameScene extends BaseScene {
 
       // Warm glow on nearby Light2D surfaces. Phaser lights render regardless of the player's view
       // radius, matching the fog reveal registered below.
-      const torchLight = this.lights.addLight(worldX, worldY, radius * 2, 0xff8844, 1.8);
+      const torchLight = this.lights.addLight(worldX, worldY, radius * 2, 0xff8844, 1.35);
       this.torchLights.push(torchLight);
       this.fovSystem.addTorch(torchLight, radius);
 
       // Independent flicker. Each flame gets its own beat so the room stops breathing in sync.
       this.tweens.add({
         targets: torchLight,
-        intensity: Phaser.Math.FloatBetween(1.25, 1.75),
-        duration: Phaser.Math.Between(55, 165),
-        delay: Phaser.Math.Between(0, 220),
+        intensity: Phaser.Math.FloatBetween(1.8, 2.35),
+        duration: Phaser.Math.Between(120, 260),
+        delay: Phaser.Math.Between(120, 420),
         yoyo: true,
         repeat: -1,
-        repeatDelay: Phaser.Math.Between(25, 260),
+        repeatDelay: Phaser.Math.Between(100, 1520),
         ease: "Sine.inOut"
       });
     }
