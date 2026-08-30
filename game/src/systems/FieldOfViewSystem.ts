@@ -30,6 +30,7 @@ export class FieldOfViewSystem {
 
   private readonly activeProjectiles = new Set<Phaser.Types.Physics.Arcade.SpriteWithDynamicBody>();
   private readonly activeExplosions = new Set<{ x: number; y: number; radius: number }>();
+  private readonly activeTorchLights = new Map<Phaser.GameObjects.Light, number>();
   private enabled: boolean;
   // Reused each redraw to hold only the occluders whose AABB overlaps the FOV reach box. castCircle
   // runs an O(objects^2) pairwise pass plus a per-ray cast over every object it is given, so handing
@@ -43,6 +44,9 @@ export class FieldOfViewSystem {
   // disappears while the player stands still, one final paint is needed to clear its carved hole,
   // otherwise the lit circle lingers in the fog (which re-closes) until the player next moves.
   private lastPaintHadDynamicLights = false;
+  // Torch placement changes are rare, but when they happen the cached mask needs one repaint to
+  // bake the new static light into the fog.
+  private torchLightsDirty = false;
 
   constructor(
     scene: Phaser.Scene,
@@ -140,6 +144,25 @@ export class FieldOfViewSystem {
 
   public removeExplosion(explosion: { x: number; y: number; radius: number }) {
     this.activeExplosions.delete(explosion);
+  }
+
+  public addTorch(torchLight: Phaser.GameObjects.Light, revealRadius: number): void {
+    if (this.activeTorchLights.get(torchLight) === revealRadius) {
+      return;
+    }
+
+    this.activeTorchLights.set(torchLight, revealRadius);
+    this.torchLightsDirty = true;
+    this.fovRefreshAccumulator = this.fovRefreshMs;
+  }
+
+  public removeTorch(torchLight: Phaser.GameObjects.Light): void {
+    if (!this.activeTorchLights.delete(torchLight)) {
+      return;
+    }
+
+    this.torchLightsDirty = true;
+    this.fovRefreshAccumulator = this.fovRefreshMs;
   }
 
   public setEnabled(enabled: boolean): void {
@@ -311,6 +334,20 @@ export class FieldOfViewSystem {
       context.fill();
     }
 
+    for (const [torchLight, revealRadius] of this.activeTorchLights) {
+      const tX = torchLight.x - scrollX + margin;
+      const tY = torchLight.y - scrollY + margin;
+      const grad = context.createRadialGradient(tX, tY, 0, tX, tY, revealRadius);
+      grad.addColorStop(0, "rgba(0, 0, 0, 1)");
+      grad.addColorStop(0.5, "rgba(0, 0, 0, 0.7)");
+      grad.addColorStop(1, "rgba(0, 0, 0, 0)");
+
+      context.fillStyle = grad;
+      context.beginPath();
+      context.arc(tX, tY, revealRadius, 0, Math.PI * 2);
+      context.fill();
+    }
+
     for (const explosion of this.activeExplosions) {
       const eX = explosion.x - scrollX + margin;
       const eY = explosion.y - scrollY + margin;
@@ -388,7 +425,7 @@ export class FieldOfViewSystem {
     const throttleReady = this.fovRefreshAccumulator >= this.fovRefreshMs;
     // One more paint after the last dynamic light vanishes clears its carved hole from the fog.
     const dynamicLightsJustCleared = this.lastPaintHadDynamicLights && !hasDynamicLights;
-    const needsPaint = (playerMoved || hasDynamicLights || dynamicLightsJustCleared) && throttleReady;
+    const needsPaint = (playerMoved || hasDynamicLights || dynamicLightsJustCleared || this.torchLightsDirty) && throttleReady;
     if (!needsPaint && !driftNearMargin) {
       return;
     }
@@ -405,6 +442,7 @@ export class FieldOfViewSystem {
 
     this.paintMask();
     this.lastPaintHadDynamicLights = hasDynamicLights;
+    this.torchLightsDirty = false;
   }
 
   public destroy() {

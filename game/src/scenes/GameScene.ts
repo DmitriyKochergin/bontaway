@@ -94,6 +94,7 @@ export default class GameScene extends BaseScene {
       this.events.off("toggle-dev-mode", this.toggleDevMode, this);
       this.npcs.forEach(npc => npc.destroy());
       this.npcs = [];
+      this.torchLights.forEach(light => this.fovSystem.removeTorch(light));
       this.torchLights.forEach(light => this.lights.removeLight(light));
       this.torchLights = [];
       this.sharedNet?.destroy();
@@ -371,6 +372,7 @@ export default class GameScene extends BaseScene {
       // radius, matching the fog reveal registered below.
       const torchLight = this.lights.addLight(worldX, worldY, radius * 2, 0xff8844, 1.8);
       this.torchLights.push(torchLight);
+      this.fovSystem.addTorch(torchLight, radius);
 
       // Gentle flicker for atmosphere.
       this.tweens.add({
@@ -493,6 +495,7 @@ export default class GameScene extends BaseScene {
   }
 
   public refreshRuntimeObjects(): void {
+    this.torchLights.forEach(light => this.fovSystem.removeTorch(light));
     this.torchLights.forEach(light => this.lights.removeLight(light));
     this.torchLights = [];
     this.npcs.forEach(npc => npc.destroy());
