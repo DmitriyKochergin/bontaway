@@ -43,7 +43,7 @@ export const trademeetLevel: LevelDefinition = {
       name: "Priest Bono-bono",
       dialogue: [
         "When asking God - do you actually need to say Please? Think of it",
-        "Do you actually need to ask HIM anything? He knows what you want before you do. And if he knows but didn't give you it yet, what does that mean?",
+        "Do you actually need to ask HIM anything? He knows what you want before you do. And if he knows but didn't give it yet, what does that mean?",
         "Do not trust the light. It only profiles what the shadows want to target."
       ]
     },
