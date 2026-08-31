@@ -1,16 +1,16 @@
 import Phaser from "phaser";
 import { type NpcEmotion } from "./NpcEmotion";
-
-export type NpcType = "scholar" | "guard" | "wanderer" | "merchant" | "player" | "human";
+import { type NpcStyle, resolveNpcStyle } from "./NpcStyle";
+import { ensureNpcTexture } from "./NpcTextureGenerator";
 
 export class NPC extends Phaser.Physics.Arcade.Sprite {
-  private npcType: NpcType;
   private npcName: string;
   private dialogueLines: string[];
   private currentLineIndex = 0;
   private isBlinking = false;
   private nextBlinkTime = 0;
   private canBlink = true;
+  private style: NpcStyle;
 
   // Eye-follow: NPC body rotates to face the player while in activation radius, eases back to rest otherwise
   private targetRotation = 0;
@@ -27,21 +27,23 @@ export class NPC extends Phaser.Physics.Arcade.Sprite {
     scene: Phaser.Scene,
     x: number,
     y: number,
-    npcType: NpcType,
     npcName: string,
     dialogueLines: string[],
     emotion?: NpcEmotion,
-    restTarget?: { x: number; y: number }
+    restTarget?: { x: number; y: number },
+    styleInput?: Partial<NpcStyle>
   ) {
-    const textureKey = emotion ? `npc_${npcType}_${emotion}` : `npc_${npcType}`;
+    const style = resolveNpcStyle(styleInput);
+    const textureKey = ensureNpcTexture(scene, style, emotion);
+
     super(scene, x, y, textureKey);
 
+    this.style = style;
     if (restTarget) {
       this.restTargetX = restTarget.x;
       this.restTargetY = restTarget.y;
     }
 
-    this.npcType = npcType;
     this.npcName = npcName;
     this.dialogueLines = dialogueLines;
     this.canBlink = emotion === undefined || emotion === "neutral";
@@ -121,7 +123,7 @@ export class NPC extends Phaser.Physics.Arcade.Sprite {
     this.bubbleBackground.fillRoundedRect(-boxWidth / 2, -boxHeight / 2, boxWidth, boxHeight, 6);
 
     // Thin charcoal/amber border
-    const borderColor = this.npcType === "wanderer" ? 0xdd2222 : 0x4a4a5a;
+    const borderColor = (this.style.eyeColor === 0xff2222 || this.style.bodyColor === 0x111111) ? 0xdd2222 : 0x4a4a5a;
     this.bubbleBackground.lineStyle(1, borderColor, 0.7);
     this.bubbleBackground.strokeRoundedRect(-boxWidth / 2, -boxHeight / 2, boxWidth, boxHeight, 6);
 

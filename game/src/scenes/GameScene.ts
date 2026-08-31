@@ -459,17 +459,24 @@ export default class GameScene extends BaseScene {
     this.npcs = [];
 
     const levelDef = getLevelDefinition(this.levelId);
-    if (!levelDef || !levelDef.npcPlacements) {
+    if (!levelDef || !levelDef.npcs) {
       return;
     }
 
     const tileSize = this.dungeonSystem.getTileSize();
 
-    for (const p of levelDef.npcPlacements) {
+    for (const p of levelDef.npcs) {
       const x = p.tileX * tileSize;
       const y = p.tileY * tileSize;
+      const style = {
+        bodyColor: p.bodyColor,
+        eyeColor: p.eyeColor,
+        eyeSize: p.eyeSize,
+        eyeSpread: p.eyeSpread,
+        showBrows: p.showBrows
+      };
 
-      const npc = new NPC(this, x, y, p.type, p.name, p.dialogue, p.emotion, p.restTarget);
+      const npc = new NPC(this, x, y, p.name, p.dialogue, p.emotion, p.restTarget, style);
       npc.setMask(this.fovSystem.getNpcVisibilityMask());
       this.npcGroup.add(npc);
       this.npcs.push(npc);
@@ -556,7 +563,7 @@ export default class GameScene extends BaseScene {
     levelDef.doorPlacements = document.doorPlacements.map(placement => ({ ...placement }));
     levelDef.obstaclePlacements = document.obstaclePlacements.map(placement => ({ ...placement }));
     levelDef.torchPlacements = document.torchPlacements?.map(placement => ({ ...placement }));
-    levelDef.npcPlacements = document.npcPlacements?.map(placement => ({ ...placement }));
+    levelDef.npcs = document.npcs?.map(placement => ({ ...placement }));
     levelDef.spawnX = document.spawnX;
     levelDef.spawnY = document.spawnY;
   }
@@ -594,6 +601,9 @@ export default class GameScene extends BaseScene {
 
   private buildLevelDocument(): LevelDocument {
     const levelDef = getLevelDefinition(this.levelId);
+    if (!levelDef) {
+      throw new Error(`Level definition not found for levelId: ${this.levelId}`);
+    }
     const layout = levelDef.generateLayout(this.dungeonSystem.getTileSize());
 
     return {
@@ -608,7 +618,7 @@ export default class GameScene extends BaseScene {
       doorPlacements: levelDef.doorPlacements.map(placement => ({ ...placement })),
       obstaclePlacements: levelDef.obstaclePlacements.map(placement => ({ ...placement })),
       torchPlacements: levelDef.torchPlacements?.map(placement => ({ ...placement })),
-      npcPlacements: levelDef.npcPlacements?.map(placement => ({ ...placement })),
+      npcs: levelDef.npcs?.map(placement => ({ ...placement })),
       layout: {
         walkable: layout.walkable.map(row => [...row]),
         blueprints: []

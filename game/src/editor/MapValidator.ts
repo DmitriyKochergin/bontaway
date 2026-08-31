@@ -12,7 +12,7 @@ export interface ValidationResult {
 
 type ValidationIssueList = ValidationIssue[];
 
-const allowedNpcTypes = new Set(["scholar", "guard", "wanderer", "merchant", "player", "human"]);
+
 
 function validateLevelDocument(document: LevelDocument): ValidationResult {
   const issues: ValidationIssueList = [];
@@ -100,7 +100,7 @@ function validateBaseLevel(document: LevelDocument, issues: ValidationIssueList)
   validateDoorPlacements(document.doorPlacements, document.columns, document.rows, issues);
   validateObstaclePlacements(document.obstaclePlacements, document.columns, document.rows, issues);
   validateTorchPlacements(document.torchPlacements, document.columns, document.rows, issues);
-  validateNpcPlacements(document.npcPlacements, document.columns, document.rows, issues);
+  validateNpcs(document.npcs, document.columns, document.rows, issues);
 }
 
 function validateMatrixLevel(document: MatrixLevelDocument, issues: ValidationIssueList): void {
@@ -304,43 +304,39 @@ function validateTorchPlacements(
   }
 }
 
-function validateNpcPlacements(
-  npcPlacements: LevelDocument["npcPlacements"],
+function validateNpcs(
+  npcs: LevelDocument["npcs"],
   columns: number,
   rows: number,
   issues: ValidationIssueList
 ): void {
-  if (npcPlacements === undefined) {
+  if (npcs === undefined) {
     return;
   }
 
-  if (!Array.isArray(npcPlacements)) {
-    issues.push({ path: "npcPlacements", message: "NPC placements must be an array when provided." });
+  if (!Array.isArray(npcs)) {
+    issues.push({ path: "npcs", message: "NPCs must be an array when provided." });
     return;
   }
 
-  for (let index = 0; index < npcPlacements.length; index += 1) {
-    const placement = npcPlacements[index];
-    validateNumber(placement.tileX, `npcPlacements[${index}].tileX`, issues);
-    validateNumber(placement.tileY, `npcPlacements[${index}].tileY`, issues);
-    validateNonEmptyText(placement.name, `npcPlacements[${index}].name`, issues);
-    validateDialogue(placement.dialogue, `npcPlacements[${index}].dialogue`, issues);
-
-    if (!allowedNpcTypes.has(placement.type)) {
-      issues.push({ path: `npcPlacements[${index}].type`, message: "NPC type is not recognized." });
-    }
+  for (let index = 0; index < npcs.length; index += 1) {
+    const placement = npcs[index];
+    validateNumber(placement.tileX, `npcs[${index}].tileX`, issues);
+    validateNumber(placement.tileY, `npcs[${index}].tileY`, issues);
+    validateNonEmptyText(placement.name, `npcs[${index}].name`, issues);
+    validateDialogue(placement.dialogue, `npcs[${index}].dialogue`, issues);
 
     if (placement.emotion !== undefined && typeof placement.emotion !== "string") {
-      issues.push({ path: `npcPlacements[${index}].emotion`, message: "NPC emotion must be a string when provided." });
+      issues.push({ path: `npcs[${index}].emotion`, message: "NPC emotion must be a string when provided." });
     }
 
     if (placement.restTarget !== undefined) {
-      validateNumber(placement.restTarget.x, `npcPlacements[${index}].restTarget.x`, issues);
-      validateNumber(placement.restTarget.y, `npcPlacements[${index}].restTarget.y`, issues);
+      validateNumber(placement.restTarget.x, `npcs[${index}].restTarget.x`, issues);
+      validateNumber(placement.restTarget.y, `npcs[${index}].restTarget.y`, issues);
     }
 
     if (placement.tileX < 0 || placement.tileX >= columns || placement.tileY < 0 || placement.tileY >= rows) {
-      issues.push({ path: `npcPlacements[${index}]`, message: "NPC placement must stay within level bounds." });
+      issues.push({ path: `npcs[${index}]`, message: "NPC placement must stay within level bounds." });
     }
   }
 }

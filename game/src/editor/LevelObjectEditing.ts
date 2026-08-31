@@ -25,7 +25,6 @@ export function createDefaultNpcPlacement(world: GridPoint): NpcPlacement {
   return {
     tileX: world.column,
     tileY: world.row,
-    type: "human",
     name: "Unnamed",
     dialogue: ["..."],
     restTarget: { x: world.column, y: world.row }
@@ -33,7 +32,7 @@ export function createDefaultNpcPlacement(world: GridPoint): NpcPlacement {
 }
 
 export function getPlacements(document: LevelDocument, kind: PlacementKind): Array<TorchPlacement | NpcPlacement> {
-  return kind === "torch" ? document.torchPlacements ?? [] : document.npcPlacements ?? [];
+  return kind === "torch" ? document.torchPlacements ?? [] : document.npcs ?? [];
 }
 
 export function ensurePlacements(document: LevelDocument, kind: PlacementKind): Array<TorchPlacement | NpcPlacement> {
@@ -42,8 +41,8 @@ export function ensurePlacements(document: LevelDocument, kind: PlacementKind): 
     return document.torchPlacements;
   }
 
-  document.npcPlacements ??= [];
-  return document.npcPlacements;
+  document.npcs ??= [];
+  return document.npcs;
 }
 
 export function hitTestPlacements(
@@ -52,7 +51,7 @@ export function hitTestPlacements(
   hitRadius = 0.55
 ): PlacementHit | undefined {
   const torchHit = findNearestPlacement(document.torchPlacements ?? [], world, hitRadius, "torch");
-  const npcHit = findNearestPlacement(document.npcPlacements ?? [], world, hitRadius, "npc");
+  const npcHit = findNearestPlacement(document.npcs ?? [], world, hitRadius, "npc");
 
   if (!torchHit) {
     return npcHit;
@@ -75,7 +74,7 @@ export function movePlacement(document: LevelDocument, hit: PlacementHit, world:
     return;
   }
 
-  const placement = document.npcPlacements?.[hit.index];
+  const placement = document.npcs?.[hit.index];
   if (placement) {
     placement.tileX = world.column;
     placement.tileY = world.row;
@@ -84,7 +83,7 @@ export function movePlacement(document: LevelDocument, hit: PlacementHit, world:
 }
 
 export function deletePlacement(document: LevelDocument, hit: PlacementHit): void {
-  const placements = hit.kind === "torch" ? document.torchPlacements : document.npcPlacements;
+  const placements = hit.kind === "torch" ? document.torchPlacements : document.npcs;
   if (!placements || hit.index < 0 || hit.index >= placements.length) {
     return;
   }

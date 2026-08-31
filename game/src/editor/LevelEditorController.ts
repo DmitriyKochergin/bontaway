@@ -805,7 +805,7 @@ export class LevelEditorController {
         return;
       }
 
-      const placements = this.selectedPlacement.kind === "torch" ? levelDocument.torchPlacements ?? [] : levelDocument.npcPlacements ?? [];
+      const placements = this.selectedPlacement.kind === "torch" ? levelDocument.torchPlacements ?? [] : levelDocument.npcs ?? [];
       const placement = placements?.[this.selectedPlacement.index];
       if (placement) {
         this.selectionGraphics.lineStyle(2, 0xffb648, 0.95);

@@ -1,4 +1,5 @@
 import type { DoorPlacement, NpcPlacement, ObstaclePlacement, TorchPlacement } from "../levels/types";
+export type { DoorPlacement, NpcPlacement, ObstaclePlacement, TorchPlacement };
 
 export type LevelSourceType = "ts" | "matrix";
 
@@ -56,7 +57,7 @@ export interface LevelDocumentBase {
   doorPlacements: DoorPlacement[];
   obstaclePlacements: ObstaclePlacement[];
   torchPlacements?: TorchPlacement[];
-  npcPlacements?: NpcPlacement[];
+  npcs?: NpcPlacement[];
 }
 
 export interface TsLevelDocument extends LevelDocumentBase {

@@ -4,7 +4,7 @@ function formatNumber(value: number): string {
   return Number.isInteger(value) ? String(value) : value.toFixed(2).replace(/\.00$/, "");
 }
 
-function formatPlacements<T extends Record<string, unknown>>(placements: T[] | undefined): string {
+function formatPlacements<T extends object>(placements: T[] | undefined): string {
   if (!placements || placements.length === 0) {
     return "[]";
   }
@@ -12,7 +12,7 @@ function formatPlacements<T extends Record<string, unknown>>(placements: T[] | u
   return `[\n${placements.map(placement => `    ${formatObjectLiteral(placement)}`).join(",\n")}\n  ]`;
 }
 
-function formatObjectLiteral(value: Record<string, unknown>): string {
+function formatObjectLiteral(value: object): string {
   const entries = Object.entries(value).map(([key, entryValue]) => `${key}: ${formatValue(entryValue)}`);
   return `{ ${entries.join(", ")} }`;
 }
@@ -66,7 +66,7 @@ export const ${document.id}Level: LevelDefinition = {
 ${fogLine}${spawnLine}  doorPlacements: ${formatPlacements(document.doorPlacements)},
   obstaclePlacements: ${formatPlacements(document.obstaclePlacements)},
   torchPlacements: ${formatPlacements(document.torchPlacements)},
-  npcPlacements: ${formatPlacements(document.npcPlacements)},
+  npcs: ${formatPlacements(document.npcs)},
   generateLayout(tileSize: number): LevelLayout {
     return {
       walkable: ${walkable},

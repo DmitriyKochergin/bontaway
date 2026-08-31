@@ -15,11 +15,14 @@ export const emotionsLevel: LevelDefinition = {
     { tileX: 9.5, tileY: 37.5, width: 32, height: 32 },
     { tileX: 37.5, tileY: 37.5, width: 32, height: 32 }
   ],
-  npcPlacements: [
+  npcs: [
     {
       tileX: 38,
       tileY: 24,
-      type: "scholar",
+      bodyColor: 0x3b3a6d,
+      eyeColor: 0xffd700,
+      eyeSize: 4.5,
+      eyeSpread: 4,
       emotion: "angry",
       name: "Angry",
       dialogue: [
@@ -30,7 +33,10 @@ export const emotionsLevel: LevelDefinition = {
     {
       tileX: 37,
       tileY: 28,
-      type: "scholar",
+      bodyColor: 0x3b3a6d,
+      eyeColor: 0xffd700,
+      eyeSize: 4.5,
+      eyeSpread: 4,
       emotion: "sad",
       name: "Sad",
       dialogue: [
@@ -41,7 +47,10 @@ export const emotionsLevel: LevelDefinition = {
     {
       tileX: 35,
       tileY: 32,
-      type: "scholar",
+      bodyColor: 0x3b3a6d,
+      eyeColor: 0xffd700,
+      eyeSize: 4.5,
+      eyeSpread: 4,
       emotion: "happy",
       name: "Happy",
       dialogue: [
@@ -52,7 +61,10 @@ export const emotionsLevel: LevelDefinition = {
     {
       tileX: 32,
       tileY: 35,
-      type: "scholar",
+      bodyColor: 0x3b3a6d,
+      eyeColor: 0xffd700,
+      eyeSize: 4.5,
+      eyeSpread: 4,
       emotion: "surprised",
       name: "Surprised",
       dialogue: [
@@ -63,7 +75,10 @@ export const emotionsLevel: LevelDefinition = {
     {
       tileX: 28,
       tileY: 37,
-      type: "scholar",
+      bodyColor: 0x3b3a6d,
+      eyeColor: 0xffd700,
+      eyeSize: 4.5,
+      eyeSpread: 4,
       emotion: "fear",
       name: "Fear",
       dialogue: [
@@ -74,7 +89,10 @@ export const emotionsLevel: LevelDefinition = {
     {
       tileX: 24,
       tileY: 38,
-      type: "guard",
+      bodyColor: 0x555c65,
+      eyeColor: 0x00f0ff,
+      eyeSize: 4.0,
+      eyeSpread: 5,
       emotion: "disgusted",
       name: "Disgusted",
       dialogue: [
@@ -85,7 +103,10 @@ export const emotionsLevel: LevelDefinition = {
     {
       tileX: 20,
       tileY: 37,
-      type: "guard",
+      bodyColor: 0x555c65,
+      eyeColor: 0x00f0ff,
+      eyeSize: 4.0,
+      eyeSpread: 5,
       emotion: "suspicious",
       name: "Suspicious",
       dialogue: [
@@ -96,7 +117,10 @@ export const emotionsLevel: LevelDefinition = {
     {
       tileX: 16,
       tileY: 35,
-      type: "guard",
+      bodyColor: 0x555c65,
+      eyeColor: 0x00f0ff,
+      eyeSize: 4.0,
+      eyeSpread: 5,
       emotion: "sleepy",
       name: "Sleepy",
       dialogue: [
@@ -107,7 +131,10 @@ export const emotionsLevel: LevelDefinition = {
     {
       tileX: 13,
       tileY: 32,
-      type: "guard",
+      bodyColor: 0x555c65,
+      eyeColor: 0x00f0ff,
+      eyeSize: 4.0,
+      eyeSpread: 5,
       emotion: "bored",
       name: "Bored",
       dialogue: [
@@ -118,7 +145,10 @@ export const emotionsLevel: LevelDefinition = {
     {
       tileX: 11,
       tileY: 28,
-      type: "guard",
+      bodyColor: 0x555c65,
+      eyeColor: 0x00f0ff,
+      eyeSize: 4.0,
+      eyeSpread: 5,
       emotion: "excited",
       name: "Excited",
       dialogue: [
@@ -129,7 +159,10 @@ export const emotionsLevel: LevelDefinition = {
     {
       tileX: 10,
       tileY: 24,
-      type: "wanderer",
+      bodyColor: 0x111111,
+      eyeColor: 0xff2222,
+      eyeSize: 3.5,
+      eyeSpread: 3,
       emotion: "confused",
       name: "Confused",
       dialogue: [
@@ -140,7 +173,10 @@ export const emotionsLevel: LevelDefinition = {
     {
       tileX: 11,
       tileY: 20,
-      type: "wanderer",
+      bodyColor: 0x111111,
+      eyeColor: 0xff2222,
+      eyeSize: 3.5,
+      eyeSpread: 3,
       emotion: "proud",
       name: "Proud",
       dialogue: [
@@ -151,7 +187,10 @@ export const emotionsLevel: LevelDefinition = {
     {
       tileX: 13,
       tileY: 16,
-      type: "wanderer",
+      bodyColor: 0x111111,
+      eyeColor: 0xff2222,
+      eyeSize: 3.5,
+      eyeSpread: 3,
       emotion: "devastated",
       name: "Devastated",
       dialogue: [
@@ -162,7 +201,10 @@ export const emotionsLevel: LevelDefinition = {
     {
       tileX: 16,
       tileY: 13,
-      type: "wanderer",
+      bodyColor: 0x111111,
+      eyeColor: 0xff2222,
+      eyeSize: 3.5,
+      eyeSpread: 3,
       emotion: "manic",
       name: "Manic",
       dialogue: [
@@ -173,7 +215,10 @@ export const emotionsLevel: LevelDefinition = {
     {
       tileX: 20,
       tileY: 11,
-      type: "wanderer",
+      bodyColor: 0x111111,
+      eyeColor: 0xff2222,
+      eyeSize: 3.5,
+      eyeSpread: 3,
       emotion: "smug",
       name: "Smug",
       dialogue: [
@@ -184,7 +229,10 @@ export const emotionsLevel: LevelDefinition = {
     {
       tileX: 24,
       tileY: 10,
-      type: "merchant",
+      bodyColor: 0x8c5d31,
+      eyeColor: 0x7cfc00,
+      eyeSize: 4.5,
+      eyeSpread: 4,
       emotion: "determined",
       name: "Determined",
       dialogue: [
@@ -195,7 +243,10 @@ export const emotionsLevel: LevelDefinition = {
     {
       tileX: 28,
       tileY: 11,
-      type: "merchant",
+      bodyColor: 0x8c5d31,
+      eyeColor: 0x7cfc00,
+      eyeSize: 4.5,
+      eyeSpread: 4,
       emotion: "shy",
       name: "Shy",
       dialogue: [
@@ -206,7 +257,10 @@ export const emotionsLevel: LevelDefinition = {
     {
       tileX: 32,
       tileY: 13,
-      type: "merchant",
+      bodyColor: 0x8c5d31,
+      eyeColor: 0x7cfc00,
+      eyeSize: 4.5,
+      eyeSpread: 4,
       emotion: "pleading",
       name: "Pleading",
       dialogue: [
@@ -217,7 +271,10 @@ export const emotionsLevel: LevelDefinition = {
     {
       tileX: 35,
       tileY: 16,
-      type: "merchant",
+      bodyColor: 0x8c5d31,
+      eyeColor: 0x7cfc00,
+      eyeSize: 4.5,
+      eyeSpread: 4,
       emotion: "soulless",
       name: "Soulless",
       dialogue: [
@@ -228,7 +285,10 @@ export const emotionsLevel: LevelDefinition = {
     {
       tileX: 37,
       tileY: 20,
-      type: "merchant",
+      bodyColor: 0x8c5d31,
+      eyeColor: 0x7cfc00,
+      eyeSize: 4.5,
+      eyeSpread: 4,
       emotion: "hypnotized",
       name: "Hypnotized",
       dialogue: [

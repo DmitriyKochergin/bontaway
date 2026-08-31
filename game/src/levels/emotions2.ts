@@ -47,10 +47,14 @@ export const emotions2Level: LevelDefinition = {
   doorPlacements: [],
   obstaclePlacements: [],
 
-  npcPlacements: EMOTIONS_ROW.map((emotion, i) => ({
+  npcs: EMOTIONS_ROW.map((emotion, i) => ({
     tileX: NPC_START_COL + i * NPC_SPACING,
     tileY: NPC_ROW,
-    type: "human" as const,
+    bodyColor: 0x777777,
+    eyeColor: 0x111111,
+    eyeSize: 4.5,
+    eyeSpread: 5,
+    showBrows: false,
     emotion,
     name: emotion.charAt(0).toUpperCase() + emotion.slice(1),
     dialogue: DIALOGUES[emotion] ?? ["..."],

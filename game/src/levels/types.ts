@@ -23,13 +23,22 @@ export interface TorchPlacement {
 export interface NpcPlacement {
   tileX: number;
   tileY: number;
-  type: "scholar" | "guard" | "wanderer" | "merchant" | "player" | "human";
   name: string;
   dialogue: string[];
   /** Optional emotional state — modifies eye shape and face decorations. */
   emotion?: NpcEmotion;
   /** World-space rest-look target. Defaults to the level's centre when omitted. */
   restTarget?: { x: number; y: number };
+  /** Fill color of the circular body. */
+  bodyColor?: number;
+  /** Color used to render the iris/pupil of each eye. */
+  eyeColor?: number;
+  /** Vertical extent of the eye shape at rest (open). */
+  eyeSize?: number;
+  /** Half-distance between the centres of the two eyes. */
+  eyeSpread?: number;
+  /** Whether eyebrows/details are shown. */
+  showBrows?: boolean;
 }
 
 export interface LevelLayout {
@@ -49,6 +58,6 @@ export interface LevelDefinition {
   doorPlacements: DoorPlacement[];
   obstaclePlacements: ObstaclePlacement[];
   torchPlacements?: TorchPlacement[];
-  npcPlacements?: NpcPlacement[];
+  npcs?: NpcPlacement[];
   generateLayout: (tileSize: number) => LevelLayout;
 }

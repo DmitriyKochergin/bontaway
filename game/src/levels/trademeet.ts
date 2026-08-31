@@ -33,11 +33,14 @@ export const trademeetLevel: LevelDefinition = {
     { tileX: 7.5, tileY: 9.2, radius: 150 }, // The Nameless Entity
     { tileX: 25.2, tileY: 21.5, radius: 150 } // Trader Olar
   ],
-  npcPlacements: [
+  npcs: [
     {
       tileX: 23.5,
       tileY: 15.5,
-      type: "scholar",
+      bodyColor: 0x3b3a6d,
+      eyeColor: 0xffd700,
+      eyeSize: 4.5,
+      eyeSpread: 4,
       name: "Scholar Elion",
       dialogue: [
         "The monoliths... they hum with memories of a deleted sky.",
@@ -48,7 +51,10 @@ export const trademeetLevel: LevelDefinition = {
     {
       tileX: 15.5,
       tileY: 23.5,
-      type: "guard",
+      bodyColor: 0x555c65,
+      eyeColor: 0x00f0ff,
+      eyeSize: 4.0,
+      eyeSpread: 5,
       name: "Watcher Vael",
       dialogue: [
         "Vigilance is a heavier burden than iron.",
@@ -59,7 +65,10 @@ export const trademeetLevel: LevelDefinition = {
     {
       tileX: 7.5,
       tileY: 7.5,
-      type: "wanderer",
+      bodyColor: 0x111111,
+      eyeColor: 0xff2222,
+      eyeSize: 3.5,
+      eyeSpread: 3,
       name: "The Nameless Entity",
       dialogue: [
         "We are all files in a system destined for a hard wipe.",
@@ -70,7 +79,10 @@ export const trademeetLevel: LevelDefinition = {
     {
       tileX: 23.5,
       tileY: 21.5,
-      type: "merchant",
+      bodyColor: 0x8c5d31,
+      eyeColor: 0x7cfc00,
+      eyeSize: 4.5,
+      eyeSpread: 4,
       name: "Trader Olar",
       dialogue: [
         "A few thoughts for a coin... or a soul link for your sanity.",
