@@ -28,9 +28,9 @@ export const trademeetLevel: LevelDefinition = {
   ],
   torches: [
     // One torch standing beside each NPC, offset so the flame does not overlap the speaker.
-    { tileX: 21.8, tileY: 15.5, radius: 150 }, // Priest Bono-bono
-    { tileX: 15.5, tileY: 21.8, radius: 150 }, // Watcher Vael
-    { tileX: 25.2, tileY: 21.5, radius: 150 } // Trader Olar
+    { tileX: 21.8, tileY: 15.5, lightRadius: 150 }, // Priest Bono-bono
+    { tileX: 15.5, tileY: 21.8, lightRadius: 150 }, // Watcher Vael
+    { tileX: 25.2, tileY: 21.5, lightRadius: 150 } // Trader Olar
   ],
   npcs: [
     {

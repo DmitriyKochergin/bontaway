@@ -297,6 +297,9 @@ function validateTorches(
     if (torch.radius !== undefined) {
       validatePositiveNumber(torch.radius, `torches[${index}].radius`, issues);
     }
+    if (torch.lightRadius !== undefined) {
+      validatePositiveNumber(torch.lightRadius, `torches[${index}].lightRadius`, issues);
+    }
 
     if (torch.tileX < 0 || torch.tileX >= columns || torch.tileY < 0 || torch.tileY >= rows) {
       issues.push({ path: `torches[${index}]`, message: "Torch must stay within level bounds." });

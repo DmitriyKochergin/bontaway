@@ -16,8 +16,10 @@ export interface Obstacle {
 export interface Torch {
   tileX: number;
   tileY: number;
-  /** Light reach in pixels. The fog reveal is raycast to this radius, so walls still cast shadows. */
+  /** Radius of the torch fire flame in pixels. */
   radius?: number;
+  /** Light reach in pixels. The fog reveal is raycast to this radius, so walls still cast shadows. */
+  lightRadius?: number;
 }
 
 export interface Npc {

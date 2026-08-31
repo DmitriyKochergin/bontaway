@@ -17,7 +17,8 @@ export function createDefaultTorch(world: GridPoint): Torch {
   return {
     tileX: world.column,
     tileY: world.row,
-    radius: 150
+    radius: 12,
+    lightRadius: 150
   };
 }
 
@@ -31,10 +32,6 @@ export function createDefaultNpc(world: GridPoint): Npc {
   };
 }
 
-export function getObjects(document: LevelDocument, kind: ObjectKind): Array<Torch | Npc> {
-  return kind === "torch" ? document.torches ?? [] : document.npcs ?? [];
-}
-
 export function ensureObjects(document: LevelDocument, kind: ObjectKind): Array<Torch | Npc> {
   if (kind === "torch") {
     document.torches ??= [];
@@ -45,11 +42,7 @@ export function ensureObjects(document: LevelDocument, kind: ObjectKind): Array<
   return document.npcs;
 }
 
-export function hitTestObjects(
-  document: LevelDocument,
-  world: GridPoint,
-  hitRadius = 0.55
-): ObjectHit | undefined {
+export function hitTestObjects(document: LevelDocument, world: GridPoint, hitRadius = 0.55): ObjectHit | undefined {
   const torchHit = findNearestObject(document.torches ?? [], world, hitRadius, "torch");
   const npcHit = findNearestObject(document.npcs ?? [], world, hitRadius, "npc");
 
