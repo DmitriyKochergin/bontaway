@@ -41,11 +41,11 @@ export const trademeetLevel: LevelDefinition = {
       eyeColor: 0xffd700,
       eyeSize: 4.5,
       eyeSpread: 4,
-      name: "Scholar Elion",
+      name: "Priest Bono-bono",
       dialogue: [
-        "The monoliths... they hum with memories of a deleted sky.",
-        "Do not trust the light. It only profiles what the shadows want to target.",
-        "This arena was not built for glory. It was a holding pen."
+        "When asking God - do you actually need to say Please? Think of it",
+        "Do you actually need to ask HIM anything? He knows what you want before you do. And if he knows but didn't give you it yet, what does that mean?",
+        "Do not trust the light. It only profiles what the shadows want to target."
       ]
     },
     {
