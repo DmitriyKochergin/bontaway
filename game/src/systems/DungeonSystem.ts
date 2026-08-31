@@ -1,12 +1,12 @@
 import Phaser from "phaser";
-import { getLevelDefinition, type LevelDefinition, type DoorPlacement } from "../levels";
+import { getLevelDefinition, type LevelDefinition, type Door } from "../levels";
 
 export class DungeonSystem {
   private scene: Phaser.Scene;
   private readonly tileSize = 32;
   private dungeonColumns = 96;
   private dungeonRows = 64;
-  private doorPlacements: readonly DoorPlacement[] = [];
+  private doors: readonly Door[] = [];
 
   private walkable!: boolean[][];
   private physicsWalls!: Phaser.Physics.Arcade.StaticGroup;
@@ -25,7 +25,7 @@ export class DungeonSystem {
     this.currentLevel = selectedLevel;
     this.dungeonColumns = selectedLevel.columns;
     this.dungeonRows = selectedLevel.rows;
-    this.doorPlacements = selectedLevel.doorPlacements;
+    this.doors = selectedLevel.doors;
 
     this.buildDungeon();
   }
@@ -98,7 +98,7 @@ export class DungeonSystem {
     this.physicsWalls = this.scene.physics.add.staticGroup();
     const wallCells = this.buildWallCells(this.walkable);
     const doorTexturesByCell = new Map(
-      this.doorPlacements.map(placement => [`${placement.column},${placement.row}`, placement.textureKey])
+      this.doors.map(door => [`${door.column},${door.row}`, door.textureKey])
     );
 
     for (const wallCell of wallCells) {
@@ -114,15 +114,15 @@ export class DungeonSystem {
     }
 
     // Render obstacles
-    const obstaclePlacements = this.currentLevel.obstaclePlacements.map(o => ({
+    const obstacles = this.currentLevel.obstacles.map(o => ({
       x: o.tileX * tileSize,
       y: o.tileY * tileSize,
       width: o.width,
       height: o.height
     }));
 
-    for (const obstaclePlacement of obstaclePlacements) {
-      this.addObstacle(obstaclePlacement.x, obstaclePlacement.y, obstaclePlacement.width, obstaclePlacement.height);
+    for (const obstacle of obstacles) {
+      this.addObstacle(obstacle.x, obstacle.y, obstacle.width, obstacle.height);
     }
   }
 

@@ -44,8 +44,8 @@ export const emotions2Level: LevelDefinition = {
   name: "Mirror Row",
   columns: COLS,
   rows: ROWS,
-  doorPlacements: [],
-  obstaclePlacements: [],
+  doors: [],
+  obstacles: [],
 
   npcs: EMOTIONS_ROW.map((emotion, i) => ({
     tileX: NPC_START_COL + i * NPC_SPACING,

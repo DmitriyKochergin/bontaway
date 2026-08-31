@@ -97,9 +97,9 @@ function validateBaseLevel(document: LevelDocument, issues: ValidationIssueList)
     issues.push({ path: "fogOfWarEnabled", message: "Fog of war flag must be a boolean when provided." });
   }
 
-  validateDoorPlacements(document.doorPlacements, document.columns, document.rows, issues);
-  validateObstaclePlacements(document.obstaclePlacements, document.columns, document.rows, issues);
-  validateTorchPlacements(document.torchPlacements, document.columns, document.rows, issues);
+  validateDoors(document.doors, document.columns, document.rows, issues);
+  validateObstacles(document.obstacles, document.columns, document.rows, issues);
+  validateTorches(document.torches, document.columns, document.rows, issues);
   validateNpcs(document.npcs, document.columns, document.rows, issues);
 }
 
@@ -228,78 +228,78 @@ function validateTsLevel(document: TsLevelDocument, issues: ValidationIssueList)
   }
 }
 
-function validateDoorPlacements(
-  doorPlacements: LevelDocument["doorPlacements"],
+function validateDoors(
+  doors: LevelDocument["doors"],
   columns: number,
   rows: number,
   issues: ValidationIssueList
 ): void {
-  if (!Array.isArray(doorPlacements)) {
-    issues.push({ path: "doorPlacements", message: "Door placements must be an array." });
+  if (!Array.isArray(doors)) {
+    issues.push({ path: "doors", message: "Doors must be an array." });
     return;
   }
 
-  for (let index = 0; index < doorPlacements.length; index += 1) {
-    const placement = doorPlacements[index];
-    validateInteger(placement.column, `doorPlacements[${index}].column`, issues);
-    validateInteger(placement.row, `doorPlacements[${index}].row`, issues);
-    validateNonEmptyText(placement.textureKey, `doorPlacements[${index}].textureKey`, issues);
+  for (let index = 0; index < doors.length; index += 1) {
+    const door = doors[index];
+    validateInteger(door.column, `doors[${index}].column`, issues);
+    validateInteger(door.row, `doors[${index}].row`, issues);
+    validateNonEmptyText(door.textureKey, `doors[${index}].textureKey`, issues);
 
-    if (placement.column < 0 || placement.column >= columns || placement.row < 0 || placement.row >= rows) {
-      issues.push({ path: `doorPlacements[${index}]`, message: "Door placement must stay within level bounds." });
+    if (door.column < 0 || door.column >= columns || door.row < 0 || door.row >= rows) {
+      issues.push({ path: `doors[${index}]`, message: "Door must stay within level bounds." });
     }
   }
 }
 
-function validateObstaclePlacements(
-  obstaclePlacements: LevelDocument["obstaclePlacements"],
+function validateObstacles(
+  obstacles: LevelDocument["obstacles"],
   columns: number,
   rows: number,
   issues: ValidationIssueList
 ): void {
-  if (!Array.isArray(obstaclePlacements)) {
-    issues.push({ path: "obstaclePlacements", message: "Obstacle placements must be an array." });
+  if (!Array.isArray(obstacles)) {
+    issues.push({ path: "obstacles", message: "Obstacles must be an array." });
     return;
   }
 
-  for (let index = 0; index < obstaclePlacements.length; index += 1) {
-    const placement = obstaclePlacements[index];
-    validateNumber(placement.tileX, `obstaclePlacements[${index}].tileX`, issues);
-    validateNumber(placement.tileY, `obstaclePlacements[${index}].tileY`, issues);
-    validatePositiveNumber(placement.width, `obstaclePlacements[${index}].width`, issues);
-    validatePositiveNumber(placement.height, `obstaclePlacements[${index}].height`, issues);
+  for (let index = 0; index < obstacles.length; index += 1) {
+    const obstacle = obstacles[index];
+    validateNumber(obstacle.tileX, `obstacles[${index}].tileX`, issues);
+    validateNumber(obstacle.tileY, `obstacles[${index}].tileY`, issues);
+    validatePositiveNumber(obstacle.width, `obstacles[${index}].width`, issues);
+    validatePositiveNumber(obstacle.height, `obstacles[${index}].height`, issues);
 
-    if (placement.tileX < 0 || placement.tileX >= columns || placement.tileY < 0 || placement.tileY >= rows) {
-      issues.push({ path: `obstaclePlacements[${index}]`, message: "Obstacle placement must stay within level bounds." });
+    if (obstacle.tileX < 0 || obstacle.tileX >= columns || obstacle.tileY < 0 || obstacle.tileY >= rows) {
+      issues.push({ path: `obstacles[${index}]`, message: "Obstacle must stay within level bounds." });
     }
   }
 }
 
-function validateTorchPlacements(
-  torchPlacements: LevelDocument["torchPlacements"],
+function validateTorches(
+  torches: LevelDocument["torches"],
   columns: number,
   rows: number,
   issues: ValidationIssueList
 ): void {
-  if (torchPlacements === undefined) {
+  if (torches === undefined) {
     return;
   }
 
-  if (!Array.isArray(torchPlacements)) {
-    issues.push({ path: "torchPlacements", message: "Torch placements must be an array when provided." });
+  if (!Array.isArray(torches)) {
+    issues.push({ path: "torches", message: "Torches must be an array when provided." });
     return;
   }
 
-  for (let index = 0; index < torchPlacements.length; index += 1) {
-    const placement = torchPlacements[index];
-    validateNumber(placement.tileX, `torchPlacements[${index}].tileX`, issues);
-    validateNumber(placement.tileY, `torchPlacements[${index}].tileY`, issues);
-    if (placement.radius !== undefined) {
-      validatePositiveNumber(placement.radius, `torchPlacements[${index}].radius`, issues);
+  for (let index = 0; index < torches.length; index += 1) {
+    const torch = torches[index];
+    validateNumber(torch.tileX, `torches[${index}].tileX`, issues);
+    validateNumber(torch.tileY, `torches[${index}].tileY`, issues);
+    if (torch.radius !== undefined) {
+      validatePositiveNumber(torch.radius, `torches[${index}].radius`, issues);
     }
 
-    if (placement.tileX < 0 || placement.tileX >= columns || placement.tileY < 0 || placement.tileY >= rows) {
-      issues.push({ path: `torchPlacements[${index}]`, message: "Torch placement must stay within level bounds." });
+    if (torch.tileX < 0 || torch.tileX >= columns || torch.tileY < 0 || torch.tileY >= rows) {
+      issues.push({ path: `torches[${index}]`, message: "Torch must stay within level bounds." });
     }
   }
 }
@@ -320,23 +320,23 @@ function validateNpcs(
   }
 
   for (let index = 0; index < npcs.length; index += 1) {
-    const placement = npcs[index];
-    validateNumber(placement.tileX, `npcs[${index}].tileX`, issues);
-    validateNumber(placement.tileY, `npcs[${index}].tileY`, issues);
-    validateNonEmptyText(placement.name, `npcs[${index}].name`, issues);
-    validateDialogue(placement.dialogue, `npcs[${index}].dialogue`, issues);
+    const npc = npcs[index];
+    validateNumber(npc.tileX, `npcs[${index}].tileX`, issues);
+    validateNumber(npc.tileY, `npcs[${index}].tileY`, issues);
+    validateNonEmptyText(npc.name, `npcs[${index}].name`, issues);
+    validateDialogue(npc.dialogue, `npcs[${index}].dialogue`, issues);
 
-    if (placement.emotion !== undefined && typeof placement.emotion !== "string") {
+    if (npc.emotion !== undefined && typeof npc.emotion !== "string") {
       issues.push({ path: `npcs[${index}].emotion`, message: "NPC emotion must be a string when provided." });
     }
 
-    if (placement.restTarget !== undefined) {
-      validateNumber(placement.restTarget.x, `npcs[${index}].restTarget.x`, issues);
-      validateNumber(placement.restTarget.y, `npcs[${index}].restTarget.y`, issues);
+    if (npc.restTarget !== undefined) {
+      validateNumber(npc.restTarget.x, `npcs[${index}].restTarget.x`, issues);
+      validateNumber(npc.restTarget.y, `npcs[${index}].restTarget.y`, issues);
     }
 
-    if (placement.tileX < 0 || placement.tileX >= columns || placement.tileY < 0 || placement.tileY >= rows) {
-      issues.push({ path: `npcs[${index}]`, message: "NPC placement must stay within level bounds." });
+    if (npc.tileX < 0 || npc.tileX >= columns || npc.tileY < 0 || npc.tileY >= rows) {
+      issues.push({ path: `npcs[${index}]`, message: "NPC must stay within level bounds." });
     }
   }
 }

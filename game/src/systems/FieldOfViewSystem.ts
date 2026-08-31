@@ -44,7 +44,7 @@ export class FieldOfViewSystem {
   // disappears while the player stands still, one final paint is needed to clear its carved hole,
   // otherwise the lit circle lingers in the fog (which re-closes) until the player next moves.
   private lastPaintHadDynamicLights = false;
-  // Torch placement changes are rare, but when they happen the cached mask needs one repaint to
+  // Torch changes are rare, but when they happen the cached mask needs one repaint to
   // bake the new static light into the fog.
   private torchLightsDirty = false;
 

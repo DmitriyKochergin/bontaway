@@ -1,26 +1,26 @@
 import { type NpcEmotion } from "../entities/NpcEmotion";
 
-export interface DoorPlacement {
+export interface Door {
   column: number;
   row: number;
   textureKey: string;
 }
 
-export interface ObstaclePlacement {
+export interface Obstacle {
   tileX: number;
   tileY: number;
   width: number;
   height: number;
 }
 
-export interface TorchPlacement {
+export interface Torch {
   tileX: number;
   tileY: number;
   /** Light reach in pixels. The fog reveal is raycast to this radius, so walls still cast shadows. */
   radius?: number;
 }
 
-export interface NpcPlacement {
+export interface Npc {
   tileX: number;
   tileY: number;
   name: string;
@@ -55,9 +55,9 @@ export interface LevelDefinition {
   spawnX?: number;
   spawnY?: number;
   fogOfWarEnabled?: boolean;
-  doorPlacements: DoorPlacement[];
-  obstaclePlacements: ObstaclePlacement[];
-  torchPlacements?: TorchPlacement[];
-  npcs?: NpcPlacement[];
+  doors: Door[];
+  obstacles: Obstacle[];
+  torches?: Torch[];
+  npcs?: Npc[];
   generateLayout: (tileSize: number) => LevelLayout;
 }

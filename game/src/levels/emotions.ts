@@ -5,8 +5,8 @@ export const emotionsLevel: LevelDefinition = {
   name: "Hall of Faces",
   columns: 48,
   rows: 48,
-  doorPlacements: [],
-  obstaclePlacements: [
+  doors: [],
+  obstacles: [
     // Beautiful central monolith blocking path and adding mystery
     { tileX: 23.5, tileY: 23.5, width: 32, height: 32 },
     // Symmetric corner sentinel stones

@@ -6,8 +6,8 @@ export const trademeetLevel: LevelDefinition = {
   columns: 48,
   rows: 48,
   fogOfWarEnabled: true,
-  doorPlacements: [], // No doors in an open arena
-  obstaclePlacements: [
+  doors: [], // No doors in an open arena
+  obstacles: [
     // Surrounding center pillars
     { tileX: 18.5, tileY: 18.5, width: 32, height: 32 },
     { tileX: 28.5, tileY: 18.5, width: 32, height: 32 },
@@ -26,7 +26,7 @@ export const trademeetLevel: LevelDefinition = {
     { tileX: 9.5, tileY: 37.5, width: 32, height: 32 },
     { tileX: 37.5, tileY: 37.5, width: 32, height: 32 }
   ],
-  torchPlacements: [
+  torches: [
     // One torch standing beside each NPC, offset so the flame does not overlap the speaker.
     { tileX: 21.8, tileY: 15.5, radius: 150 }, // Priest Bono-bono
     { tileX: 15.5, tileY: 21.8, radius: 150 }, // Watcher Vael

@@ -5,8 +5,8 @@ export const dungeonLevel: LevelDefinition = {
   name: "Dungeon",
   columns: 96,
   rows: 64,
-  doorPlacements: [{ column: 16, row: 18, textureKey: "door_1" }],
-  obstaclePlacements: [
+  doors: [{ column: 16, row: 18, textureKey: "door_1" }],
+  obstacles: [
     { tileX: 13.5, tileY: 16.5, width: 32, height: 32 },
     { tileX: 24.5, tileY: 16.5, width: 32, height: 32 },
     { tileX: 27.5, tileY: 6.5, width: 32, height: 32 },

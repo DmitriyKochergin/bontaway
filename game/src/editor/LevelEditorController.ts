@@ -23,13 +23,13 @@ import { LevelEditorOverlay } from "./LevelEditorOverlay";
 import { saveLevelDocument } from "./DevSaveClient";
 import { type LevelSceneAdapter } from "./LevelSceneAdapter";
 import {
-  addPlacement,
-  deletePlacement,
-  hitTestPlacements,
-  movePlacement,
-  type PlacementHit,
-  type PlacementKind,
-  type SelectedPlacement
+  addObject,
+  deleteObject,
+  hitTestObjects,
+  moveObject,
+  type ObjectHit,
+  type ObjectKind,
+  type SelectedObject
 } from "./LevelObjectEditing";
 
 export type LevelEditorTool = "select" | "move" | "paint" | "erase" | "place" | "duplicate";
@@ -37,7 +37,7 @@ export type LevelEditorTool = "select" | "move" | "paint" | "erase" | "place" | 
 export interface LevelEditorSnapshot {
   enabled: boolean;
   tool: LevelEditorTool;
-  placementKind?: PlacementKind;
+  objectKind?: ObjectKind;
   dirty: boolean;
   canUndo: boolean;
   canRedo: boolean;
@@ -48,7 +48,7 @@ export interface LevelEditorSnapshot {
   matrixReady: boolean;
   hoveredCell?: GridPoint;
   selection?: GridSelection<number>;
-  selectedPlacement?: SelectedPlacement;
+  selectedObject?: SelectedObject;
 }
 
 interface PointerCell {
@@ -75,10 +75,10 @@ export class LevelEditorController {
   private history = new EditorHistory();
   private enabled = false;
   private activeTool: LevelEditorTool = "select";
-  private placementKind: PlacementKind = "torch";
+  private objectKind: ObjectKind = "torch";
   private hoveredCell?: PointerCell;
   private selection?: GridSelection<number>;
-  private selectedPlacement?: { kind: PlacementKind; index: number };
+  private selectedObject?: { kind: ObjectKind; index: number };
   private matrixClipboard?: MatrixClipboard;
   private paletteTile: number = DEFAULT_MATRIX_PALETTE[1] ?? 1;
   private dragStartCell?: PointerCell;
@@ -86,7 +86,7 @@ export class LevelEditorController {
   private dragWorldPoint?: GridPoint;
   private dragMode?: DragMode;
   private dragSelectionSnapshot?: GridSelection<number>;
-  private dragPlacementSnapshot?: PlacementHit;
+  private dragObjectSnapshot?: ObjectHit;
   private document?: LevelDocument;
   private dirty = false;
   private saving = false;
@@ -109,7 +109,7 @@ export class LevelEditorController {
       () => this.toggleEnabled(),
       tool => this.setTool(tool),
       tile => this.setPaletteTile(tile),
-      placement => this.setPlacementKind(placement),
+      kind => this.setObjectKind(kind),
       () => this.undo(),
       () => this.redo(),
       () => this.save()
@@ -130,7 +130,7 @@ export class LevelEditorController {
     this.dirty = false;
     this.matrixClipboard = undefined;
     this.selection = undefined;
-    this.selectedPlacement = undefined;
+    this.selectedObject = undefined;
     this.overlay.update(this.getSnapshot());
   }
 
@@ -143,8 +143,8 @@ export class LevelEditorController {
     this.overlay.update(this.getSnapshot());
   }
 
-  public setPlacementKind(kind: PlacementKind): void {
-    this.placementKind = kind;
+  public setObjectKind(kind: ObjectKind): void {
+    this.objectKind = kind;
     this.overlay.update(this.getSnapshot());
   }
 
@@ -178,7 +178,7 @@ export class LevelEditorController {
     this.dragWorldPoint = undefined;
     this.dragMode = undefined;
     this.dragSelectionSnapshot = undefined;
-    this.dragPlacementSnapshot = undefined;
+    this.dragObjectSnapshot = undefined;
 
     if (this.enabled) {
       this.overlay.show();
@@ -192,13 +192,13 @@ export class LevelEditorController {
 
   public clearSelection(): void {
     this.selection = undefined;
-    this.selectedPlacement = undefined;
+    this.selectedObject = undefined;
     this.dragStartCell = undefined;
     this.dragCurrentCell = undefined;
     this.dragWorldPoint = undefined;
     this.dragMode = undefined;
     this.dragSelectionSnapshot = undefined;
-    this.dragPlacementSnapshot = undefined;
+    this.dragObjectSnapshot = undefined;
     this.selectionGraphics.clear();
     this.selectionGraphics.setVisible(this.enabled);
     this.overlay.update(this.getSnapshot());
@@ -342,7 +342,7 @@ export class LevelEditorController {
     return {
       enabled: this.enabled,
       tool: this.activeTool,
-      placementKind: this.placementKind,
+      objectKind: this.objectKind,
       dirty: this.dirty,
       canUndo: this.history.canUndo(),
       canRedo: this.history.canRedo(),
@@ -353,7 +353,7 @@ export class LevelEditorController {
       matrixReady: this.document?.type === "matrix",
       hoveredCell: this.hoveredCell ? { ...this.hoveredCell } : undefined,
       selection: this.selection ? cloneGridSelection(this.selection) : undefined,
-      selectedPlacement: this.selectedPlacement ? { ...this.selectedPlacement } : undefined
+      selectedObject: this.selectedObject ? { ...this.selectedObject } : undefined
     };
   }
 
@@ -439,11 +439,11 @@ export class LevelEditorController {
           event.preventDefault();
           return;
         case "Digit7":
-          this.setPlacementKind("torch");
+          this.setObjectKind("torch");
           event.preventDefault();
           return;
         case "Digit8":
-          this.setPlacementKind("npc");
+          this.setObjectKind("npc");
           event.preventDefault();
           return;
         case "Escape":
@@ -526,7 +526,7 @@ export class LevelEditorController {
       this.dragWorldPoint = undefined;
       this.dragMode = undefined;
       this.dragSelectionSnapshot = undefined;
-      this.dragPlacementSnapshot = undefined;
+      this.dragObjectSnapshot = undefined;
       this.overlay.update(this.getSnapshot());
     };
 
@@ -556,10 +556,10 @@ export class LevelEditorController {
       return;
     }
 
-    if (this.selectedPlacement) {
+    if (this.selectedObject) {
       this.beginEdit();
-      deletePlacement(this.document, { ...this.selectedPlacement, distance: 0 });
-      this.selectedPlacement = undefined;
+      deleteObject(this.document, { ...this.selectedObject, distance: 0 });
+      this.selectedObject = undefined;
       this.commitDocumentChange();
     }
   }
@@ -679,13 +679,13 @@ export class LevelEditorController {
       return;
     }
 
-    const hit = hitTestPlacements(this.document, worldPoint);
+    const hit = hitTestObjects(this.document, worldPoint);
 
     if (hit && this.activeTool !== "place") {
-      this.selectedPlacement = { kind: hit.kind, index: hit.index };
+      this.selectedObject = { kind: hit.kind, index: hit.index };
       if (this.activeTool === "move") {
         this.beginDrag({ column: worldPoint.column, row: worldPoint.row }, "object");
-        this.dragPlacementSnapshot = hit;
+        this.dragObjectSnapshot = hit;
         this.beginEdit();
       }
       this.overlay.update(this.getSnapshot());
@@ -694,22 +694,22 @@ export class LevelEditorController {
 
     if (this.activeTool === "place") {
       this.beginEdit();
-      this.selectedPlacement = addPlacement(this.document, this.placementKind, worldPoint);
+      this.selectedObject = addObject(this.document, this.objectKind, worldPoint);
       this.commitDocumentChange();
       return;
     }
 
-    this.selectedPlacement = undefined;
+    this.selectedObject = undefined;
     this.overlay.update(this.getSnapshot());
   }
 
   private handleObjectPointerMove(worldPoint: GridPoint): void {
-    if (!this.document || this.document.type === "matrix" || this.dragMode !== "object" || !this.dragPlacementSnapshot) {
+    if (!this.document || this.document.type === "matrix" || this.dragMode !== "object" || !this.dragObjectSnapshot) {
       return;
     }
 
     this.dragWorldPoint = worldPoint;
-    movePlacement(this.document, this.dragPlacementSnapshot, worldPoint);
+    moveObject(this.document, this.dragObjectSnapshot, worldPoint);
     this.commitDocumentChange();
   }
 
@@ -722,8 +722,8 @@ export class LevelEditorController {
       return;
     }
 
-    if (this.dragPlacementSnapshot && this.dragWorldPoint) {
-      movePlacement(this.document, this.dragPlacementSnapshot, this.dragWorldPoint);
+    if (this.dragObjectSnapshot && this.dragWorldPoint) {
+      moveObject(this.document, this.dragObjectSnapshot, this.dragWorldPoint);
       this.commitDocumentChange();
     }
   }
@@ -799,17 +799,17 @@ export class LevelEditorController {
       return;
     }
 
-    if (this.selectedPlacement && this.document?.type !== "matrix") {
+    if (this.selectedObject && this.document?.type !== "matrix") {
       const levelDocument = this.document;
       if (!levelDocument) {
         return;
       }
 
-      const placements = this.selectedPlacement.kind === "torch" ? levelDocument.torchPlacements ?? [] : levelDocument.npcs ?? [];
-      const placement = placements?.[this.selectedPlacement.index];
-      if (placement) {
+      const objects = this.selectedObject.kind === "torch" ? levelDocument.torches ?? [] : levelDocument.npcs ?? [];
+      const item = objects?.[this.selectedObject.index];
+      if (item) {
         this.selectionGraphics.lineStyle(2, 0xffb648, 0.95);
-        this.selectionGraphics.strokeCircle(placement.tileX * tileSize, placement.tileY * tileSize, 12);
+        this.selectionGraphics.strokeCircle(item.tileX * tileSize, item.tileY * tileSize, 12);
       }
       return;
     }

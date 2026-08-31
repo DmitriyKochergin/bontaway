@@ -1,5 +1,5 @@
-import type { DoorPlacement, NpcPlacement, ObstaclePlacement, TorchPlacement } from "../levels/types";
-export type { DoorPlacement, NpcPlacement, ObstaclePlacement, TorchPlacement };
+import type { Door, Npc, Obstacle, Torch } from "../levels/types";
+export type { Door, Npc, Obstacle, Torch };
 
 export type LevelSourceType = "ts" | "matrix";
 
@@ -54,10 +54,10 @@ export interface LevelDocumentBase {
   spawnX?: number;
   spawnY?: number;
   fogOfWarEnabled?: boolean;
-  doorPlacements: DoorPlacement[];
-  obstaclePlacements: ObstaclePlacement[];
-  torchPlacements?: TorchPlacement[];
-  npcs?: NpcPlacement[];
+  doors: Door[];
+  obstacles: Obstacle[];
+  torches?: Torch[];
+  npcs?: Npc[];
 }
 
 export interface TsLevelDocument extends LevelDocumentBase {

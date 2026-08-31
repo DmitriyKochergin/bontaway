@@ -4,12 +4,12 @@ function formatNumber(value: number): string {
   return Number.isInteger(value) ? String(value) : value.toFixed(2).replace(/\.00$/, "");
 }
 
-function formatPlacements<T extends object>(placements: T[] | undefined): string {
-  if (!placements || placements.length === 0) {
+function formatObjects<T extends object>(items: T[] | undefined): string {
+  if (!items || items.length === 0) {
     return "[]";
   }
 
-  return `[\n${placements.map(placement => `    ${formatObjectLiteral(placement)}`).join(",\n")}\n  ]`;
+  return `[\n${items.map(item => `    ${formatObjectLiteral(item)}`).join(",\n")}\n  ]`;
 }
 
 function formatObjectLiteral(value: object): string {
@@ -63,10 +63,10 @@ export const ${document.id}Level: LevelDefinition = {
   name: ${JSON.stringify(document.name)},
   columns: ${document.columns},
   rows: ${document.rows},
-${fogLine}${spawnLine}  doorPlacements: ${formatPlacements(document.doorPlacements)},
-  obstaclePlacements: ${formatPlacements(document.obstaclePlacements)},
-  torchPlacements: ${formatPlacements(document.torchPlacements)},
-  npcs: ${formatPlacements(document.npcs)},
+${fogLine}${spawnLine}  doors: ${formatObjects(document.doors)},
+  obstacles: ${formatObjects(document.obstacles)},
+  torches: ${formatObjects(document.torches)},
+  npcs: ${formatObjects(document.npcs)},
   generateLayout(tileSize: number): LevelLayout {
     return {
       walkable: ${walkable},

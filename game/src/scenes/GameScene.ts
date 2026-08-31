@@ -355,17 +355,17 @@ export default class GameScene extends BaseScene {
 
   private spawnTorches(): void {
     const levelDef = getLevelDefinition(this.levelId);
-    if (!levelDef?.torchPlacements?.length) {
+    if (!levelDef?.torches?.length) {
       return;
     }
 
     const tileSize = this.dungeonSystem.getTileSize();
     const defaultRadius = 150;
 
-    for (const placement of levelDef.torchPlacements) {
-      const worldX = placement.tileX * tileSize;
-      const worldY = placement.tileY * tileSize;
-      const radius = placement.radius ?? defaultRadius;
+    for (const torch of levelDef.torches) {
+      const worldX = torch.tileX * tileSize;
+      const worldY = torch.tileY * tileSize;
+      const radius = torch.radius ?? defaultRadius;
 
       const fovMask = this.fovSystem.getNpcVisibilityMask();
 
@@ -560,10 +560,10 @@ export default class GameScene extends BaseScene {
       return;
     }
 
-    levelDef.doorPlacements = document.doorPlacements.map(placement => ({ ...placement }));
-    levelDef.obstaclePlacements = document.obstaclePlacements.map(placement => ({ ...placement }));
-    levelDef.torchPlacements = document.torchPlacements?.map(placement => ({ ...placement }));
-    levelDef.npcs = document.npcs?.map(placement => ({ ...placement }));
+    levelDef.doors = document.doors.map(door => ({ ...door }));
+    levelDef.obstacles = document.obstacles.map(obstacle => ({ ...obstacle }));
+    levelDef.torches = document.torches?.map(torch => ({ ...torch }));
+    levelDef.npcs = document.npcs?.map(npc => ({ ...npc }));
     levelDef.spawnX = document.spawnX;
     levelDef.spawnY = document.spawnY;
   }
@@ -615,10 +615,10 @@ export default class GameScene extends BaseScene {
       spawnX: layout.spawnX,
       spawnY: layout.spawnY,
       fogOfWarEnabled: levelDef.fogOfWarEnabled,
-      doorPlacements: levelDef.doorPlacements.map(placement => ({ ...placement })),
-      obstaclePlacements: levelDef.obstaclePlacements.map(placement => ({ ...placement })),
-      torchPlacements: levelDef.torchPlacements?.map(placement => ({ ...placement })),
-      npcs: levelDef.npcs?.map(placement => ({ ...placement })),
+      doors: levelDef.doors.map(door => ({ ...door })),
+      obstacles: levelDef.obstacles.map(obstacle => ({ ...obstacle })),
+      torches: levelDef.torches?.map(torch => ({ ...torch })),
+      npcs: levelDef.npcs?.map(npc => ({ ...npc })),
       layout: {
         walkable: layout.walkable.map(row => [...row]),
         blueprints: []

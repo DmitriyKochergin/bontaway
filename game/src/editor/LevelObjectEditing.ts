@@ -1,19 +1,19 @@
-import { type GridPoint, type LevelDocument, type NpcPlacement, type TorchPlacement } from "./LevelDocument";
+import { type GridPoint, type LevelDocument, type Npc, type Torch } from "./LevelDocument";
 
-export type PlacementKind = "torch" | "npc";
+export type ObjectKind = "torch" | "npc";
 
-export interface SelectedPlacement {
-  kind: PlacementKind;
+export interface SelectedObject {
+  kind: ObjectKind;
   index: number;
 }
 
-export interface PlacementHit {
-  kind: PlacementKind;
+export interface ObjectHit {
+  kind: ObjectKind;
   index: number;
   distance: number;
 }
 
-export function createDefaultTorchPlacement(world: GridPoint): TorchPlacement {
+export function createDefaultTorch(world: GridPoint): Torch {
   return {
     tileX: world.column,
     tileY: world.row,
@@ -21,7 +21,7 @@ export function createDefaultTorchPlacement(world: GridPoint): TorchPlacement {
   };
 }
 
-export function createDefaultNpcPlacement(world: GridPoint): NpcPlacement {
+export function createDefaultNpc(world: GridPoint): Npc {
   return {
     tileX: world.column,
     tileY: world.row,
@@ -31,27 +31,27 @@ export function createDefaultNpcPlacement(world: GridPoint): NpcPlacement {
   };
 }
 
-export function getPlacements(document: LevelDocument, kind: PlacementKind): Array<TorchPlacement | NpcPlacement> {
-  return kind === "torch" ? document.torchPlacements ?? [] : document.npcs ?? [];
+export function getObjects(document: LevelDocument, kind: ObjectKind): Array<Torch | Npc> {
+  return kind === "torch" ? document.torches ?? [] : document.npcs ?? [];
 }
 
-export function ensurePlacements(document: LevelDocument, kind: PlacementKind): Array<TorchPlacement | NpcPlacement> {
+export function ensureObjects(document: LevelDocument, kind: ObjectKind): Array<Torch | Npc> {
   if (kind === "torch") {
-    document.torchPlacements ??= [];
-    return document.torchPlacements;
+    document.torches ??= [];
+    return document.torches;
   }
 
   document.npcs ??= [];
   return document.npcs;
 }
 
-export function hitTestPlacements(
+export function hitTestObjects(
   document: LevelDocument,
   world: GridPoint,
   hitRadius = 0.55
-): PlacementHit | undefined {
-  const torchHit = findNearestPlacement(document.torchPlacements ?? [], world, hitRadius, "torch");
-  const npcHit = findNearestPlacement(document.npcs ?? [], world, hitRadius, "npc");
+): ObjectHit | undefined {
+  const torchHit = findNearestObject(document.torches ?? [], world, hitRadius, "torch");
+  const npcHit = findNearestObject(document.npcs ?? [], world, hitRadius, "npc");
 
   if (!torchHit) {
     return npcHit;
@@ -64,53 +64,53 @@ export function hitTestPlacements(
   return torchHit.distance <= npcHit.distance ? torchHit : npcHit;
 }
 
-export function movePlacement(document: LevelDocument, hit: PlacementHit, world: GridPoint): void {
+export function moveObject(document: LevelDocument, hit: ObjectHit, world: GridPoint): void {
   if (hit.kind === "torch") {
-    const placement = document.torchPlacements?.[hit.index];
-    if (placement) {
-      placement.tileX = world.column;
-      placement.tileY = world.row;
+    const torch = document.torches?.[hit.index];
+    if (torch) {
+      torch.tileX = world.column;
+      torch.tileY = world.row;
     }
     return;
   }
 
-  const placement = document.npcs?.[hit.index];
-  if (placement) {
-    placement.tileX = world.column;
-    placement.tileY = world.row;
-    placement.restTarget = { x: world.column, y: world.row };
+  const npc = document.npcs?.[hit.index];
+  if (npc) {
+    npc.tileX = world.column;
+    npc.tileY = world.row;
+    npc.restTarget = { x: world.column, y: world.row };
   }
 }
 
-export function deletePlacement(document: LevelDocument, hit: PlacementHit): void {
-  const placements = hit.kind === "torch" ? document.torchPlacements : document.npcs;
-  if (!placements || hit.index < 0 || hit.index >= placements.length) {
+export function deleteObject(document: LevelDocument, hit: ObjectHit): void {
+  const objects = hit.kind === "torch" ? document.torches : document.npcs;
+  if (!objects || hit.index < 0 || hit.index >= objects.length) {
     return;
   }
 
-  placements.splice(hit.index, 1);
+  objects.splice(hit.index, 1);
 }
 
-export function addPlacement(document: LevelDocument, kind: PlacementKind, world: GridPoint): PlacementHit {
-  const placements = ensurePlacements(document, kind);
-  const placement = kind === "torch" ? createDefaultTorchPlacement(world) : createDefaultNpcPlacement(world);
-  placements.push(placement as TorchPlacement | NpcPlacement);
-  return { kind, index: placements.length - 1, distance: 0 };
+export function addObject(document: LevelDocument, kind: ObjectKind, world: GridPoint): ObjectHit {
+  const objects = ensureObjects(document, kind);
+  const item = kind === "torch" ? createDefaultTorch(world) : createDefaultNpc(world);
+  objects.push(item as Torch | Npc);
+  return { kind, index: objects.length - 1, distance: 0 };
 }
 
-function findNearestPlacement<TPlacement extends { tileX: number; tileY: number }>(
-  placements: TPlacement[],
+function findNearestObject<TItem extends { tileX: number; tileY: number }>(
+  items: TItem[],
   world: GridPoint,
   hitRadius: number,
-  kind: PlacementKind
-): PlacementHit | undefined {
-  let nearest: PlacementHit | undefined;
+  kind: ObjectKind
+): ObjectHit | undefined {
+  let nearest: ObjectHit | undefined;
   const hitRadiusSquared = hitRadius * hitRadius;
 
-  for (let index = 0; index < placements.length; index += 1) {
-    const placement = placements[index];
-    const deltaX = placement.tileX - world.column;
-    const deltaY = placement.tileY - world.row;
+  for (let index = 0; index < items.length; index += 1) {
+    const item = items[index];
+    const deltaX = item.tileX - world.column;
+    const deltaY = item.tileY - world.row;
     const distance = deltaX * deltaX + deltaY * deltaY;
 
     if (distance > hitRadiusSquared) {
@@ -124,4 +124,3 @@ function findNearestPlacement<TPlacement extends { tileX: number; tileY: number 
 
   return nearest;
 }
-

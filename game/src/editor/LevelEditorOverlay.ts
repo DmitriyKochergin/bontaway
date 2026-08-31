@@ -1,7 +1,7 @@
 import Phaser from "phaser";
 import { DEFAULT_MATRIX_PALETTE } from "./MatrixEditing";
 import type { LevelEditorSnapshot, LevelEditorTool } from "./LevelEditorController";
-import type { PlacementKind } from "./LevelObjectEditing";
+import type { ObjectKind } from "./LevelObjectEditing";
 
 interface OverlayButtonConfig {
   x: number;
@@ -112,7 +112,7 @@ export class LevelEditorOverlay {
   private redoButton?: OverlayButton;
   private toolButtons = new Map<LevelEditorTool, OverlayButton>();
   private paletteButtons = new Map<number, OverlayButton>();
-  private placementButtons = new Map<PlacementKind, OverlayButton>();
+  private objectKindButtons = new Map<ObjectKind, OverlayButton>();
   private visible = false;
   private destroyed = false;
 
@@ -121,7 +121,7 @@ export class LevelEditorOverlay {
     private onToggleActive: () => void,
     private onToolSelected: (tool: LevelEditorTool) => void,
     private onPaletteSelected: (tileValue: number) => void,
-    private onPlacementSelected: (placementKind: PlacementKind) => void,
+    private onObjectKindSelected: (objectKind: ObjectKind) => void,
     private onUndo: () => void,
     private onRedo: () => void,
     private onSave: () => void
@@ -161,8 +161,8 @@ export class LevelEditorOverlay {
       button.setActive(snapshot.enabled && snapshot.tool === tool);
     }
 
-    for (const [placementKind, button] of this.placementButtons) {
-      button.setActive(snapshot.enabled && snapshot.placementKind === placementKind);
+    for (const [objectKind, button] of this.objectKindButtons) {
+      button.setActive(snapshot.enabled && snapshot.objectKind === objectKind);
     }
 
     for (const [tileValue, button] of this.paletteButtons) {
@@ -174,13 +174,13 @@ export class LevelEditorOverlay {
     this.paletteLabel?.setText(
       snapshot.matrixReady
         ? `Palette: tile ${snapshot.paletteTile}  |  Clipboard: ${snapshot.hasClipboard ? "ready" : "empty"}`
-        : `Placement mode: ${snapshot.placementKind ?? "none"}`
+        : `Object mode: ${snapshot.objectKind ?? "none"}`
     );
 
     const selectionText = snapshot.selection
       ? `Selection: ${snapshot.selection.bounds.left},${snapshot.selection.bounds.top} → ${snapshot.selection.bounds.right},${snapshot.selection.bounds.bottom}`
-      : snapshot.selectedPlacement
-        ? `Object: ${snapshot.selectedPlacement.kind} #${snapshot.selectedPlacement.index}`
+      : snapshot.selectedObject
+        ? `Object: ${snapshot.selectedObject.kind} #${snapshot.selectedObject.index}`
         : "Selection: none";
 
     const hoverText = snapshot.hoveredCell ? `Hover: ${snapshot.hoveredCell.column},${snapshot.hoveredCell.row}` : "Hover: none";
@@ -208,8 +208,8 @@ export class LevelEditorOverlay {
     this.toolButtons.clear();
     this.paletteButtons.forEach(button => button.destroy());
     this.paletteButtons.clear();
-    this.placementButtons.forEach(button => button.destroy());
-    this.placementButtons.clear();
+    this.objectKindButtons.forEach(button => button.destroy());
+    this.objectKindButtons.clear();
     this.activateButton?.destroy();
     this.saveButton?.destroy();
     this.undoButton?.destroy();
@@ -321,13 +321,13 @@ export class LevelEditorOverlay {
       );
     }
 
-    this.placementButtons.set(
+    this.objectKindButtons.set(
       "torch",
-      new OverlayButton(this.scene, { x: 266, y: 192, width: 86, height: 26, label: "Torch", onClick: () => this.onPlacementSelected("torch") })
+      new OverlayButton(this.scene, { x: 266, y: 192, width: 86, height: 26, label: "Torch", onClick: () => this.onObjectKindSelected("torch") })
     );
-    this.placementButtons.set(
+    this.objectKindButtons.set(
       "npc",
-      new OverlayButton(this.scene, { x: 344, y: 192, width: 86, height: 26, label: "NPC", onClick: () => this.onPlacementSelected("npc") })
+      new OverlayButton(this.scene, { x: 344, y: 192, width: 86, height: 26, label: "NPC", onClick: () => this.onObjectKindSelected("npc") })
     );
 
     const paletteTiles = [...DEFAULT_MATRIX_PALETTE];
@@ -366,7 +366,7 @@ export class LevelEditorOverlay {
       button.setVisible(this.visible);
     }
 
-    for (const button of this.placementButtons.values()) {
+    for (const button of this.objectKindButtons.values()) {
       button.setEnabled(enabled);
       button.setVisible(this.visible);
     }
