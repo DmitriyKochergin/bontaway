@@ -204,11 +204,17 @@ export default class GameScene extends BaseScene {
   }
 
   /**
-   * True when the pointer is over an interactive HUD element on the supervisor (MainScene).
+   * True when the pointer is over an interactive HUD element on the supervisor (MainScene),
+   * or when the level editor is active (editor owns all world-space pointer events while enabled).
    * The HUD renders on a sibling scene, so its buttons cannot stop this scene's cast via
    * event propagation; this cross-scene hit test replaces that guard.
    */
   private isPointerOverHud(pointer: Phaser.Input.Pointer): boolean {
+    // Block player firing while the level editor owns the viewport.
+    if (this.levelEditorController?.isEnabled()) {
+      return true;
+    }
+
     const mainScene = this.scene.get("MainScene");
     if (!mainScene?.input) {
       return false;
@@ -609,6 +615,25 @@ export default class GameScene extends BaseScene {
       throw new Error(`Level definition not found for levelId: ${this.levelId}`);
     }
     const layout = levelDef.generateLayout(this.dungeonSystem.getTileSize());
+
+    // Matrix levels carry their tile grid on the definition object.
+    if (levelDef.tiles) {
+      return {
+        type: "matrix",
+        id: levelDef.id,
+        name: levelDef.name,
+        columns: levelDef.columns,
+        rows: levelDef.rows,
+        spawnX: layout.spawnX,
+        spawnY: layout.spawnY,
+        fogOfWarEnabled: levelDef.fogOfWarEnabled,
+        doors: levelDef.doors.map(door => ({ ...door })),
+        obstacles: levelDef.obstacles.map(obstacle => ({ ...obstacle })),
+        torches: levelDef.torches?.map(torch => ({ ...torch })),
+        npcs: levelDef.npcs?.map(npc => ({ ...npc })),
+        tiles: levelDef.tiles.map(row => [...row])
+      };
+    }
 
     return {
       type: "ts",

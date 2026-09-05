@@ -473,7 +473,8 @@ export class LevelEditorController {
 
       this.hoveredCell = { ...cell };
 
-      if (this.document.type === "matrix") {
+      // Grid selection works on any document type; only tile-editing tools need a matrix doc.
+      if (this.document.type === "matrix" || this.activeTool === "select") {
         this.handleMatrixPointerDown(cell);
         return;
       }
@@ -495,7 +496,8 @@ export class LevelEditorController {
         return;
       }
 
-      if (this.document.type === "matrix") {
+      // Grid selection drag works on any document type.
+      if (this.document.type === "matrix" || this.dragMode === "select") {
         this.handleMatrixPointerMove(cell);
       } else {
         this.handleObjectPointerMove(worldPoint);
@@ -515,7 +517,8 @@ export class LevelEditorController {
         this.dragCurrentCell = { ...cell };
       }
 
-      if (this.document.type === "matrix") {
+      // Commit grid selection drag on any document type.
+      if (this.document.type === "matrix" || this.dragMode === "select") {
         this.commitMatrixDrag();
       } else {
         this.commitObjectDrag();
@@ -586,14 +589,21 @@ export class LevelEditorController {
   }
 
   private handleMatrixPointerDown(cell: PointerCell): void {
-    if (!this.document || this.document.type !== "matrix") {
+    if (!this.document) {
       return;
     }
+    // Tile-editing tools (paint, erase, move, duplicate) require a matrix document.
+    // The select tool works on any document type — it only reads grid coordinates.
+    const isMatrixDocument = this.document.type === "matrix";
 
     const insideSelection = this.selection ? isCellInsideSelection(cell, this.selection) : false;
 
     switch (this.activeTool) {
       case "move":
+        if (!isMatrixDocument) {
+          this.beginDrag(cell, "select");
+          return;
+        }
         if (insideSelection && this.selection) {
           this.beginDrag(cell, "move");
           this.dragSelectionSnapshot = cloneGridSelection(this.selection);
@@ -602,14 +612,14 @@ export class LevelEditorController {
         this.beginDrag(cell, "select");
         return;
       case "paint":
-        this.beginDrag(cell, insideSelection ? "paint" : "select");
+        this.beginDrag(cell, isMatrixDocument && insideSelection ? "paint" : "select");
         return;
       case "erase":
-        this.beginDrag(cell, insideSelection ? "erase" : "select");
+        this.beginDrag(cell, isMatrixDocument && insideSelection ? "erase" : "select");
         return;
       case "duplicate":
-        this.beginDrag(cell, insideSelection ? "duplicate" : "select");
-        if (insideSelection && this.selection) {
+        this.beginDrag(cell, isMatrixDocument && insideSelection ? "duplicate" : "select");
+        if (isMatrixDocument && insideSelection && this.selection) {
           this.dragSelectionSnapshot = cloneGridSelection(this.selection);
         }
         return;
@@ -622,7 +632,11 @@ export class LevelEditorController {
   }
 
   private handleMatrixPointerMove(cell: PointerCell): void {
-    if (!this.dragStartCell || !this.dragCurrentCell || !this.document || this.document.type !== "matrix") {
+    if (!this.dragStartCell || !this.dragCurrentCell || !this.document) {
+      return;
+    }
+    // Matrix-specific drag modes (move) need a matrix document; rect select works on any type.
+    if (this.document.type !== "matrix" && this.dragMode !== "select") {
       return;
     }
 
@@ -637,7 +651,11 @@ export class LevelEditorController {
   }
 
   private commitMatrixDrag(): void {
-    if (!this.document || this.document.type !== "matrix" || !this.dragStartCell || !this.dragCurrentCell) {
+    if (!this.document || !this.dragStartCell || !this.dragCurrentCell) {
+      return;
+    }
+    // Tile-mutating drag modes require a matrix document; rect select commits on any type.
+    if (this.document.type !== "matrix" && this.dragMode !== "select") {
       return;
     }
 
@@ -786,7 +804,8 @@ export class LevelEditorController {
     this.selectionGraphics.clear();
     this.selectionGraphics.setVisible(true);
 
-    if (this.document?.type === "matrix" && this.selection) {
+    // Selection highlight works on any document type — it is purely coordinate-based.
+    if (this.selection) {
       const { left, top, right, bottom } = this.selection.bounds;
       const x = left * tileSize;
       const y = top * tileSize;

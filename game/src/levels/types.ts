@@ -61,5 +61,11 @@ export interface LevelDefinition {
   obstacles: Obstacle[];
   torches?: Torch[];
   npcs?: Npc[];
+  /**
+   * Present on matrix levels only. The 2-D tile grid where 0 = solid wall and any
+   * other integer = walkable floor. When set, `GameScene.buildLevelDocument` returns a
+   * `MatrixLevelDocument` instead of a `TsLevelDocument`.
+   */
+  tiles?: number[][];
   generateLayout: (tileSize: number) => LevelLayout;
 }
