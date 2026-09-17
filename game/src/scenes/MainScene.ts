@@ -1,7 +1,9 @@
 import Phaser from "phaser";
+import { EDITOR_MODE_ENABLED } from "../editorMode";
 import { SettingsManager } from "../systems/SettingsManager";
 import { ChatInputOverlay } from "../ui/ChatInputOverlay";
 import { FlatGameHUD } from "../ui/FlatGameHUD";
+import { LevelEditorButton } from "../ui/LevelEditorButton";
 import { MessageButton } from "../ui/MessageButton";
 import { type GameHudController, StoneGameHUD } from "../ui/StoneGameHUD";
 import { BaseScene } from "./BaseScene";
@@ -21,6 +23,7 @@ export default class MainScene extends BaseScene {
   private gameplayPaused = false;
   private gameHUD?: StoneGameHUD | FlatGameHUD;
   private messageButton?: MessageButton;
+  private levelEditorButton?: LevelEditorButton;
   private chatOverlay?: ChatInputOverlay;
 
   constructor() {
@@ -37,6 +40,8 @@ export default class MainScene extends BaseScene {
       this.gameHUD = undefined;
       this.messageButton?.destroy();
       this.messageButton = undefined;
+      this.levelEditorButton?.destroy();
+      this.levelEditorButton = undefined;
       this.chatOverlay?.destroy();
       this.chatOverlay = undefined;
     });
@@ -61,6 +66,7 @@ export default class MainScene extends BaseScene {
     this.bindDevModeKey();
     this.createPausedLabel();
     this.syncMessageControls();
+    this.syncEditorControls();
     this.scene.bringToTop();
   }
 
@@ -70,6 +76,8 @@ export default class MainScene extends BaseScene {
     this.gameHUD?.destroy();
     this.messageButton?.destroy();
     this.messageButton = undefined;
+    this.levelEditorButton?.destroy();
+    this.levelEditorButton = undefined;
     const gameScene = this.scene.get("GameScene") as unknown as GameHudController;
     this.gameHUD =
       SettingsManager.getHudStyle() === "flat"
@@ -77,6 +85,7 @@ export default class MainScene extends BaseScene {
         : new StoneGameHUD(this, gameScene, () => this.toggleSettings(), selectedWeaponSlot);
     this.gameHUD.create();
     this.syncMessageControls();
+    this.syncEditorControls();
     this.syncGameplayPauseState();
     this.scene.bringToTop();
   }
@@ -183,6 +192,7 @@ export default class MainScene extends BaseScene {
       this.messageButton = undefined;
       this.chatOverlay?.destroy();
       this.chatOverlay = undefined;
+      this.levelEditorButton?.updatePosition();
       return;
     }
 
@@ -194,6 +204,35 @@ export default class MainScene extends BaseScene {
     if (!this.messageButton) {
       this.messageButton = new MessageButton(this, () => this.openChat());
       this.messageButton.create();
+      this.levelEditorButton?.updatePosition();
+    }
+  }
+
+  private syncEditorControls(): void {
+    if (!EDITOR_MODE_ENABLED) {
+      this.levelEditorButton?.destroy();
+      this.levelEditorButton = undefined;
+      return;
+    }
+
+    const getMarginRight = () => (this.messageButton ? 146 : 88);
+    const gameScene = this.scene.get("GameScene") as GameScene;
+
+    if (!this.levelEditorButton) {
+      this.levelEditorButton = new LevelEditorButton(
+        this,
+        getMarginRight,
+        () => {
+          void gameScene.toggleLevelEditor().then(() => {
+            this.levelEditorButton?.updateState();
+          });
+        },
+        () => gameScene.isLevelEditorActive()
+      );
+      this.levelEditorButton.create();
+    } else {
+      this.levelEditorButton.updatePosition();
+      this.levelEditorButton.updateState();
     }
   }
 

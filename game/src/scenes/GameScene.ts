@@ -222,6 +222,28 @@ export default class GameScene extends BaseScene {
     return mainScene.input.hitTestPointer(pointer).length > 0;
   }
 
+  public isLevelEditorActive(): boolean {
+    return Boolean(this.levelEditorController?.isEnabled());
+  }
+
+  public async toggleLevelEditor(): Promise<void> {
+    if (!EDITOR_MODE_ENABLED) {
+      return;
+    }
+
+    if (!this.devModeEnabled) {
+      this.devModeEnabled = true;
+      this.devModeOverlay ??= new DevModeOverlay(this, this.dungeonSystem);
+      this.devModeOverlay.show();
+    }
+
+    if (!this.levelEditorController) {
+      await this.ensureLevelEditorController();
+    }
+
+    this.levelEditorController?.toggleEnabled();
+  }
+
   private toggleDevMode(): void {
     if (!EDITOR_MODE_ENABLED) {
       return;
