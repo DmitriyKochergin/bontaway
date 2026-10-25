@@ -20,6 +20,10 @@ export class FieldOfViewSystem {
   // The mask canvas is baked a little larger than the screen so it can be nudged to follow the
   // world between redraws (see repositionMask) without exposing un-fogged screen edges.
   private readonly maskMargin = 48;
+  // Halving resolution cuts canvas 2D CPU cost and WebGL texture upload bandwidth by ~4x.
+  // Bilinear texture filtering keeps fog borders visually soft without an expensive blur filter.
+  private readonly maskResolutionScale = 0.5;
+
   private fovRefreshAccumulator = 0;
   private lastRedrawOriginX = Number.NaN;
   private lastRedrawOriginY = Number.NaN;
@@ -27,6 +31,9 @@ export class FieldOfViewSystem {
   // world (not the player/screen) every frame.
   private maskScrollX = 0;
   private maskScrollY = 0;
+
+  private mapWidth: number;
+  private mapHeight: number;
 
   private readonly activeProjectiles = new Set<Phaser.Types.Physics.Arcade.SpriteWithDynamicBody>();
   private readonly activeExplosions = new Set<{ x: number; y: number; radius: number }>();
@@ -44,9 +51,18 @@ export class FieldOfViewSystem {
   // disappears while the player stands still, one final paint is needed to clear its carved hole,
   // otherwise the lit circle lingers in the fog (which re-closes) until the player next moves.
   private lastPaintHadDynamicLights = false;
-  // Torch changes are rare, but when they happen the cached mask needs one repaint to
-  // bake the new static light into the fog.
+  // Torch changes are rare, but when they happen the static torch layer needs to be rebaked.
   private torchLightsDirty = false;
+
+  // Pre-baked radial gradients (avoids createRadialGradient allocation and per-pixel evaluation in hot loop)
+  private playerGradientCanvas!: HTMLCanvasElement | OffscreenCanvas;
+  private pointLightGradientCanvas!: HTMLCanvasElement | OffscreenCanvas;
+  private projectileGradientCanvas!: HTMLCanvasElement | OffscreenCanvas;
+
+  // Cached static torch layer. Torches are static in world space; we bake them once and blit the layer
+  // into the mask on repaint, completely skipping torch loops while player moves or dynamic spells fly.
+  private staticTorchCanvas!: HTMLCanvasElement | OffscreenCanvas;
+  private staticTorchContext!: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D;
 
   constructor(
     scene: Phaser.Scene,
@@ -60,6 +76,8 @@ export class FieldOfViewSystem {
     this.player = player;
     this.raycasterOccluders = [...initialOccluders];
     this.enabled = true;
+    this.mapWidth = mapWidth;
+    this.mapHeight = mapHeight;
 
     this.raycaster = raycasterPlugin.createRaycaster({
       boundingBox: new Phaser.Geom.Rectangle(0, 0, mapWidth, mapHeight),
@@ -76,11 +94,144 @@ export class FieldOfViewSystem {
       ignoreNotIntersectedRays: false
     });
 
+    this.initGradients();
+    this.initStaticTorchCanvas();
     this.createFovOverlay();
 
     this.scene.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       this.destroy();
     });
+  }
+
+  private createOffscreenCanvas(width: number, height: number): HTMLCanvasElement | OffscreenCanvas {
+    const safeWidth = Math.max(1, Math.ceil(width));
+    const safeHeight = Math.max(1, Math.ceil(height));
+    if (typeof OffscreenCanvas !== "undefined") {
+      return new OffscreenCanvas(safeWidth, safeHeight);
+    }
+    const canvas = document.createElement("canvas");
+    canvas.width = safeWidth;
+    canvas.height = safeHeight;
+    return canvas;
+  }
+
+  private initGradients(): void {
+    const outerRadius = this.tileSize * (this.fovRadiusTiles + this.fovFadeTiles);
+    const innerRadius = this.tileSize * this.fovRadiusTiles;
+    const outerRadiusScaled = outerRadius * this.maskResolutionScale;
+    const innerRadiusScaled = innerRadius * this.maskResolutionScale;
+    const playerCanvasSize = Math.ceil(outerRadiusScaled * 2);
+    const playerCenter = outerRadiusScaled;
+
+    // 1. Player FOV radial gradient
+    this.playerGradientCanvas = this.createOffscreenCanvas(playerCanvasSize, playerCanvasSize);
+    const playerContext = this.playerGradientCanvas.getContext("2d") as
+      | CanvasRenderingContext2D
+      | OffscreenCanvasRenderingContext2D;
+
+    const playerGradient = playerContext.createRadialGradient(
+      playerCenter,
+      playerCenter,
+      0,
+      playerCenter,
+      playerCenter,
+      outerRadiusScaled
+    );
+    const innerStop = innerRadiusScaled / outerRadiusScaled;
+    playerGradient.addColorStop(0, "rgba(0, 0, 0, 1)");
+    playerGradient.addColorStop(innerStop * 0.5, "rgba(0, 0, 0, 0.85)");
+    playerGradient.addColorStop(innerStop, "rgba(0, 0, 0, 0.55)");
+    playerGradient.addColorStop(0.82, "rgba(0, 0, 0, 0.18)");
+    playerGradient.addColorStop(1, "rgba(0, 0, 0, 0)");
+
+    playerContext.fillStyle = playerGradient;
+    playerContext.beginPath();
+    playerContext.arc(playerCenter, playerCenter, outerRadiusScaled, 0, Math.PI * 2);
+    playerContext.fill();
+
+    // 2. Base point light gradient (high-res template for torches & explosions)
+    const baseRadius = 256;
+    const baseDiameter = baseRadius * 2;
+    this.pointLightGradientCanvas = this.createOffscreenCanvas(baseDiameter, baseDiameter);
+    const pointContext = this.pointLightGradientCanvas.getContext("2d") as
+      | CanvasRenderingContext2D
+      | OffscreenCanvasRenderingContext2D;
+
+    const pointGradient = pointContext.createRadialGradient(
+      baseRadius,
+      baseRadius,
+      0,
+      baseRadius,
+      baseRadius,
+      baseRadius
+    );
+    pointGradient.addColorStop(0, "rgba(0, 0, 0, 1)");
+    pointGradient.addColorStop(0.5, "rgba(0, 0, 0, 0.7)");
+    pointGradient.addColorStop(1, "rgba(0, 0, 0, 0)");
+
+    pointContext.fillStyle = pointGradient;
+    pointContext.beginPath();
+    pointContext.arc(baseRadius, baseRadius, baseRadius, 0, Math.PI * 2);
+    pointContext.fill();
+
+    // 3. Projectile light gradient (pre-baked at exact scaled radius 150 * scale for 1:1 blit)
+    const projectileRadiusScaled = 150 * this.maskResolutionScale;
+    const projectileDiameter = Math.ceil(projectileRadiusScaled * 2);
+    this.projectileGradientCanvas = this.createOffscreenCanvas(projectileDiameter, projectileDiameter);
+    const projectileContext = this.projectileGradientCanvas.getContext("2d") as
+      | CanvasRenderingContext2D
+      | OffscreenCanvasRenderingContext2D;
+    projectileContext.drawImage(this.pointLightGradientCanvas, 0, 0, projectileDiameter, projectileDiameter);
+  }
+
+  private initStaticTorchCanvas(): void {
+    const width = Math.max(1, Math.ceil(this.mapWidth * this.maskResolutionScale));
+    const height = Math.max(1, Math.ceil(this.mapHeight * this.maskResolutionScale));
+    this.staticTorchCanvas = this.createOffscreenCanvas(width, height);
+    this.staticTorchContext = this.staticTorchCanvas.getContext("2d") as
+      | CanvasRenderingContext2D
+      | OffscreenCanvasRenderingContext2D;
+    this.torchLightsDirty = true;
+  }
+
+  private expandStaticTorchCanvas(requiredWidth: number, requiredHeight: number): void {
+    const newCanvas = this.createOffscreenCanvas(requiredWidth, requiredHeight);
+    const newContext = newCanvas.getContext("2d") as CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D;
+    this.staticTorchCanvas = newCanvas;
+    this.staticTorchContext = newContext;
+    this.torchLightsDirty = true;
+  }
+
+  private rebakeStaticTorchCanvas(): void {
+    const width = this.staticTorchCanvas.width;
+    const height = this.staticTorchCanvas.height;
+    this.staticTorchContext.clearRect(0, 0, width, height);
+
+    if (this.activeTorchLights.size === 0) {
+      this.torchLightsDirty = false;
+      return;
+    }
+
+    this.staticTorchContext.save();
+    this.staticTorchContext.globalCompositeOperation = "source-over";
+
+    for (const [torchLight, revealRadius] of this.activeTorchLights) {
+      const scaledTorchX = torchLight.x * this.maskResolutionScale;
+      const scaledTorchY = torchLight.y * this.maskResolutionScale;
+      const scaledRevealRadius = revealRadius * this.maskResolutionScale;
+      const diameter = scaledRevealRadius * 2;
+
+      this.staticTorchContext.drawImage(
+        this.pointLightGradientCanvas,
+        scaledTorchX - scaledRevealRadius,
+        scaledTorchY - scaledRevealRadius,
+        diameter,
+        diameter
+      );
+    }
+
+    this.staticTorchContext.restore();
+    this.torchLightsDirty = false;
   }
 
   private createFovOverlay() {
@@ -89,20 +240,22 @@ export class FieldOfViewSystem {
     this.fovOverlay.setScrollFactor(0);
     this.fovOverlay.setDepth(100);
 
-    const maskTexture = this.scene.textures.createCanvas(
-      "fov-mask",
-      this.scene.scale.width + this.maskMargin * 2,
-      this.scene.scale.height + this.maskMargin * 2
-    );
+    const canvasWidth = Math.ceil((this.scene.scale.width + this.maskMargin * 2) * this.maskResolutionScale);
+    const canvasHeight = Math.ceil((this.scene.scale.height + this.maskMargin * 2) * this.maskResolutionScale);
+
+    const maskTexture = this.scene.textures.createCanvas("fov-mask", canvasWidth, canvasHeight);
 
     if (!maskTexture) {
       throw new Error("Unable to create the field-of-view mask texture.");
     }
 
     this.fovMaskTexture = maskTexture;
+    this.fovMaskTexture.setFilter(Phaser.Textures.FilterMode.LINEAR);
+
     this.fovMaskImage = this.scene.add.image(0, 0, "fov-mask");
     this.fovMaskImage.setOrigin(0, 0);
     this.fovMaskImage.setScrollFactor(0);
+    this.fovMaskImage.setScale(1 / this.maskResolutionScale);
     this.fovMaskImage.setVisible(false);
 
     this.fovOverlay.setMask(new Phaser.Display.Masks.BitmapMask(this.scene, this.fovMaskImage));
@@ -149,6 +302,18 @@ export class FieldOfViewSystem {
   public addTorch(torchLight: Phaser.GameObjects.Light, revealRadius: number): void {
     if (this.activeTorchLights.get(torchLight) === revealRadius) {
       return;
+    }
+
+    const requiredWidth = Math.ceil((torchLight.x + revealRadius) * this.maskResolutionScale);
+    const requiredHeight = Math.ceil((torchLight.y + revealRadius) * this.maskResolutionScale);
+    if (
+      this.staticTorchCanvas &&
+      (requiredWidth > this.staticTorchCanvas.width || requiredHeight > this.staticTorchCanvas.height)
+    ) {
+      this.expandStaticTorchCanvas(
+        Math.max(this.staticTorchCanvas.width, requiredWidth),
+        Math.max(this.staticTorchCanvas.height, requiredHeight)
+      );
     }
 
     this.activeTorchLights.set(torchLight, revealRadius);
@@ -252,26 +417,26 @@ export class FieldOfViewSystem {
     return intersections;
   }
 
-  // Repaint the mask canvas from the cached shadow polygon plus the current projectile / explosion
-  // positions, then upload it. No castCircle here, so this is cheap relative to a recompute. Runs
-  // every time the mask needs refreshing, including while a fireball flies past a stationary player.
+  // Repaint the mask canvas from the cached shadow polygon plus pre-baked light layers, then upload
+  // to GPU. No castCircle here, so this is cheap relative to a recompute. Runs every time the mask
+  // needs refreshing, including while a fireball flies past a stationary player.
   private paintMask() {
     const context = this.fovMaskTexture.getContext();
     const camera = this.scene.cameras.main;
     const margin = this.maskMargin;
-    const canvasWidth = this.scene.scale.width + margin * 2;
-    const canvasHeight = this.scene.scale.height + margin * 2;
+    const canvasWidth = this.fovMaskTexture.width;
+    const canvasHeight = this.fovMaskTexture.height;
     const scrollX = camera.scrollX;
     const scrollY = camera.scrollY;
     const originX = this.lastRedrawOriginX;
     const originY = this.lastRedrawOriginY;
-    // Project world -> mask-canvas space. The +margin bakes a fog border around the screen so the
-    // mask can be nudged to track the world between paints (repositionMask) without leaking light.
-    const centerX = originX - scrollX + margin;
-    const centerY = originY - scrollY + margin;
-    const tileSize = this.tileSize;
-    const outerRadius = tileSize * (this.fovRadiusTiles + this.fovFadeTiles);
-    const innerRadius = tileSize * this.fovRadiusTiles;
+    const resolutionScale = this.maskResolutionScale;
+
+    // Project world -> mask-canvas space.
+    const playerCanvasCenterX = (originX - scrollX + margin) * resolutionScale;
+    const playerCanvasCenterY = (originY - scrollY + margin) * resolutionScale;
+    const outerRadius = this.tileSize * (this.fovRadiusTiles + this.fovFadeTiles);
+    const outerRadiusScaled = outerRadius * resolutionScale;
     const visibilityPolygon = this.cachedVisibilityPolygon;
 
     // Bookmark the scroll this canvas was baked at so repositionMask keeps it glued to the world.
@@ -288,83 +453,86 @@ export class FieldOfViewSystem {
       return;
     }
 
+    // 1. Draw player FOV visibility polygon using pre-baked player gradient.
+    // Clip to the raycasted polygon, then stamp the pre-baked gradient with destination-out.
+    // context.filter = "blur(1px)" is removed: bilinear scaling produces smooth edges natively.
     context.save();
-    context.filter = "blur(1px)";
     context.beginPath();
-    context.moveTo(visibilityPolygon[0].x - scrollX + margin, visibilityPolygon[0].y - scrollY + margin);
+    context.moveTo(
+      (visibilityPolygon[0].x - scrollX + margin) * resolutionScale,
+      (visibilityPolygon[0].y - scrollY + margin) * resolutionScale
+    );
 
     for (let i = 1; i < visibilityPolygon.length; i++) {
-      context.lineTo(visibilityPolygon[i].x - scrollX + margin, visibilityPolygon[i].y - scrollY + margin);
+      context.lineTo(
+        (visibilityPolygon[i].x - scrollX + margin) * resolutionScale,
+        (visibilityPolygon[i].y - scrollY + margin) * resolutionScale
+      );
     }
 
     context.closePath();
+    context.clip();
     context.globalCompositeOperation = "destination-out";
 
-    const radialGradient = context.createRadialGradient(centerX, centerY, 0, centerX, centerY, outerRadius);
-
-    const innerStop = innerRadius / outerRadius;
-    radialGradient.addColorStop(0, "rgba(0, 0, 0, 1)");
-    radialGradient.addColorStop(innerStop * 0.5, "rgba(0, 0, 0, 0.85)");
-    radialGradient.addColorStop(innerStop, "rgba(0, 0, 0, 0.55)");
-    radialGradient.addColorStop(0.82, "rgba(0, 0, 0, 0.18)");
-    radialGradient.addColorStop(1, "rgba(0, 0, 0, 0)");
-
-    context.fillStyle = radialGradient;
-    context.fill();
+    context.drawImage(
+      this.playerGradientCanvas,
+      playerCanvasCenterX - outerRadiusScaled,
+      playerCanvasCenterY - outerRadiusScaled
+    );
     context.restore();
 
-    // Draw circles for fireballs and explosions directly to the mask (no shadows/raycasting)
-    context.save();
-    context.globalCompositeOperation = "destination-out";
-
-    for (const projectile of this.activeProjectiles) {
-      if (!projectile.active) continue;
-      const pX = projectile.x - scrollX + margin;
-      const pY = projectile.y - scrollY + margin;
-      const radius = 150; // Match fireball light radius
-
-      const grad = context.createRadialGradient(pX, pY, 0, pX, pY, radius);
-      grad.addColorStop(0, "rgba(0, 0, 0, 1)");
-      grad.addColorStop(0.5, "rgba(0, 0, 0, 0.7)");
-      grad.addColorStop(1, "rgba(0, 0, 0, 0)");
-
-      context.fillStyle = grad;
-      context.beginPath();
-      context.arc(pX, pY, radius, 0, Math.PI * 2);
-      context.fill();
+    // 2. Composite static torches. If dirty, rebake the static layer once.
+    // Torches are static in world space: blitting the pre-baked layer avoids looping all torches on player move.
+    if (this.torchLightsDirty) {
+      this.rebakeStaticTorchCanvas();
     }
 
-    for (const [torchLight, revealRadius] of this.activeTorchLights) {
-      const tX = torchLight.x - scrollX + margin;
-      const tY = torchLight.y - scrollY + margin;
-      const grad = context.createRadialGradient(tX, tY, 0, tX, tY, revealRadius);
-      grad.addColorStop(0, "rgba(0, 0, 0, 1)");
-      grad.addColorStop(0.5, "rgba(0, 0, 0, 0.7)");
-      grad.addColorStop(1, "rgba(0, 0, 0, 0)");
-
-      context.fillStyle = grad;
-      context.beginPath();
-      context.arc(tX, tY, revealRadius, 0, Math.PI * 2);
-      context.fill();
+    if (this.activeTorchLights.size > 0) {
+      context.save();
+      context.globalCompositeOperation = "destination-out";
+      context.drawImage(
+        this.staticTorchCanvas,
+        (-scrollX + margin) * resolutionScale,
+        (-scrollY + margin) * resolutionScale
+      );
+      context.restore();
     }
 
-    for (const explosion of this.activeExplosions) {
-      const eX = explosion.x - scrollX + margin;
-      const eY = explosion.y - scrollY + margin;
-      const radius = explosion.radius;
+    // 3. Draw dynamic lights (projectiles & explosions) directly with pre-baked gradient drawImage calls
+    if (this.activeProjectiles.size > 0 || this.activeExplosions.size > 0) {
+      context.save();
+      context.globalCompositeOperation = "destination-out";
 
-      const grad = context.createRadialGradient(eX, eY, 0, eX, eY, radius);
-      grad.addColorStop(0, "rgba(0, 0, 0, 1)");
-      grad.addColorStop(0.5, "rgba(0, 0, 0, 0.7)");
-      grad.addColorStop(1, "rgba(0, 0, 0, 0)");
+      const projectileRadiusScaled = 150 * resolutionScale;
+      for (const projectile of this.activeProjectiles) {
+        if (!projectile.active) continue;
+        const projectileCanvasX = (projectile.x - scrollX + margin) * resolutionScale;
+        const projectileCanvasY = (projectile.y - scrollY + margin) * resolutionScale;
 
-      context.fillStyle = grad;
-      context.beginPath();
-      context.arc(eX, eY, radius, 0, Math.PI * 2);
-      context.fill();
+        context.drawImage(
+          this.projectileGradientCanvas,
+          projectileCanvasX - projectileRadiusScaled,
+          projectileCanvasY - projectileRadiusScaled
+        );
+      }
+
+      for (const explosion of this.activeExplosions) {
+        const explosionCanvasX = (explosion.x - scrollX + margin) * resolutionScale;
+        const explosionCanvasY = (explosion.y - scrollY + margin) * resolutionScale;
+        const explosionRadiusScaled = explosion.radius * resolutionScale;
+        const explosionDiameter = explosionRadiusScaled * 2;
+
+        context.drawImage(
+          this.pointLightGradientCanvas,
+          explosionCanvasX - explosionRadiusScaled,
+          explosionCanvasY - explosionRadiusScaled,
+          explosionDiameter,
+          explosionDiameter
+        );
+      }
+
+      context.restore();
     }
-
-    context.restore();
 
     this.fovMaskTexture.refresh();
     this.repositionMask();
@@ -373,14 +541,11 @@ export class FieldOfViewSystem {
   private paintDisabledMask() {
     const context = this.fovMaskTexture.getContext();
     const camera = this.scene.cameras.main;
-    const margin = this.maskMargin;
-    const canvasWidth = this.scene.scale.width + margin * 2;
-    const canvasHeight = this.scene.scale.height + margin * 2;
 
     this.maskScrollX = camera.scrollX;
     this.maskScrollY = camera.scrollY;
 
-    context.clearRect(0, 0, canvasWidth, canvasHeight);
+    context.clearRect(0, 0, this.fovMaskTexture.width, this.fovMaskTexture.height);
     this.fovMaskTexture.refresh();
     this.fovOverlay.setVisible(false);
     this.repositionMask();
@@ -425,7 +590,8 @@ export class FieldOfViewSystem {
     const throttleReady = this.fovRefreshAccumulator >= this.fovRefreshMs;
     // One more paint after the last dynamic light vanishes clears its carved hole from the fog.
     const dynamicLightsJustCleared = this.lastPaintHadDynamicLights && !hasDynamicLights;
-    const needsPaint = (playerMoved || hasDynamicLights || dynamicLightsJustCleared || this.torchLightsDirty) && throttleReady;
+    const needsPaint =
+      (playerMoved || hasDynamicLights || dynamicLightsJustCleared || this.torchLightsDirty) && throttleReady;
     if (!needsPaint && !driftNearMargin) {
       return;
     }
@@ -442,7 +608,6 @@ export class FieldOfViewSystem {
 
     this.paintMask();
     this.lastPaintHadDynamicLights = hasDynamicLights;
-    this.torchLightsDirty = false;
   }
 
   public destroy() {

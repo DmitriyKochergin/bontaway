@@ -1,9 +1,4 @@
-import {
-  type GridPoint,
-  type GridRect,
-  type GridSelection,
-  type MatrixLevelDocument
-} from "./LevelDocument";
+import { type GridPoint, type GridRect, type GridSelection, type MatrixLevelDocument } from "./LevelDocument";
 
 export const DEFAULT_MATRIX_EMPTY_TILE = 0;
 export const DEFAULT_MATRIX_PALETTE = [0, 1, 2, 3, 4, 5, 6, 7] as const;
@@ -58,7 +53,11 @@ export function copySelection(document: MatrixLevelDocument, selection: GridSele
   };
 }
 
-export function paintSelection(document: MatrixLevelDocument, selection: GridSelection<number>, tileValue: number): void {
+export function paintSelection(
+  document: MatrixLevelDocument,
+  selection: GridSelection<number>,
+  tileValue: number
+): void {
   for (let rowOffset = 0; rowOffset < selection.cells.length; rowOffset += 1) {
     for (let columnOffset = 0; columnOffset < selection.cells[rowOffset].length; columnOffset += 1) {
       setTileValue(document, selection.bounds.left + columnOffset, selection.bounds.top + rowOffset, tileValue);
@@ -201,5 +200,3 @@ export function clampRectToDocument(document: MatrixLevelDocument, rect: GridRec
     bottom: top + height - 1
   };
 }
-
-

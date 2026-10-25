@@ -1,7 +1,7 @@
 import Phaser from "phaser";
-import { DEFAULT_MATRIX_PALETTE } from "./MatrixEditing";
 import type { LevelEditorSnapshot, LevelEditorTool } from "./LevelEditorController";
 import type { ObjectKind } from "./LevelObjectEditing";
+import { DEFAULT_MATRIX_PALETTE } from "./MatrixEditing";
 
 interface OverlayButtonConfig {
   x: number;
@@ -76,11 +76,14 @@ class OverlayButton {
       this.redraw();
     });
 
-    this.hitArea.on("pointerdown", (_pointer: Phaser.Input.Pointer, _localX: number, _localY: number, event: Phaser.Types.Input.EventData) => {
-      if (!this.enabled) return;
-      event.stopPropagation();
-      this.config.onClick();
-    });
+    this.hitArea.on(
+      "pointerdown",
+      (_pointer: Phaser.Input.Pointer, _localX: number, _localY: number, event: Phaser.Types.Input.EventData) => {
+        if (!this.enabled) return;
+        event.stopPropagation();
+        this.config.onClick();
+      }
+    );
   }
 
   public setActive(active: boolean): void {
@@ -258,13 +261,17 @@ export class LevelEditorOverlay {
       const h = b.bottom - b.top + 1;
       this.selectionLabel?.setText(`Selection: Rect (${b.left},${b.top}) → (${b.right},${b.bottom}) [${w}×${h}]`);
     } else if (snapshot.selectedObject) {
-      this.selectionLabel?.setText(`Selection: Object ${snapshot.selectedObject.kind} #${snapshot.selectedObject.index}`);
+      this.selectionLabel?.setText(
+        `Selection: Object ${snapshot.selectedObject.kind} #${snapshot.selectedObject.index}`
+      );
     } else {
       this.selectionLabel?.setText("Selection: None");
     }
 
     // Hover & Clipboard Readout
-    const hoverStr = snapshot.hoveredCell ? `Cell (${snapshot.hoveredCell.column}, ${snapshot.hoveredCell.row})` : "None";
+    const hoverStr = snapshot.hoveredCell
+      ? `Cell (${snapshot.hoveredCell.column}, ${snapshot.hoveredCell.row})`
+      : "None";
     const clipStr = snapshot.hasClipboard ? "Ready" : "Empty";
     this.hoverLabel?.setText(`Hover: ${hoverStr}   |   Clipboard: ${clipStr}`);
 
@@ -396,11 +403,16 @@ export class LevelEditorOverlay {
     });
 
     // Shortcuts Footer Bar
-    const shortcutsText = this.scene.add.text(this.panelWidth / 2, 330, "Ctrl+E Toggle  |  Ctrl+S Save  |  Ctrl+Z/Y Undo/Redo  |  Del Clear", {
-      fontFamily: "Roboto Mono, Courier New, monospace",
-      fontSize: "9px",
-      color: "#5b626d"
-    });
+    const shortcutsText = this.scene.add.text(
+      this.panelWidth / 2,
+      330,
+      "Ctrl+E Toggle  |  Ctrl+S Save  |  Ctrl+Z/Y Undo/Redo  |  Del Clear",
+      {
+        fontFamily: "Roboto Mono, Courier New, monospace",
+        fontSize: "9px",
+        color: "#5b626d"
+      }
+    );
     shortcutsText.setOrigin(0.5, 0.5);
 
     this.container.add([

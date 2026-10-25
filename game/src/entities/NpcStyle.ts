@@ -1,4 +1,3 @@
-
 /**
  * Visual identity of an NPC — everything that belongs to the character's
  * *appearance*, independent of how it currently feels.

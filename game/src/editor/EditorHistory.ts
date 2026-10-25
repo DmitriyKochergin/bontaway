@@ -42,4 +42,3 @@ export class EditorHistory {
     return cloneLevelDocument(snapshot);
   }
 }
-

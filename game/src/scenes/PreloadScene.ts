@@ -297,7 +297,8 @@ export default class PreloadScene extends Phaser.Scene {
     graphics.destroy();
   }
 
-  private createGearTexture(): void {    const size = 32;
+  private createGearTexture(): void {
+    const size = 32;
     const half = size / 2;
     const gear = this.add.graphics();
 

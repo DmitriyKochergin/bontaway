@@ -1,4 +1,9 @@
-import { type GridSelection, type LevelDocument, type MatrixLevelDocument, type TsLevelDocument } from "./LevelDocument";
+import {
+  type GridSelection,
+  type LevelDocument,
+  type MatrixLevelDocument,
+  type TsLevelDocument
+} from "./LevelDocument";
 
 export interface ValidationIssue {
   path: string;
@@ -11,8 +16,6 @@ export interface ValidationResult {
 }
 
 type ValidationIssueList = ValidationIssue[];
-
-
 
 function validateLevelDocument(document: LevelDocument): ValidationResult {
   const issues: ValidationIssueList = [];
@@ -73,7 +76,10 @@ function validateSelection<TCell>(selection: GridSelection<TCell>, columns: numb
     }
 
     if (rowCells.length !== expectedWidth) {
-      issues.push({ path: `selection.cells[${rowIndex}]`, message: "Selection column count does not match bounds width." });
+      issues.push({
+        path: `selection.cells[${rowIndex}]`,
+        message: "Selection column count does not match bounds width."
+      });
     }
   }
 
@@ -153,7 +159,10 @@ function validateTsLevel(document: TsLevelDocument, issues: ValidationIssueList)
       }
 
       if (walkableRow.length !== document.columns) {
-        issues.push({ path: `layout.walkable[${rowIndex}]`, message: "Walkable column count must match level columns." });
+        issues.push({
+          path: `layout.walkable[${rowIndex}]`,
+          message: "Walkable column count must match level columns."
+        });
       }
 
       for (let columnIndex = 0; columnIndex < walkableRow.length; columnIndex += 1) {
@@ -307,12 +316,7 @@ function validateTorches(
   }
 }
 
-function validateNpcs(
-  npcs: LevelDocument["npcs"],
-  columns: number,
-  rows: number,
-  issues: ValidationIssueList
-): void {
+function validateNpcs(npcs: LevelDocument["npcs"], columns: number, rows: number, issues: ValidationIssueList): void {
   if (npcs === undefined) {
     return;
   }
@@ -393,5 +397,3 @@ export const MapValidator = {
 };
 
 void MapValidator;
-
-

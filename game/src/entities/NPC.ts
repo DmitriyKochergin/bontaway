@@ -123,7 +123,7 @@ export class NPC extends Phaser.Physics.Arcade.Sprite {
     this.bubbleBackground.fillRoundedRect(-boxWidth / 2, -boxHeight / 2, boxWidth, boxHeight, 6);
 
     // Thin charcoal/amber border
-    const borderColor = (this.style.eyeColor === 0xff2222 || this.style.bodyColor === 0x111111) ? 0xdd2222 : 0x4a4a5a;
+    const borderColor = this.style.eyeColor === 0xff2222 || this.style.bodyColor === 0x111111 ? 0xdd2222 : 0x4a4a5a;
     this.bubbleBackground.lineStyle(1, borderColor, 0.7);
     this.bubbleBackground.strokeRoundedRect(-boxWidth / 2, -boxHeight / 2, boxWidth, boxHeight, 6);
 

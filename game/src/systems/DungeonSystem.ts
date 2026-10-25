@@ -1,5 +1,5 @@
 import Phaser from "phaser";
-import { getLevelDefinition, type LevelDefinition, type Door } from "../levels";
+import { type Door, getLevelDefinition, type LevelDefinition } from "../levels";
 
 export class DungeonSystem {
   private scene: Phaser.Scene;
@@ -97,9 +97,7 @@ export class DungeonSystem {
     // Render walls
     this.physicsWalls = this.scene.physics.add.staticGroup();
     const wallCells = this.buildWallCells(this.walkable);
-    const doorTexturesByCell = new Map(
-      this.doors.map(door => [`${door.column},${door.row}`, door.textureKey])
-    );
+    const doorTexturesByCell = new Map(this.doors.map(door => [`${door.column},${door.row}`, door.textureKey]));
 
     for (const wallCell of wallCells) {
       const [column, row] = wallCell.split(",").map(Number);

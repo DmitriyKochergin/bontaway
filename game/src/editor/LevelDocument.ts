@@ -1,4 +1,5 @@
 import type { Door, Npc, Obstacle, Torch } from "../levels/types";
+
 export type { Door, Npc, Obstacle, Torch };
 
 export type LevelSourceType = "ts" | "matrix";

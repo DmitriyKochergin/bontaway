@@ -1,27 +1,14 @@
 import Phaser from "phaser";
+import { saveLevelDocument } from "./DevSaveClient";
+import { EditorHistory } from "./EditorHistory";
 import {
+  cloneGridSelection,
+  cloneLevelDocument,
   type GridPoint,
   type GridSelection,
-  type LevelDocument,
-  cloneLevelDocument,
-  cloneGridSelection
+  type LevelDocument
 } from "./LevelDocument";
-import {
-  DEFAULT_MATRIX_EMPTY_TILE,
-  DEFAULT_MATRIX_PALETTE,
-  duplicateSelection,
-  eraseSelection,
-  isCellInsideSelection,
-  moveSelection,
-  normalizeGridRect,
-  paintSelection,
-  pasteClipboard,
-  type MatrixClipboard
-} from "./MatrixEditing";
-import { EditorHistory } from "./EditorHistory";
 import { LevelEditorOverlay } from "./LevelEditorOverlay";
-import { saveLevelDocument } from "./DevSaveClient";
-import { type LevelSceneAdapter } from "./LevelSceneAdapter";
 import {
   addObject,
   deleteObject,
@@ -31,6 +18,19 @@ import {
   type ObjectKind,
   type SelectedObject
 } from "./LevelObjectEditing";
+import { type LevelSceneAdapter } from "./LevelSceneAdapter";
+import {
+  DEFAULT_MATRIX_EMPTY_TILE,
+  DEFAULT_MATRIX_PALETTE,
+  duplicateSelection,
+  eraseSelection,
+  isCellInsideSelection,
+  type MatrixClipboard,
+  moveSelection,
+  normalizeGridRect,
+  paintSelection,
+  pasteClipboard
+} from "./MatrixEditing";
 
 export type LevelEditorTool = "select" | "move" | "paint" | "erase" | "place" | "duplicate";
 
@@ -234,7 +234,10 @@ export class LevelEditorController {
     }
 
     const destination = targetCell ?? { column: this.selection.bounds.left + 1, row: this.selection.bounds.top + 1 };
-    const offset = { column: destination.column - this.selection.bounds.left, row: destination.row - this.selection.bounds.top };
+    const offset = {
+      column: destination.column - this.selection.bounds.left,
+      row: destination.row - this.selection.bounds.top
+    };
     this.beginEdit();
     this.selection = duplicateSelection(this.document, this.selection, offset);
     this.commitDocumentChange();
@@ -680,7 +683,10 @@ export class LevelEditorController {
         break;
       case "duplicate":
         if (this.dragSelectionSnapshot) {
-          this.selection = duplicateSelection(this.document, this.dragSelectionSnapshot, { column: deltaColumn, row: deltaRow });
+          this.selection = duplicateSelection(this.document, this.dragSelectionSnapshot, {
+            column: deltaColumn,
+            row: deltaRow
+          });
         }
         break;
       case "select":
@@ -777,7 +783,11 @@ export class LevelEditorController {
     };
   }
 
-  private translateSelection(selection: GridSelection<number>, deltaColumn: number, deltaRow: number): GridSelection<number> {
+  private translateSelection(
+    selection: GridSelection<number>,
+    deltaColumn: number,
+    deltaRow: number
+  ): GridSelection<number> {
     return {
       bounds: {
         left: selection.bounds.left + deltaColumn,
@@ -824,7 +834,7 @@ export class LevelEditorController {
         return;
       }
 
-      const objects = this.selectedObject.kind === "torch" ? levelDocument.torches ?? [] : levelDocument.npcs ?? [];
+      const objects = this.selectedObject.kind === "torch" ? (levelDocument.torches ?? []) : (levelDocument.npcs ?? []);
       const item = objects?.[this.selectedObject.index];
       if (item) {
         this.selectionGraphics.lineStyle(2, 0xffb648, 0.95);
@@ -841,5 +851,3 @@ export class LevelEditorController {
     }
   }
 }
-
-

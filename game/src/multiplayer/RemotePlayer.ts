@@ -1,6 +1,6 @@
 import Phaser from "phaser";
-import { ChatBubble } from "./ChatBubble";
 import { type Player } from "../entities/Player";
+import { ChatBubble } from "./ChatBubble";
 
 const POSITION_LERP = 0.25;
 const ROTATION_LERP = 0.25;

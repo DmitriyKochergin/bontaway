@@ -174,7 +174,11 @@ export class LevelEditorButton {
     background.lineBetween(-half, -half, -10, -half);
   }
 
-  private drawStoneButtonFrame(background: Phaser.GameObjects.Graphics, isHighlighted: boolean, isActive: boolean): void {
+  private drawStoneButtonFrame(
+    background: Phaser.GameObjects.Graphics,
+    isHighlighted: boolean,
+    isActive: boolean
+  ): void {
     const half = this.buttonSize / 2;
     background.clear();
     background.fillStyle(isActive ? 0x2b2214 : 0x1c1d1f, 0.96);

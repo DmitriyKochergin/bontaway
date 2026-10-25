@@ -12,5 +12,3 @@ export interface LevelSceneAdapter {
   getLevelSourcePath(): string;
   getWorldPoint(pointer: Phaser.Input.Pointer): GridPoint;
 }
-
-

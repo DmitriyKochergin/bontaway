@@ -4,11 +4,7 @@ import { type SyncMessage } from "./SyncMessages";
 type MessageHandler = (message: SyncMessage, peerId: string) => void;
 type PeerHandler = (peerId: string) => void;
 
-const RELAY_URLS = [
-  "wss://relay.damus.io",
-  "wss://nos.lol",
-  "wss://relay.fountain.fm"
-];
+const RELAY_URLS = ["wss://relay.damus.io", "wss://nos.lol", "wss://relay.fountain.fm"];
 
 /**
  * Thin wrapper over Trystero's P2P room. GitHub Pages ships only static files, so there is no

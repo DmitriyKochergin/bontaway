@@ -1,5 +1,5 @@
-import { serializeLevelDocument } from "./LevelSerializer";
 import type { LevelDocument } from "./LevelDocument";
+import { serializeLevelDocument } from "./LevelSerializer";
 
 export interface DevSaveRequest {
   sourcePath: string;
@@ -30,4 +30,3 @@ export async function saveLevelDocument(request: DevSaveRequest): Promise<DevSav
 
   return { ok: true };
 }
-

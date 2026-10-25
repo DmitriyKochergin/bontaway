@@ -51,7 +51,10 @@ export function serializeLevelDocument(document: LevelDocument): string {
 
 export function serializeTsLevelDocument(document: TsLevelDocument): string {
   const fogLine = document.fogOfWarEnabled === false ? "  fogOfWarEnabled: false,\n" : "";
-  const spawnLine = document.spawnX !== undefined && document.spawnY !== undefined ? `  spawnX: ${formatNumber(document.spawnX)},\n  spawnY: ${formatNumber(document.spawnY)},\n` : "";
+  const spawnLine =
+    document.spawnX !== undefined && document.spawnY !== undefined
+      ? `  spawnX: ${formatNumber(document.spawnX)},\n  spawnY: ${formatNumber(document.spawnY)},\n`
+      : "";
   const walkable = `[\n${document.layout.walkable
     .map(row => `    [${row.map(cell => (cell ? "true" : "false")).join(", ")}]`)
     .join(",\n")}\n  ]`;
@@ -81,5 +84,3 @@ ${fogLine}${spawnLine}  doors: ${formatObjects(document.doors)},
 export function serializeMatrixLevelDocument(document: MatrixLevelDocument): string {
   return `${JSON.stringify(document, null, 2)}\n`;
 }
-
-
