@@ -657,10 +657,17 @@ export class LevelEditorController {
     if (!this.document || !this.dragStartCell || !this.dragCurrentCell) {
       return;
     }
-    // Tile-mutating drag modes require a matrix document; rect select commits on any type.
-    if (this.document.type !== "matrix" && this.dragMode !== "select") {
+    if (this.dragMode === "select") {
+      this.beginEdit();
+      this.selection = this.buildSelection(this.dragStartCell, this.dragCurrentCell);
+      this.commitDocumentChange();
       return;
     }
+    // Tile-mutating drag modes require a matrix document.
+    if (this.document.type !== "matrix") {
+      return;
+    }
+    const document = this.document;
 
     const deltaColumn = this.dragCurrentCell.column - this.dragStartCell.column;
     const deltaRow = this.dragCurrentCell.row - this.dragStartCell.row;
@@ -670,28 +677,24 @@ export class LevelEditorController {
     switch (this.dragMode) {
       case "move":
         if (this.dragSelectionSnapshot) {
-          this.selection = moveSelection(this.document, this.dragSelectionSnapshot, deltaColumn, deltaRow);
+          this.selection = moveSelection(document, this.dragSelectionSnapshot, deltaColumn, deltaRow);
         }
         break;
       case "paint":
         this.selection = this.buildSelection(this.dragStartCell, this.dragCurrentCell);
-        paintSelection(this.document, this.selection, this.paletteTile);
+        paintSelection(document, this.selection, this.paletteTile);
         break;
       case "erase":
         this.selection = this.buildSelection(this.dragStartCell, this.dragCurrentCell);
-        eraseSelection(this.document, this.selection, DEFAULT_MATRIX_EMPTY_TILE);
+        eraseSelection(document, this.selection, DEFAULT_MATRIX_EMPTY_TILE);
         break;
       case "duplicate":
         if (this.dragSelectionSnapshot) {
-          this.selection = duplicateSelection(this.document, this.dragSelectionSnapshot, {
+          this.selection = duplicateSelection(document, this.dragSelectionSnapshot, {
             column: deltaColumn,
             row: deltaRow
           });
         }
-        break;
-      case "select":
-      default:
-        this.selection = this.buildSelection(this.dragStartCell, this.dragCurrentCell);
         break;
     }
 

@@ -1,5 +1,5 @@
 import Phaser from "phaser";
-import { EDITOR_MODE_ENABLED } from "../editorMode";
+import { EDITOR_MODE_ENABLED } from "../editor/editorMode";
 import { SettingsManager } from "../systems/SettingsManager";
 import { ChatInputOverlay } from "../ui/ChatInputOverlay";
 import { FlatGameHUD } from "../ui/FlatGameHUD";

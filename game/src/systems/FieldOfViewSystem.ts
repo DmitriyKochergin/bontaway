@@ -53,6 +53,7 @@ export class FieldOfViewSystem {
   private lastPaintHadDynamicLights = false;
   // Torch changes are rare, but when they happen the static torch layer needs to be rebaked.
   private torchLightsDirty = false;
+  private lastRaycastTimeMs = 0;
 
   // Pre-baked radial gradients (avoids createRadialGradient allocation and per-pixel evaluation in hot loop)
   private playerGradientCanvas!: HTMLCanvasElement | OffscreenCanvas;
@@ -398,9 +399,14 @@ export class FieldOfViewSystem {
     this.lastRedrawOriginY = originY;
   }
 
+  public getLastRaycastTimeMs(): number {
+    return this.lastRaycastTimeMs;
+  }
+
   // Cast the FOV ray in a circle from the player origin and return the shadow polygon in world
   // space, sorted by angle around that origin.
   private computeVisibilityPolygon(originX: number, originY: number, radius: number): Phaser.Math.Vector2[] {
+    const raycastStartTime = performance.now();
     this.fovRay.setRay(originX, originY, 0, radius);
     this.raycaster.update();
     const intersections = this.fovRay.castCircle({
@@ -413,6 +419,8 @@ export class FieldOfViewSystem {
       (left: Phaser.Math.Vector2, right: Phaser.Math.Vector2) =>
         Math.atan2(left.y - originY, left.x - originX) - Math.atan2(right.y - originY, right.x - originX)
     );
+
+    this.lastRaycastTimeMs = performance.now() - raycastStartTime;
 
     return intersections;
   }

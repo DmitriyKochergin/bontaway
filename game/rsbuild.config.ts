@@ -1,4 +1,5 @@
 import { defineConfig } from "@rsbuild/core";
+import { pluginTypeCheck } from "@rsbuild/plugin-type-check";
 
 export default defineConfig({
   server: {
@@ -18,5 +19,5 @@ export default defineConfig({
       root: "./build"
     }
   },
-  plugins: []
+  plugins: [pluginTypeCheck()]
 });

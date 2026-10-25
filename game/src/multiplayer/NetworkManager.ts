@@ -22,6 +22,8 @@ export class NetworkManager {
   private messageHandler: MessageHandler | null = null;
   private peerJoinHandler: PeerHandler | null = null;
   private peerLeaveHandler: PeerHandler | null = null;
+  private readonly connectedPeers = new Set<string>();
+  private lastPingMs: number | null = null;
   private joinRequestId = 0;
 
   join(appId: string, roomId: string): void {
@@ -51,8 +53,43 @@ export class NetworkManager {
     };
 
     receive((message: SyncMessage, peerId: string) => this.messageHandler?.(message, peerId));
-    this.room.onPeerJoin((peerId: string) => this.peerJoinHandler?.(peerId));
-    this.room.onPeerLeave((peerId: string) => this.peerLeaveHandler?.(peerId));
+    this.room.onPeerJoin((peerId: string) => {
+      this.connectedPeers.add(peerId);
+      this.peerJoinHandler?.(peerId);
+    });
+    this.room.onPeerLeave((peerId: string) => {
+      this.connectedPeers.delete(peerId);
+      this.peerLeaveHandler?.(peerId);
+    });
+  }
+
+  getPeerCount(): number {
+    return this.connectedPeers.size;
+  }
+
+  getLastPingMs(): number | null {
+    return this.lastPingMs;
+  }
+
+  async samplePing(): Promise<number | null> {
+    if (!this.room || this.connectedPeers.size === 0) {
+      this.lastPingMs = null;
+      return null;
+    }
+
+    const firstPeer = this.connectedPeers.values().next().value;
+    if (!firstPeer) {
+      this.lastPingMs = null;
+      return null;
+    }
+
+    try {
+      const pingDuration = await this.room.ping(firstPeer);
+      this.lastPingMs = Math.round(pingDuration);
+      return this.lastPingMs;
+    } catch {
+      return null;
+    }
   }
 
   onMessage(handler: MessageHandler): void {
@@ -103,5 +140,7 @@ export class NetworkManager {
     this.messageHandler = null;
     this.peerJoinHandler = null;
     this.peerLeaveHandler = null;
+    this.connectedPeers.clear();
+    this.lastPingMs = null;
   }
 }

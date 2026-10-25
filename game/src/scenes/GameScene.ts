@@ -1,7 +1,7 @@
 import Phaser from "phaser";
+import { EDITOR_MODE_ENABLED } from "../editor/editorMode";
 import { cloneLevelDocument, type LevelDocument } from "../editor/LevelDocument";
 import { type LevelEditorController } from "../editor/LevelEditorController";
-import { EDITOR_MODE_ENABLED } from "../editorMode";
 import { NPC } from "../entities/NPC";
 import { Player } from "../entities/Player";
 import { getLevelDefinition } from "../levels";
@@ -233,8 +233,7 @@ export default class GameScene extends BaseScene {
 
     if (!this.devModeEnabled) {
       this.devModeEnabled = true;
-      this.devModeOverlay ??= new DevModeOverlay(this, this.dungeonSystem);
-      this.devModeOverlay.show();
+      this.getOrCreateDevModeOverlay().show();
     }
 
     if (!this.levelEditorController) {
@@ -251,17 +250,24 @@ export default class GameScene extends BaseScene {
 
     this.devModeEnabled = !this.devModeEnabled;
 
-    this.devModeOverlay ??= new DevModeOverlay(this, this.dungeonSystem);
-
     if (this.devModeEnabled) {
-      this.devModeOverlay.show();
+      this.getOrCreateDevModeOverlay().show();
       void this.ensureLevelEditorController();
       return;
     }
 
-    this.devModeOverlay.hide();
+    this.devModeOverlay?.hide();
     this.levelEditorController?.destroy();
     this.levelEditorController = undefined;
+  }
+
+  private getOrCreateDevModeOverlay(): DevModeOverlay {
+    this.devModeOverlay ??= new DevModeOverlay(this, this.dungeonSystem, {
+      getFovRaycastTimeMs: () => this.fovSystem?.getLastRaycastTimeMs() ?? 0,
+      getNetworkStats: () => this.sharedNet?.getNetworkStats() ?? { peerCount: 0, pingMs: null },
+      getActiveLightsCount: () => (this.lights as { lights?: unknown[] })?.lights?.length ?? this.torchLights.length
+    });
+    return this.devModeOverlay;
   }
 
   private async ensureLevelEditorController(): Promise<void> {

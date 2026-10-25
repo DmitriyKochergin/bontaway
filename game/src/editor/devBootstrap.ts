@@ -1,4 +1,4 @@
-import { EDITOR_MODE_ENABLED } from "../editorMode";
+import { EDITOR_MODE_ENABLED } from "./editorMode";
 
 type EditorWindow = Window & { __BONTAWAY_EDITOR_MODE__?: boolean };
 

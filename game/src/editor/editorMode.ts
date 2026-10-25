@@ -1,1 +1,1 @@
-export { EDITOR_MODE_ENABLED } from "../editorMode";
+export const EDITOR_MODE_ENABLED = import.meta.env.DEV;

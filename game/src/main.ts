@@ -1,6 +1,6 @@
 import Phaser from "phaser";
 import { gameConfig } from "./config";
-import { EDITOR_MODE_ENABLED } from "./editorMode";
+import { EDITOR_MODE_ENABLED } from "./editor/editorMode";
 
 window.addEventListener("load", () => {
   let container = document.getElementById("game-container");

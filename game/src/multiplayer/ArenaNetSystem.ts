@@ -28,6 +28,7 @@ export class ArenaNetSystem {
   private readonly visibilityMask?: Phaser.Display.Masks.BitmapMask;
 
   private lastBroadcastAt = 0;
+  private lastPingSampleAt = 0;
   private lastSentX = Number.NaN;
   private lastSentY = Number.NaN;
   private lastSentRotation = Number.NaN;
@@ -77,9 +78,21 @@ export class ArenaNetSystem {
 
     this.broadcastPosition(time);
 
+    if (time - this.lastPingSampleAt > 2000) {
+      this.lastPingSampleAt = time;
+      void this.network.samplePing();
+    }
+
     for (const remotePlayer of this.remotePlayers.values()) {
       remotePlayer.tick();
     }
+  }
+
+  getNetworkStats(): { peerCount: number; pingMs: number | null } {
+    return {
+      peerCount: this.network.getPeerCount(),
+      pingMs: this.network.getLastPingMs()
+    };
   }
 
   destroy(): void {
