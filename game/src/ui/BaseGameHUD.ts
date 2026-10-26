@@ -1,5 +1,6 @@
 import Phaser from "phaser";
 import { getLevels } from "../levels";
+import { type NetworkStats } from "../multiplayer/NetworkManager";
 import { type AudioSystem } from "../systems/AudioSystem";
 import { DepthLayer } from "../types/depth-layer";
 import { SettingsButton } from "./SettingsButton";
@@ -10,6 +11,7 @@ import { SettingsButton } from "./SettingsButton";
  */
 export interface GameHudController {
   getLevelId(): string;
+  getNetworkStats(): NetworkStats;
   restartLevel(levelId: string): void;
   getAudioSystem(): AudioSystem | undefined;
 }
@@ -32,6 +34,9 @@ export abstract class BaseGameHUD {
   protected backgroundGraphics!: Phaser.GameObjects.Graphics;
   protected levelContainer!: Phaser.GameObjects.Container;
   protected levelBackgroundRect!: Phaser.GameObjects.Graphics;
+  protected networkStatusContainer!: Phaser.GameObjects.Container;
+  protected networkStatusBackground!: Phaser.GameObjects.Graphics;
+  protected networkStatusText!: Phaser.GameObjects.Text;
   protected slots: HudSlot[] = [];
 
   protected keySelectHandler?: (event: KeyboardEvent) => void;
@@ -67,6 +72,7 @@ export abstract class BaseGameHUD {
     this.createSlots();
 
     this.createLevelSelection();
+    this.createNetworkStatus();
 
     this.settingsButton = new SettingsButton(this.scene, () => {
       this.controller.getAudioSystem()?.play("sfx_tablet", 0.4);
@@ -91,7 +97,9 @@ export abstract class BaseGameHUD {
     return this.currentSelection;
   }
 
-  public update(_delta?: number): void {}
+  public update(_delta?: number): void {
+    this.updateNetworkStatus();
+  }
 
   public destroy(): void {
     if (this.resizeHandler) {
@@ -107,6 +115,7 @@ export abstract class BaseGameHUD {
     this.settingsButton = undefined;
     this.hudContainer.destroy();
     this.levelContainer.destroy();
+    this.networkStatusContainer.destroy();
     this.slots = [];
   }
 
@@ -265,6 +274,66 @@ export abstract class BaseGameHUD {
     });
   }
 
+  private createNetworkStatus(): void {
+    this.networkStatusContainer = this.scene.add
+      .container(0, 0)
+      .setScrollFactor(0)
+      .setDepth(DepthLayer.Hud);
+    this.networkStatusBackground = this.scene.add.graphics();
+    this.networkStatusText = this.scene.add.text(8, 5, "", {
+      fontSize: "11px",
+      fontFamily: "Roboto Mono, Courier New, monospace",
+      fontStyle: "bold",
+      stroke: "#000000",
+      strokeThickness: 2
+    });
+    this.networkStatusContainer.add([this.networkStatusBackground, this.networkStatusText]);
+    this.updateNetworkStatus();
+  }
+
+  private updateNetworkStatus(): void {
+    if (!this.networkStatusContainer) {
+      return;
+    }
+
+    const networkStats = this.controller.getNetworkStats();
+    if (networkStats.connectionState === "offline") {
+      this.networkStatusContainer.setVisible(false);
+      return;
+    }
+
+    const { label, color, backgroundColor } = this.getNetworkStatusPresentation(networkStats);
+    this.networkStatusContainer.setVisible(true);
+    this.networkStatusText.setText(label).setColor(color);
+    this.networkStatusBackground.clear();
+    this.networkStatusBackground.fillStyle(backgroundColor, 0.88);
+    this.networkStatusBackground.fillRoundedRect(0, 0, this.networkStatusText.width + 16, 26, 4);
+    this.networkStatusBackground.lineStyle(1, Phaser.Display.Color.HexStringToColor(color).color, 0.8);
+    this.networkStatusBackground.strokeRoundedRect(0, 0, this.networkStatusText.width + 16, 26, 4);
+  }
+
+  private getNetworkStatusPresentation(networkStats: NetworkStats): {
+    label: string;
+    color: string;
+    backgroundColor: number;
+  } {
+    switch (networkStats.connectionState) {
+      case "connecting":
+        return { label: "NETWORK · CONNECTING...", color: "#ffbb33", backgroundColor: 0x221a08 };
+      case "reconnecting":
+        return { label: "NETWORK · RECONNECTING...", color: "#ffbb33", backgroundColor: 0x221a08 };
+      case "room-full":
+        return { label: "NETWORK · ROOM FULL", color: "#ff6b6b", backgroundColor: 0x2a1010 };
+      case "connected": {
+        const peerLabel = `${networkStats.peerCount} PEER${networkStats.peerCount === 1 ? "" : "S"}`;
+        const pingLabel = networkStats.pingMs === null ? "" : ` · ${networkStats.pingMs} MS`;
+        return { label: `NETWORK · ${peerLabel}${pingLabel}`, color: "#8ee6a8", backgroundColor: 0x102218 };
+      }
+      case "offline":
+        return { label: "", color: "#ffffff", backgroundColor: 0x000000 };
+    }
+  }
+
   private getLocationIconTexture(levelId: string): string {
     return levelId === "arena" ? "obstacle" : "door_1";
   }
@@ -285,6 +354,7 @@ export abstract class BaseGameHUD {
   private reposition(gameSize: Phaser.Structs.Size): void {
     this.hudContainer.setPosition(gameSize.width / 2 - this.panelWidth / 2, gameSize.height - this.panelHeight - 14);
     this.levelContainer.setPosition(gameSize.width - this.getLocationPanelWidth() - 8, 74);
+    this.networkStatusContainer.setPosition(12, 14);
     this.drawMainPanel();
     this.drawLevelSelectionPanel();
   }

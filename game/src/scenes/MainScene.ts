@@ -96,6 +96,10 @@ export default class MainScene extends BaseScene {
     return this.gameHUD?.getSelectedWeaponSlot() ?? 0;
   }
 
+  update(_time: number, delta: number): void {
+    this.gameHUD?.update(delta);
+  }
+
   private bindEscKey(): void {
     this.escKeyHandler = (event: KeyboardEvent) => {
       if (event.code !== "Escape" || event.repeat) {

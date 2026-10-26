@@ -1,8 +1,12 @@
 /** Stable render-order layers shared by gameplay entities, effects, and HUD elements. */
 export enum DepthLayer {
-  // World geometry and visibility.
+  // Floor tiles
   Floor = 0,
+
+  // FOV overlay
   FovOverlay = 100,
+
+  // Walls, doors, obstacles
   Walls = 200,
 
   // Torch components.
@@ -11,12 +15,10 @@ export enum DepthLayer {
   TorchFlame = 214,
   TorchEmbers = 215,
 
-  // Projectile trails.
+  // Projectile trails, particles, explosions
   FireballTrail = 240,
   RayTrail = 246,
   SphereTrail = 248,
-
-  // Projectile bodies and impact effects.
   SphereLightning = 249,
   FireballProjectile = 250,
   SphereProjectile = 253,

@@ -6,6 +6,7 @@ import { Player } from "../entities/Player";
 import { getLevelDefinition } from "../levels";
 import { ArenaNetSystem } from "../multiplayer/ArenaNetSystem";
 import { ChatBubble } from "../multiplayer/ChatBubble";
+import { type NetworkStats } from "../multiplayer/NetworkManager";
 import { DevModeOverlay } from "../systems/DevModeOverlay";
 import { DungeonSystem } from "../systems/DungeonSystem";
 import { FieldOfViewSystem } from "../systems/FieldOfViewSystem";
@@ -67,6 +68,16 @@ export default class GameScene extends BaseScene {
 
   public getLevelId(): string {
     return this.levelId;
+  }
+
+  public getNetworkStats(): NetworkStats {
+    return (
+      this.sharedNet?.getNetworkStats() ?? {
+        peerCount: 0,
+        pingMs: null,
+        connectionState: "offline"
+      }
+    );
   }
 
   public getTileSize(): number {

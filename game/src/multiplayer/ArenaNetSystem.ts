@@ -1,7 +1,7 @@
 import Phaser from "phaser";
 import { type Player } from "../entities/Player";
 import { WeaponSystem } from "../systems/WeaponSystem";
-import { MAX_ROOM_PEERS, type NetworkConnectionState, NetworkManager } from "./NetworkManager";
+import { MAX_ROOM_PEERS, type NetworkStats, NetworkManager } from "./NetworkManager";
 import { RemotePlayer } from "./RemotePlayer";
 import { type SyncMessage, type WeaponKind } from "./SyncMessages";
 
@@ -89,7 +89,7 @@ export class ArenaNetSystem {
     }
   }
 
-  getNetworkStats(): { peerCount: number; pingMs: number | null; connectionState: NetworkConnectionState } {
+  getNetworkStats(): NetworkStats {
     return {
       peerCount: this.network.getPeerCount(),
       pingMs: this.network.getLastPingMs(),
@@ -138,7 +138,8 @@ export class ArenaNetSystem {
   }
 
   private greetPeer(peerId: string): void {
-    if (this.network.getPeerCount() >= MAX_ROOM_PEERS - 1) {
+    // Trystero counts connected remotes; leave room for this local player in the total cap.
+    if (this.network.getPeerCount() > MAX_ROOM_PEERS - 1) {
       this.network.rejectPeer(peerId);
       return;
     }

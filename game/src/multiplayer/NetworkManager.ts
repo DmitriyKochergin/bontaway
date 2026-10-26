@@ -4,7 +4,8 @@ import { type SyncMessage } from "./SyncMessages";
 type MessageHandler = (message: SyncMessage, peerId: string) => void;
 type PeerHandler = (peerId: string) => void;
 
-const RELAY_URLS = ["wss://relay.damus.io", "wss://nos.lol", "wss://relay.fountain.fm"];
+const DEFAULT_RELAY_URLS = ["wss://relay.damus.io", "wss://nos.lol", "wss://relay.fountain.fm"];
+const RELAY_CONFIG_PATH = "./network-relays.json";
 const RECONNECT_BASE_DELAY_MS = 2_000;
 const RECONNECT_MAX_DELAY_MS = 32_000;
 const CONNECTION_CHECK_INTERVAL_MS = 1_000;
@@ -12,6 +13,25 @@ const CONNECTION_CHECK_INTERVAL_MS = 1_000;
 export const MAX_ROOM_PEERS = 8;
 
 export type NetworkConnectionState = "offline" | "connecting" | "connected" | "reconnecting" | "room-full";
+
+export type NetworkStats = {
+  readonly peerCount: number;
+  readonly pingMs: number | null;
+  readonly connectionState: NetworkConnectionState;
+};
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
+function getRelayUrls(value: unknown): string[] {
+  const relayUrls = Array.isArray(value) ? value : isRecord(value) ? value.relayUrls : undefined;
+  if (!Array.isArray(relayUrls)) {
+    return [];
+  }
+
+  return relayUrls.filter((relayUrl): relayUrl is string => typeof relayUrl === "string" && relayUrl.startsWith("wss://"));
+}
 
 /**
  * Thin wrapper over Trystero's P2P room. GitHub Pages ships only static files, so there is no
@@ -102,7 +122,12 @@ export class NetworkManager {
 
     let room: Room;
     try {
-      room = joinRoom({ appId, relayUrls: RELAY_URLS, relayRedundancy: RELAY_URLS.length }, roomId, () => {
+      const relayUrls = await this.loadRelayUrls();
+      if (requestId !== this.joinRequestId || this.room) {
+        return;
+      }
+
+      room = joinRoom({ appId, relayUrls, relayRedundancy: relayUrls.length }, roomId, () => {
         if (requestId === this.joinRequestId) {
           this.scheduleReconnect();
         }
@@ -146,6 +171,20 @@ export class NetworkManager {
       this.rejectedPeers.delete(peerId);
       this.peerLeaveHandler?.(peerId);
     });
+  }
+
+  private async loadRelayUrls(): Promise<string[]> {
+    let configuredRelayUrls: string[] = [];
+    try {
+      const response = await fetch(RELAY_CONFIG_PATH, { cache: "no-store" });
+      if (response.ok) {
+        configuredRelayUrls = getRelayUrls(await response.json());
+      }
+    } catch {
+      // Static hosting may be offline or the optional config may not be deployed.
+    }
+
+    return [...new Set([...configuredRelayUrls, ...DEFAULT_RELAY_URLS])];
   }
 
   private isFailedConnection(connection: RTCPeerConnection): boolean {
