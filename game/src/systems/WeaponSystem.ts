@@ -8,6 +8,7 @@ import {
   createProjectileImpactVisuals,
   createProjectileVisuals,
   type ProjectileImpactKind,
+  type ProjectileImpactVisualBundle,
   type ProjectileVisualKind
 } from "./ProjectileVisuals";
 
@@ -81,6 +82,7 @@ export class WeaponSystem {
   private readonly activeProjectiles = new Set<ProjectileState>();
   private readonly activeRays = new Set<ProjectileState>();
   private readonly activeSpheres = new Set<ProjectileState>();
+  private readonly activeExplosions = new Set<ProjectileImpactVisualBundle>();
   private readonly projectilePools: Record<ProjectileKind, ProjectileState[]> = {
     fireball: [],
     ray: [],
@@ -121,10 +123,15 @@ export class WeaponSystem {
       cleanup();
     }
 
+    for (const explosion of this.activeExplosions) {
+      explosion.cleanup(true);
+    }
+
     this.activeCleanups.clear();
     this.activeProjectiles.clear();
     this.activeRays.clear();
     this.activeSpheres.clear();
+    this.activeExplosions.clear();
 
     for (const pool of Object.values(this.projectilePools)) {
       for (const state of pool) {
@@ -304,18 +311,19 @@ export class WeaponSystem {
       }
     }
 
-    createProjectileImpactVisuals(
+    const explosion = createProjectileImpactVisuals(
       this.scene,
       sprite.x,
       sprite.y,
       PROJECTILE_PROFILES[state.kind].explosionKind,
       this.fovSystem
     );
+    this.activeExplosions.add(explosion);
 
     this.releaseProjectile(state);
   }
 
-  private updateProjectiles(time: number, _delta: number): void {
+  private updateProjectiles(time: number, delta: number): void {
     if (this.isDestroyed || this.scene.scene.isPaused()) {
       return;
     }
@@ -332,6 +340,12 @@ export class WeaponSystem {
         this.resolveRaySphereImpact(state);
       } else if (state.kind === "sphere") {
         this.updateSphereEffects(state, time - state.launchedAt);
+      }
+    }
+
+    for (const explosion of this.activeExplosions) {
+      if (!explosion.update(delta)) {
+        this.activeExplosions.delete(explosion);
       }
     }
   }
@@ -358,13 +372,14 @@ export class WeaponSystem {
       }
 
       this.audioSystem?.playShockRifleHit(0.85);
-      createProjectileImpactVisuals(
+      const explosion = createProjectileImpactVisuals(
         this.scene,
         (rayState.sprite.x + sphereState.sprite.x) * 0.5,
         (rayState.sprite.y + sphereState.sprite.y) * 0.5,
         "huge",
         this.fovSystem
       );
+      this.activeExplosions.add(explosion);
 
       this.releaseProjectile(rayState);
       this.releaseProjectile(sphereState);

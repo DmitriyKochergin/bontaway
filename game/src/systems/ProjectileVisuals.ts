@@ -199,6 +199,11 @@ export interface ProjectileVisualBundle {
   cleanup(forceImmediate?: boolean): void;
 }
 
+export interface ProjectileImpactVisualBundle {
+  update(delta: number): boolean;
+  cleanup(forceImmediate?: boolean): void;
+}
+
 /**
  * Shared weapon FX bundle. Both local and remote projectiles reuse this so the trail, light,
  * and teardown timing stay identical across every weapon kind.
@@ -286,7 +291,7 @@ export function createProjectileImpactVisuals(
   y: number,
   kind: ProjectileImpactKind,
   fovSystem: FieldOfViewSystem
-): void {
+): ProjectileImpactVisualBundle {
   const profile = IMPACT_VISUALS[kind];
   const explosionLight = scene.lights.addLight(x, y, profile.lightRadius, profile.lightColor, profile.intensity);
   const explosionObj = { x, y, radius: profile.maxRadius };
@@ -340,8 +345,6 @@ export function createProjectileImpactVisuals(
     }
 
     isCleanedUp = true;
-    scene.events.off("update", updateLight);
-    scene.events.off(Phaser.Scenes.Events.SHUTDOWN, shutdownCleanup);
 
     try {
       scene.lights.removeLight(explosionLight);
@@ -360,9 +363,9 @@ export function createProjectileImpactVisuals(
     }
   };
 
-  const updateLight = (_time: number, delta: number) => {
-    if (scene.scene.isPaused()) {
-      return;
+  const update = (delta: number): boolean => {
+    if (isCleanedUp) {
+      return false;
     }
 
     elapsed += delta;
@@ -381,10 +384,14 @@ export function createProjectileImpactVisuals(
 
     if (progress >= 1) {
       cleanUp();
+      return false;
     }
+
+    return true;
   };
 
-  scene.events.on("update", updateLight);
-  const shutdownCleanup = () => cleanUp(true);
-  scene.events.once(Phaser.Scenes.Events.SHUTDOWN, shutdownCleanup);
+  return {
+    update,
+    cleanup: cleanUp
+  };
 }
