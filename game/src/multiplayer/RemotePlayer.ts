@@ -1,10 +1,10 @@
 import Phaser from "phaser";
 import { type Player } from "../entities/Player";
+import { DepthLayer } from "../types/depth-layer";
 import { ChatBubble } from "./ChatBubble";
 
 const POSITION_LERP = 0.25;
 const ROTATION_LERP = 0.25;
-const REMOTE_DEPTH = 299; // Just beneath the local player (depth 300).
 const SPECTRAL_TINT = 0x88bbff;
 
 /**
@@ -32,7 +32,7 @@ export class RemotePlayer extends Phaser.GameObjects.Sprite {
 
     scene.add.existing(this);
     scene.physics.add.existing(this);
-    this.setDepth(REMOTE_DEPTH);
+    this.setDepth(DepthLayer.RemotePlayer);
     this.setPipeline("Light2D");
     this.setTint(SPECTRAL_TINT);
     this.rotation = rotation;

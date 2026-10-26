@@ -1,6 +1,7 @@
 import Phaser from "phaser";
 import { DEFAULT_NPC_STYLE } from "../entities/NpcStyle";
 import { ensureNpcTexture } from "../entities/NpcTextureGenerator";
+import { DepthLayer } from "../types/depth-layer";
 
 /**
  * Boot scene.
@@ -65,7 +66,7 @@ export default class PreloadScene extends Phaser.Scene {
   } {
     const width = this.scale.width;
     const height = this.scale.height;
-    const container = this.add.container(0, 0).setDepth(1000);
+    const container = this.add.container(0, 0).setDepth(DepthLayer.Modal);
 
     const title = this.add.text(width / 2, height / 2 - 72, "Loading...", {
       fontSize: "20px",

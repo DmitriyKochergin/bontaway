@@ -14,6 +14,7 @@ import { PlayerControlsSystem } from "../systems/PlayerControlsSystem";
 import { loadPlayerProgress, type PlayerProgressState, savePlayerProgress } from "../systems/PlayerProgressManager";
 import { PlayerTeleport } from "../systems/PlayerTeleport";
 import { WeaponSystem } from "../systems/WeaponSystem";
+import { DepthLayer } from "../types/depth-layer";
 import { type PhaserRaycasterPlugin } from "../types/phaser-raycaster";
 import { BaseScene } from "./BaseScene";
 
@@ -409,13 +410,13 @@ export default class GameScene extends BaseScene {
 
       // Iron sconce base seen from above. Drawn dark so the fire on top reads as the light source.
       const torchSprite = this.add.image(worldX, worldY, "torch");
-      torchSprite.setDepth(208);
+      torchSprite.setDepth(DepthLayer.TorchBase);
       torchSprite.setMask(fovMask);
       this.torchFx.push(torchSprite);
 
       // Flickering hot core sitting in the sconce. ADD blend makes it glow like a live coal bed.
       const flameCore = this.add.image(worldX, worldY, "torch");
-      flameCore.setDepth(212);
+      flameCore.setDepth(DepthLayer.TorchCore);
       flameCore.setScale(0.6 * scaleRatio);
       flameCore.setTint(0xffc04d);
       flameCore.setBlendMode(Phaser.BlendModes.ADD);
@@ -452,7 +453,7 @@ export default class GameScene extends BaseScene {
           quantity: 1
         }
       });
-      flame.setDepth(214);
+      flame.setDepth(DepthLayer.TorchFlame);
       flame.setMask(fovMask);
       this.torchFx.push(flame);
 
@@ -468,7 +469,7 @@ export default class GameScene extends BaseScene {
         tint: [0xffe08a, 0xff8a2b],
         blendMode: "ADD"
       });
-      embers.setDepth(215);
+      embers.setDepth(DepthLayer.TorchEmbers);
       embers.setMask(fovMask);
       this.torchFx.push(embers);
 

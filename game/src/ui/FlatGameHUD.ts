@@ -1,5 +1,6 @@
 import Phaser from "phaser";
 import { getLevels } from "../levels";
+import { DepthLayer } from "../types/depth-layer";
 import { SettingsButton } from "./SettingsButton";
 import { type GameHudController } from "./StoneGameHUD";
 
@@ -40,7 +41,7 @@ export class FlatGameHUD {
   }
 
   public create(): void {
-    this.hudContainer = this.scene.add.container(0, 0).setScrollFactor(0).setDepth(400);
+    this.hudContainer = this.scene.add.container(0, 0).setScrollFactor(0).setDepth(DepthLayer.Hud);
     this.hotbarBackground = this.scene.add.graphics();
     this.hudContainer.add(this.hotbarBackground);
 
@@ -49,7 +50,7 @@ export class FlatGameHUD {
     this.hudContainer.add(hotbarBlocker);
     this.createSlots();
 
-    this.locationContainer = this.scene.add.container(0, 0).setScrollFactor(0).setDepth(400);
+    this.locationContainer = this.scene.add.container(0, 0).setScrollFactor(0).setDepth(DepthLayer.Hud);
     this.locationBackground = this.scene.add.graphics();
     this.locationContainer.add(this.locationBackground);
 

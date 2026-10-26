@@ -1,4 +1,5 @@
 import Phaser from "phaser";
+import { DepthLayer } from "../types/depth-layer";
 import { type Door, getLevelDefinition, type LevelDefinition } from "../levels";
 
 export class DungeonSystem {
@@ -89,7 +90,7 @@ export class DungeonSystem {
 
         const floorImage = this.scene.add
           .image(column * tileSize + tileSize / 2, row * tileSize + tileSize / 2, "floor")
-          .setDepth(0);
+          .setDepth(DepthLayer.Floor);
         floorImage.setPipeline("Light2D");
       }
     }
@@ -127,7 +128,7 @@ export class DungeonSystem {
   private addWallBlock(x: number, y: number, column: number, row: number) {
     const wallBlock = this.scene.physics.add.staticImage(x, y, "wall");
     wallBlock.setPipeline("Light2D");
-    wallBlock.setDepth(200);
+    wallBlock.setDepth(DepthLayer.Walls);
     wallBlock.refreshBody();
 
     const body = wallBlock.body as Phaser.Physics.Arcade.StaticBody;
@@ -143,7 +144,7 @@ export class DungeonSystem {
   private addDoorBlock(x: number, y: number, column: number, row: number, textureKey: string) {
     const doorBlock = this.scene.physics.add.staticImage(x, y, textureKey);
     doorBlock.setPipeline("Light2D");
-    doorBlock.setDepth(200);
+    doorBlock.setDepth(DepthLayer.Walls);
     doorBlock.refreshBody();
 
     const body = doorBlock.body as Phaser.Physics.Arcade.StaticBody;
@@ -161,7 +162,7 @@ export class DungeonSystem {
     obstacle.setPipeline("Light2D");
     obstacle.setDisplaySize(width, height);
     obstacle.refreshBody();
-    obstacle.setDepth(200);
+    obstacle.setDepth(DepthLayer.Walls);
     this.physicsWalls.add(obstacle);
     this.occluders.push(obstacle);
   }

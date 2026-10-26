@@ -1,4 +1,5 @@
 import Phaser from "phaser";
+import { DepthLayer } from "../types/depth-layer";
 
 export class Player extends Phaser.Physics.Arcade.Sprite {
   private cursors!: Phaser.Types.Input.Keyboard.CursorKeys;
@@ -18,7 +19,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     scene.add.existing(this);
     scene.physics.add.existing(this);
 
-    this.setDepth(300);
+    this.setDepth(DepthLayer.Player);
     this.setPipeline("Light2D");
 
     // Initialize light around player (radius 500, yellowish color, intensity 2)

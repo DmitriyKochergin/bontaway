@@ -1,4 +1,5 @@
 import Phaser from "phaser";
+import { DepthLayer } from "../types/depth-layer";
 
 const HEAD_OFFSET = 34; // Pixels above the entity's origin where the bubble's tail sits.
 const DISPLAY_MS = 10000; // Message lingers this long, unless a newer one replaces it.
@@ -33,7 +34,7 @@ export class ChatBubble {
       .setOrigin(0.5, 1);
 
     this.container = scene.add.container(0, 0, [this.background, this.label]);
-    this.container.setDepth(350); // Above players (300) and projectiles, below the screen HUD (400).
+    this.container.setDepth(DepthLayer.SpeechBubble); // Above players and projectiles, below the screen HUD.
     this.container.setVisible(false);
   }
 

@@ -1,5 +1,6 @@
 import Phaser from "phaser";
 import { type Player } from "../entities/Player";
+import { DepthLayer } from "../types/depth-layer";
 
 export class PlayerTeleport {
   private readonly scene: Phaser.Scene;
@@ -99,7 +100,7 @@ export class PlayerTeleport {
 
     const warpTrail = this.scene.add
       .rectangle(centerX, centerY, Math.max(distance, 1), 1, 0xbfefff, 0.4)
-      .setDepth(this.player.depth - 2)
+      .setDepth(DepthLayer.Player - 2)
       .setBlendMode(Phaser.BlendModes.ADD)
       .setRotation(angle);
 
@@ -119,17 +120,17 @@ export class PlayerTeleport {
   private createTeleportDepartureEffect(sourceX: number, sourceY: number): void {
     const coreSink = this.scene.add
       .circle(sourceX, sourceY, 16, 0x203040, 0.5)
-      .setDepth(this.player.depth - 1)
+      .setDepth(DepthLayer.Player - 1)
       .setBlendMode(Phaser.BlendModes.ADD);
 
     const shadowRing = this.scene.add
       .circle(sourceX, sourceY, 30, 0x081018, 0.22)
-      .setDepth(this.player.depth - 2)
+      .setDepth(DepthLayer.Player - 2)
       .setBlendMode(Phaser.BlendModes.ADD);
 
     const collapseRing = this.scene.add
       .circle(sourceX, sourceY, 20, 0x6fbfff, 0.18)
-      .setDepth(this.player.depth - 3)
+      .setDepth(DepthLayer.Player - 3)
       .setBlendMode(Phaser.BlendModes.ADD);
 
     this.scene.tweens.add({
@@ -169,12 +170,12 @@ export class PlayerTeleport {
   private createTeleportArrivalEffect(targetX: number, targetY: number): void {
     const coreFlash = this.scene.add
       .circle(targetX, targetY, 8, 0xf6ffff, 0.85)
-      .setDepth(this.player.depth - 1)
+      .setDepth(DepthLayer.Player - 1)
       .setBlendMode(Phaser.BlendModes.ADD);
 
     const rippleRing = this.scene.add
       .circle(targetX, targetY, 12, 0x9fe8ff, 0.3)
-      .setDepth(this.player.depth - 2)
+      .setDepth(DepthLayer.Player - 2)
       .setBlendMode(Phaser.BlendModes.ADD);
 
     const sparkOffsets = [
@@ -187,7 +188,7 @@ export class PlayerTeleport {
     const sparks = sparkOffsets.map(([offsetX, offsetY]) =>
       this.scene.add
         .circle(targetX + offsetX, targetY + offsetY, 4, 0xbfefff, 0.7)
-        .setDepth(this.player.depth - 1)
+        .setDepth(DepthLayer.Player - 1)
         .setBlendMode(Phaser.BlendModes.ADD)
     );
 

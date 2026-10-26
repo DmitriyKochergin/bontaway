@@ -1,4 +1,5 @@
 import Phaser from "phaser";
+import { DepthLayer } from "../types/depth-layer";
 import { type Player } from "../entities/Player";
 import { type PhaserRaycasterPlugin, type Raycaster, type RaycasterRay } from "../types/phaser-raycaster";
 
@@ -239,7 +240,7 @@ export class FieldOfViewSystem {
     this.fovOverlay = this.scene.add.rectangle(0, 0, this.scene.scale.width, this.scene.scale.height, 0x000000, 1);
     this.fovOverlay.setOrigin(0, 0);
     this.fovOverlay.setScrollFactor(0);
-    this.fovOverlay.setDepth(100);
+    this.fovOverlay.setDepth(DepthLayer.FovOverlay);
 
     const canvasWidth = Math.ceil((this.scene.scale.width + this.maskMargin * 2) * this.maskResolutionScale);
     const canvasHeight = Math.ceil((this.scene.scale.height + this.maskMargin * 2) * this.maskResolutionScale);

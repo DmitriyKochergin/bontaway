@@ -1,5 +1,6 @@
 import Phaser from "phaser";
 import { type Player } from "../entities/Player";
+import { DepthLayer } from "../types/depth-layer";
 import { type AudioSystem } from "./AudioSystem";
 import { type DungeonSystem } from "./DungeonSystem";
 import { type FieldOfViewSystem } from "./FieldOfViewSystem";
@@ -22,7 +23,7 @@ interface ProjectileState {
 
 interface ProjectileProfile {
   readonly textureKey: string;
-  readonly depth: number;
+  readonly depth: DepthLayer;
   readonly alpha: number;
   readonly speed: number;
   readonly lifetime: number;
@@ -53,7 +54,7 @@ const WEAPON_TEXTURES = {
 const PROJECTILE_PROFILES: Record<ProjectileKind, ProjectileProfile> = {
   fireball: {
     textureKey: "fireball",
-    depth: 250,
+    depth: DepthLayer.FireballProjectile,
     alpha: 1,
     speed: 300,
     lifetime: 10000,
@@ -62,7 +63,7 @@ const PROJECTILE_PROFILES: Record<ProjectileKind, ProjectileProfile> = {
   },
   ray: {
     textureKey: WEAPON_TEXTURES.ray,
-    depth: 255,
+    depth: DepthLayer.RayProjectile,
     alpha: 0.98,
     speed: 980,
     lifetime: 5200,
@@ -71,7 +72,7 @@ const PROJECTILE_PROFILES: Record<ProjectileKind, ProjectileProfile> = {
   },
   sphere: {
     textureKey: WEAPON_TEXTURES.sphere,
-    depth: 253,
+    depth: DepthLayer.SphereProjectile,
     alpha: 0.94,
     speed: 280,
     lifetime: 7000,
@@ -293,7 +294,7 @@ export class WeaponSystem {
 
     if (kind === "sphere") {
       state.lightningGraphics = this.scene.add.graphics();
-      state.lightningGraphics.setDepth(249);
+      state.lightningGraphics.setDepth(DepthLayer.SphereLightning);
       state.lightningGraphics.setBlendMode(Phaser.BlendModes.ADD);
       state.lightningGraphics.setVisible(false);
     }
@@ -505,11 +506,11 @@ export class WeaponSystem {
     this.fovSystem.addExplosion(explosionObj);
 
     const flash = this.scene.add.circle(x, y, profile.maxRadius * 0.18, profile.coreColor, 0.95);
-    flash.setDepth(260);
+    flash.setDepth(DepthLayer.ExplosionFlash);
     flash.setBlendMode(Phaser.BlendModes.ADD);
 
     const ring = this.scene.add.circle(x, y, profile.maxRadius * 0.45, profile.ringColor, 0.35);
-    ring.setDepth(259);
+    ring.setDepth(DepthLayer.ExplosionRing);
     ring.setBlendMode(Phaser.BlendModes.ADD);
 
     const particles = this.scene.add.particles(x, y, WEAPON_TEXTURES.spark, {
@@ -521,7 +522,7 @@ export class WeaponSystem {
       lifespan: { min: profile.particleLifespanMin, max: profile.particleLifespanMax },
       maxParticles: profile.particleCount
     });
-    particles.setDepth(261);
+    particles.setDepth(DepthLayer.ExplosionParticles);
 
     const particleDestroyTimer = this.scene.time.delayedCall(profile.duration + 260, () => {
       destroyParticles();
@@ -608,7 +609,7 @@ export class WeaponSystem {
       lifespan: { min: 600, max: 700 },
       maxParticles: 25
     });
-    particles.setDepth(260);
+    particles.setDepth(DepthLayer.ExplosionFlash);
 
     const particleDestroyTimer = this.scene.time.delayedCall(1200, () => {
       destroyParticles();

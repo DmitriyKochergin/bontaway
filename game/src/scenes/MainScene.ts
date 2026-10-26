@@ -1,6 +1,7 @@
 import Phaser from "phaser";
 import { EDITOR_MODE_ENABLED } from "../editor/editorMode";
 import { SettingsManager } from "../systems/SettingsManager";
+import { DepthLayer } from "../types/depth-layer";
 import { ChatInputOverlay } from "../ui/ChatInputOverlay";
 import { FlatGameHUD } from "../ui/FlatGameHUD";
 import { LevelEditorButton } from "../ui/LevelEditorButton";
@@ -314,7 +315,7 @@ export default class MainScene extends BaseScene {
       strokeThickness: 3
     });
     this.pausedLabel.setScrollFactor(0);
-    this.pausedLabel.setDepth(300);
+    this.pausedLabel.setDepth(DepthLayer.Player);
     this.pausedLabel.setOrigin(0.5, 0.5);
 
     this.pausedLabelResizeHandler = (gameSize: Phaser.Structs.Size) => {

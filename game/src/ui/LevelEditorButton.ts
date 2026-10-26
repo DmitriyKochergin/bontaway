@@ -1,5 +1,6 @@
 import Phaser from "phaser";
 import { SettingsManager } from "../systems/SettingsManager";
+import { DepthLayer } from "../types/depth-layer";
 
 const MARGIN_Y = 30;
 
@@ -29,7 +30,7 @@ export class LevelEditorButton {
 
     this.button = this.scene.add.container(x, MARGIN_Y);
     this.button.setScrollFactor(0);
-    this.button.setDepth(300);
+    this.button.setDepth(DepthLayer.Player);
 
     const background = this.scene.add.graphics();
     if (isStoneStyle) {

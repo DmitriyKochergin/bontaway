@@ -1,5 +1,6 @@
 import Phaser from "phaser";
 import { type Player } from "../entities/Player";
+import { DepthLayer } from "../types/depth-layer";
 
 export class MobileControlsSystem {
   private scene: Phaser.Scene;
@@ -31,13 +32,13 @@ export class MobileControlsSystem {
       .circle(0, 0, this.maxJoystickRadius, 0xffffff, 0.1)
       .setStrokeStyle(2, 0xffffff, 0.4)
       .setScrollFactor(0)
-      .setDepth(600)
+      .setDepth(DepthLayer.MobileJoystickBase)
       .setVisible(false);
 
     this.joystickInner = this.scene.add
       .circle(0, 0, 25, 0xffffff, 0.35)
       .setScrollFactor(0)
-      .setDepth(601)
+      .setDepth(DepthLayer.MobileJoystickThumb)
       .setVisible(false);
   }
 

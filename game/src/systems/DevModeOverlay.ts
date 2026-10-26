@@ -1,4 +1,5 @@
 import Phaser from "phaser";
+import { DepthLayer } from "../types/depth-layer";
 import { type DungeonSystem } from "./DungeonSystem";
 
 export interface DevOverlayStatsProvider {
@@ -84,7 +85,7 @@ export class DevModeOverlay {
     }
 
     this.container = this.scene.add.container(this.hudInset, this.hudInset);
-    this.container.setDepth(1000);
+    this.container.setDepth(DepthLayer.Modal);
     this.container.setScrollFactor(0);
 
     const panelWidth = 244;

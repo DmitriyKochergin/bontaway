@@ -1,4 +1,5 @@
 import Phaser from "phaser";
+import { DepthLayer } from "../types/depth-layer";
 import type { LevelEditorSnapshot, LevelEditorTool } from "./LevelEditorController";
 import type { ObjectKind } from "./LevelObjectEditing";
 import { DEFAULT_MATRIX_PALETTE } from "./MatrixEditing";
@@ -34,7 +35,7 @@ class OverlayButton {
       parentContainer.add(this.container);
     } else {
       this.container.setScrollFactor(0);
-      this.container.setDepth(1201);
+      this.container.setDepth(DepthLayer.EditorControl);
     }
 
     this.background = this.scene.add.graphics();
@@ -322,7 +323,7 @@ export class LevelEditorOverlay {
 
     this.container = this.scene.add.container(16, 16);
     this.container.setScrollFactor(0);
-    this.container.setDepth(1200);
+    this.container.setDepth(DepthLayer.EditorPanel);
 
     const margin = this.leftMargin; // 20px uniform left margin
     const rightEdge = this.panelWidth - margin; // 380px uniform right edge

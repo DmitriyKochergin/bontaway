@@ -2,6 +2,7 @@ import Phaser from "phaser";
 import { type NpcEmotion } from "./NpcEmotion";
 import { type NpcStyle, resolveNpcStyle } from "./NpcStyle";
 import { ensureNpcTexture } from "./NpcTextureGenerator";
+import { DepthLayer } from "../types/depth-layer";
 
 export class NPC extends Phaser.Physics.Arcade.Sprite {
   private npcName: string;
@@ -51,7 +52,7 @@ export class NPC extends Phaser.Physics.Arcade.Sprite {
     scene.add.existing(this);
     scene.physics.add.existing(this, true); // Create as static body
 
-    this.setDepth(270); // Above weapon/explosion FX, but still below player (300) and speech bubbles (350)
+    this.setDepth(DepthLayer.Npc);
     this.setPipeline("Light2D");
 
     // Collisions
@@ -82,7 +83,7 @@ export class NPC extends Phaser.Physics.Arcade.Sprite {
 
   private createSpeechBubble(): void {
     this.speechContainer = this.scene.add.container(this.x, this.y - 28);
-    this.speechContainer.setDepth(350); // Above player
+    this.speechContainer.setDepth(DepthLayer.SpeechBubble);
     this.speechContainer.setAlpha(0); // Hidden initially
 
     this.bubbleBackground = this.scene.add.graphics();

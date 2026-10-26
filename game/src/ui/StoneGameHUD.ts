@@ -1,6 +1,7 @@
 import Phaser from "phaser";
 import { getLevels } from "../levels";
 import { type AudioSystem } from "../systems/AudioSystem";
+import { DepthLayer } from "../types/depth-layer";
 import { SettingsButton } from "./SettingsButton";
 
 /**
@@ -71,7 +72,7 @@ export class StoneGameHUD {
     // Top container matching screen position
     this.hudContainer = this.scene.add.container(0, 0);
     this.hudContainer.setScrollFactor(0);
-    this.hudContainer.setDepth(400); // Overlay on top of gameplay and fov
+    this.hudContainer.setDepth(DepthLayer.Hud); // Overlay on top of gameplay and fov
 
     // Stone plate background graphics
     this.backgroundGraphics = this.scene.add.graphics();
@@ -469,7 +470,7 @@ export class StoneGameHUD {
   private createLevelSelection(): void {
     this.levelContainer = this.scene.add.container(0, 0);
     this.levelContainer.setScrollFactor(0);
-    this.levelContainer.setDepth(400);
+    this.levelContainer.setDepth(DepthLayer.Hud);
 
     this.levelBackgroundRect = this.scene.add.graphics();
     this.levelContainer.add(this.levelBackgroundRect);

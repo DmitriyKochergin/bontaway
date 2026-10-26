@@ -1,5 +1,6 @@
 import Phaser from "phaser";
 import { SettingsManager } from "../systems/SettingsManager";
+import { DepthLayer } from "../types/depth-layer";
 
 export class SettingsButton {
   private button: Phaser.GameObjects.Container | null = null;
@@ -20,7 +21,7 @@ export class SettingsButton {
 
     this.button = this.scene.add.container(x, margin);
     this.button.setScrollFactor(0);
-    this.button.setDepth(300);
+    this.button.setDepth(DepthLayer.Player);
 
     const background = this.scene.add.graphics();
     if (isStoneStyle) {

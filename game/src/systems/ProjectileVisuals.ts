@@ -1,11 +1,12 @@
 import Phaser from "phaser";
+import { DepthLayer } from "../types/depth-layer";
 
 export type ProjectileVisualKind = "fireball" | "ray" | "sphere";
 export type ProjectileImpactKind = "fireball" | "small" | "large" | "huge";
 
 interface ProjectileVisualConfig {
   readonly particleTexture: string;
-  readonly particleDepth: number;
+  readonly particleDepth: DepthLayer;
   readonly particleConfig: Phaser.Types.GameObjects.Particles.ParticleEmitterConfig;
   readonly lightRadius: number;
   readonly lightColor: number;
@@ -16,7 +17,7 @@ interface ProjectileVisualConfig {
 const PROJECTILE_VISUALS: Record<ProjectileVisualKind, ProjectileVisualConfig> = {
   fireball: {
     particleTexture: "fireball",
-    particleDepth: 240,
+    particleDepth: DepthLayer.FireballTrail,
     particleConfig: {
       speed: 20,
       scale: { start: 1, end: 0 },
@@ -30,7 +31,7 @@ const PROJECTILE_VISUALS: Record<ProjectileVisualKind, ProjectileVisualConfig> =
   },
   ray: {
     particleTexture: "weapon-blue-spark",
-    particleDepth: 246,
+    particleDepth: DepthLayer.RayTrail,
     particleConfig: {
       speed: { min: 25, max: 90 },
       scale: { start: 0.35, end: 0 },
@@ -48,7 +49,7 @@ const PROJECTILE_VISUALS: Record<ProjectileVisualKind, ProjectileVisualConfig> =
   },
   sphere: {
     particleTexture: "weapon-blue-spark",
-    particleDepth: 248,
+    particleDepth: DepthLayer.SphereTrail,
     particleConfig: {
       speed: { min: 45, max: 165 },
       angle: { min: 0, max: 360 },
@@ -80,7 +81,9 @@ interface ProjectileImpactConfig {
   readonly particleLifespanMin: number;
   readonly particleLifespanMax: number;
   readonly particleCount: number;
-  readonly particleDepth: number;
+  readonly particleDepth: DepthLayer;
+  readonly flashDepth: DepthLayer;
+  readonly ringDepth: DepthLayer;
   readonly coreColor: number;
   readonly ringColor?: number;
   readonly flashScale: number;
@@ -100,7 +103,9 @@ const IMPACT_VISUALS: Record<ProjectileImpactKind, ProjectileImpactConfig> = {
     particleLifespanMin: 600,
     particleLifespanMax: 700,
     particleCount: 25,
-    particleDepth: 260,
+    particleDepth: DepthLayer.ExplosionFlash,
+    flashDepth: DepthLayer.ExplosionRing,
+    ringDepth: DepthLayer.ExplosionRing,
     coreColor: 0xff5500,
     flashScale: 2.0,
     ringScale: 1.0
@@ -117,7 +122,9 @@ const IMPACT_VISUALS: Record<ProjectileImpactKind, ProjectileImpactConfig> = {
     particleLifespanMin: 220,
     particleLifespanMax: 360,
     particleCount: 14,
-    particleDepth: 261,
+    particleDepth: DepthLayer.ExplosionParticles,
+    flashDepth: DepthLayer.ExplosionFlash,
+    ringDepth: DepthLayer.ExplosionRing,
     coreColor: 0xeaf9ff,
     ringColor: 0x84cfff,
     flashScale: 1.6,
@@ -135,7 +142,9 @@ const IMPACT_VISUALS: Record<ProjectileImpactKind, ProjectileImpactConfig> = {
     particleLifespanMin: 320,
     particleLifespanMax: 520,
     particleCount: 24,
-    particleDepth: 261,
+    particleDepth: DepthLayer.ExplosionParticles,
+    flashDepth: DepthLayer.ExplosionFlash,
+    ringDepth: DepthLayer.ExplosionRing,
     coreColor: 0xf6ffff,
     ringColor: 0x66bfff,
     flashScale: 1.6,
@@ -153,7 +162,9 @@ const IMPACT_VISUALS: Record<ProjectileImpactKind, ProjectileImpactConfig> = {
     particleLifespanMin: 420,
     particleLifespanMax: 780,
     particleCount: 40,
-    particleDepth: 261,
+    particleDepth: DepthLayer.ExplosionParticles,
+    flashDepth: DepthLayer.ExplosionFlash,
+    ringDepth: DepthLayer.ExplosionRing,
     coreColor: 0xffffff,
     ringColor: 0x9ce8ff,
     flashScale: 1.9,
@@ -260,13 +271,13 @@ export function createProjectileImpactVisuals(
   const profile = IMPACT_VISUALS[kind];
   const explosionLight = scene.lights.addLight(x, y, profile.lightRadius, profile.lightColor, profile.intensity);
   const flash = scene.add.circle(x, y, profile.maxRadius * 0.18, profile.coreColor, 0.95);
-  flash.setDepth(profile.particleDepth - 1);
+  flash.setDepth(profile.flashDepth);
   flash.setBlendMode(Phaser.BlendModes.ADD);
 
   const ring = profile.ringColor
     ? scene.add.circle(x, y, profile.maxRadius * 0.45, profile.ringColor, 0.35)
     : undefined;
-  ring?.setDepth(profile.particleDepth - 2);
+  ring?.setDepth(profile.ringDepth);
   ring?.setBlendMode(Phaser.BlendModes.ADD);
 
   const particles = scene.add.particles(x, y, profile.particleTexture, {

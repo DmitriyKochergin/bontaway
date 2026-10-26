@@ -1,6 +1,7 @@
 import Phaser from "phaser";
 import { AudioSystem } from "../systems/AudioSystem";
 import { type HudStyle, SettingsManager } from "../systems/SettingsManager";
+import { DepthLayer } from "../types/depth-layer";
 
 interface SliderData {
   container: Phaser.GameObjects.Container;
@@ -34,8 +35,8 @@ export class SettingsUI {
   private readonly PANEL_HEIGHT = 500;
   private readonly SLIDER_WIDTH = 120;
   private readonly TRACK_X = 0;
-  private readonly OVERLAY_DEPTH = 990;
-  private readonly PANEL_DEPTH = 1000;
+  private readonly OVERLAY_DEPTH = DepthLayer.SettingsOverlay;
+  private readonly PANEL_DEPTH = DepthLayer.Modal;
 
   constructor(
     scene: Phaser.Scene,
