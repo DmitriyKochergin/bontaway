@@ -81,19 +81,22 @@ export class DungeonSystem {
 
     const tileSize = this.tileSize;
 
-    // Render floor images
-    for (let row = 0; row < this.dungeonRows; row++) {
-      for (let column = 0; column < this.dungeonColumns; column++) {
-        if (!this.walkable[row][column]) {
-          continue;
-        }
-
-        const floorImage = this.scene.add
-          .image(column * tileSize + tileSize / 2, row * tileSize + tileSize / 2, "floor")
-          .setDepth(DepthLayer.Floor);
-        floorImage.setPipeline("Light2D");
-      }
+    const floorTilemap = this.scene.make.tilemap({
+      data: this.walkable.map(row => row.map(isWalkable => (isWalkable ? 0 : -1))),
+      tileWidth: tileSize,
+      tileHeight: tileSize,
+      insertNull: true
+    });
+    const floorTileset = floorTilemap.addTilesetImage("floor", "floor", tileSize, tileSize);
+    if (!floorTileset) {
+      throw new Error('Failed to create the "floor" tilemap tileset.');
     }
+
+    const floorLayer = floorTilemap.createLayer(0, floorTileset, 0, 0);
+    if (!floorLayer) {
+      throw new Error("Failed to create the dungeon floor tilemap layer.");
+    }
+    floorLayer.setDepth(DepthLayer.Floor).setPipeline("Light2D");
 
     // Render walls
     this.physicsWalls = this.scene.physics.add.staticGroup();
