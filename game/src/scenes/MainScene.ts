@@ -2,11 +2,12 @@ import Phaser from "phaser";
 import { EDITOR_MODE_ENABLED } from "../editor/editorMode";
 import { SettingsManager } from "../systems/SettingsManager";
 import { DepthLayer } from "../types/depth-layer";
+import { BaseGameHUD, type GameHudController } from "../ui/BaseGameHUD";
 import { ChatInputOverlay } from "../ui/ChatInputOverlay";
 import { FlatGameHUD } from "../ui/FlatGameHUD";
 import { LevelEditorButton } from "../ui/LevelEditorButton";
 import { MessageButton } from "../ui/MessageButton";
-import { type GameHudController, StoneGameHUD } from "../ui/StoneGameHUD";
+import { StoneGameHUD } from "../ui/StoneGameHUD";
 import { BaseScene } from "./BaseScene";
 import GameScene from "./GameScene";
 
@@ -22,7 +23,7 @@ export default class MainScene extends BaseScene {
   private pausedLabel?: Phaser.GameObjects.Text;
   private pausedLabelResizeHandler?: (gameSize: Phaser.Structs.Size) => void;
   private gameplayPaused = false;
-  private gameHUD?: StoneGameHUD | FlatGameHUD;
+  private gameHUD?: BaseGameHUD;
   private messageButton?: MessageButton;
   private levelEditorButton?: LevelEditorButton;
   private chatOverlay?: ChatInputOverlay;

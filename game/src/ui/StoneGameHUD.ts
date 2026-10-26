@@ -1,247 +1,27 @@
 import Phaser from "phaser";
-import { getLevels } from "../levels";
-import { type AudioSystem } from "../systems/AudioSystem";
-import { DepthLayer } from "../types/depth-layer";
-import { SettingsButton } from "./SettingsButton";
+import { BaseGameHUD } from "./BaseGameHUD";
 
-/**
- * Bridge to the gameplay scene the HUD controls.
- * Lets the HUD render on a separate (supervisor) scene while still driving level/audio state.
- */
-export interface GameHudController {
-  getLevelId(): string;
-  restartLevel(levelId: string): void;
-  getAudioSystem(): AudioSystem | undefined;
-}
+export type { GameHudController } from "./BaseGameHUD";
 
 /**
  * Game HUD for Bontaway.
  * Displays available weapon options (slots/tiles) at the bottom.
  * Styled to look hand-carved, ancient stone (3D slate bevels, chiseled cracks, lava glow).
  */
-export class StoneGameHUD {
-  private scene: Phaser.Scene;
-  private controller: GameHudController;
-  private onOpenSettings: () => void;
-  private settingsButton?: SettingsButton;
-
-  private hudContainer!: Phaser.GameObjects.Container;
-  private backgroundGraphics!: Phaser.GameObjects.Graphics;
-
-  // Location selection rail properties
-  private levelContainer!: Phaser.GameObjects.Container;
-  private levelBackgroundRect!: Phaser.GameObjects.Graphics;
-
-  // Weapon/Spell slots (fireball + blue weapon)
-  private slots: Array<{
-    container: Phaser.GameObjects.Container;
-    frame: Phaser.GameObjects.Graphics;
-    icon?: Phaser.GameObjects.Image;
-    keyText: Phaser.GameObjects.Text;
-    isActive: boolean;
-    baseScale: number;
-  }> = [];
-
-  private keySelectHandler?: (event: KeyboardEvent) => void;
-
-  private resizeHandler!: (gameSize: Phaser.Structs.Size) => void;
-  private currentSelection = 0; // Fireball is index 0, blue weapon is index 1
-
-  // Dimensions
-  private readonly slotSize = 64;
-  private readonly slotPadding = 12;
-  private readonly numSlots = 2;
-  private readonly panelPadding = 10;
-  private readonly panelHeight = 84;
-  private readonly panelWidth: number;
-  private readonly locationIconSize = 36;
-  private readonly locationIconPadding = 6;
-  private readonly locationPanelPadding = 6;
-
-  constructor(scene: Phaser.Scene, controller: GameHudController, onOpenSettings: () => void, initialSelection = 0) {
-    this.scene = scene;
-    this.controller = controller;
-    this.onOpenSettings = onOpenSettings;
-    this.currentSelection = Phaser.Math.Clamp(initialSelection, 0, this.numSlots - 1);
-
-    // Calculate total width of the stone plate
-    this.panelWidth = this.numSlots * this.slotSize + (this.numSlots - 1) * this.slotPadding + this.panelPadding * 2;
+export class StoneGameHUD extends BaseGameHUD {
+  protected drawFrame(
+    frame: Phaser.GameObjects.Graphics,
+    x: number,
+    y: number,
+    width: number,
+    height: number,
+    isHighlighted: boolean
+  ): void {
+    this.drawStoneFrame(frame, x, y, width, height, isHighlighted, false);
   }
 
-  public create(): void {
-    // Top container matching screen position
-    this.hudContainer = this.scene.add.container(0, 0);
-    this.hudContainer.setScrollFactor(0);
-    this.hudContainer.setDepth(DepthLayer.Hud); // Overlay on top of gameplay and fov
-
-    // Stone plate background graphics
-    this.backgroundGraphics = this.scene.add.graphics();
-    this.hudContainer.add(this.backgroundGraphics);
-
-    // Full-plate input blocker: swallows clicks anywhere on the panel, not just on
-    // buttons. Added before the slots so slots stay on top and keep their own input.
-    const panelBlocker = this.scene.add.zone(0, 0, this.panelWidth, this.panelHeight).setOrigin(0, 0);
-    panelBlocker.setInteractive();
-    this.hudContainer.add(panelBlocker);
-
-    // Build the weapon slots
-    this.createSlots();
-
-    // Build Level Selection
-    this.createLevelSelection();
-
-    // Settings gear (top-right), owned by the HUD.
-    this.settingsButton = new SettingsButton(this.scene, () => {
-      this.controller.getAudioSystem()?.play("sfx_tablet", 0.4);
-      this.onOpenSettings();
-    });
-    this.settingsButton.create();
-
-    // Position initial layout and configure window resize handler
-    this.reposition(this.scene.scale.gameSize);
-    this.resizeHandler = (gameSize: Phaser.Structs.Size) => this.reposition(gameSize);
-    this.scene.scale.on("resize", this.resizeHandler);
-
-    // Number keys 1..N select the matching weapon slot.
-    this.keySelectHandler = (event: KeyboardEvent) => {
-      const slotNumber = Number.parseInt(event.key, 10);
-      if (slotNumber >= 1 && slotNumber <= this.numSlots) {
-        this.activateSlot(slotNumber - 1);
-      }
-    };
-    this.scene.input.keyboard?.on("keydown", this.keySelectHandler);
-  }
-
-  public getSelectedWeaponSlot(): number {
-    return this.currentSelection;
-  }
-
-  private createSlots(): void {
-    const startX = this.panelPadding + this.slotSize / 2;
-    const centerY = this.panelHeight / 2;
-
-    for (let index = 0; index < this.numSlots; index++) {
-      const slotX = startX + index * (this.slotSize + this.slotPadding);
-      const slotContainer = this.scene.add.container(slotX, centerY);
-      this.hudContainer.add(slotContainer);
-
-      // Frame graphics for slot
-      const frameGraphics = this.scene.add.graphics();
-      slotContainer.add(frameGraphics);
-
-      // Hotkey designator
-      const keyText = this.scene.add.text(-this.slotSize / 2 + 5, -this.slotSize / 2 + 4, `${index + 1}`, {
-        fontSize: "10px",
-        fontFamily: "Roboto Mono, Courier New, monospace",
-        color: index === 0 ? "#ff6600" : "#555555",
-        fontStyle: "bold"
-      });
-      slotContainer.add(keyText);
-
-      const slotDefinitions = [{ texture: "fireball_tile" }, { texture: "weapon-blue-sphere" }] as const;
-
-      const slotDefinition = slotDefinitions[index];
-      let icon: Phaser.GameObjects.Image | undefined;
-      icon = this.scene.add.image(0, index === 0 ? 3 : 0, slotDefinition.texture);
-
-      const maxIconDim = this.slotSize - 12;
-      if (icon.width > 0) {
-        const scale = maxIconDim / Math.max(icon.width, icon.height);
-        icon.setScale(scale);
-      } else {
-        icon.setDisplaySize(maxIconDim, maxIconDim);
-      }
-
-      icon.setInteractive({ useHandCursor: true });
-      slotContainer.add(icon);
-
-      const slotHalf = this.slotSize / 2;
-
-      icon.on("pointerover", () => {
-        frameGraphics.clear();
-        this.drawStoneFrame(frameGraphics, -slotHalf, -slotHalf, this.slotSize, this.slotSize, true, false);
-      });
-
-      icon.on("pointerout", () => {
-        this.redrawSlots();
-      });
-
-      icon.on(
-        "pointerdown",
-        (_p: Phaser.Input.Pointer, _lx: number, _ly: number, event: Phaser.Types.Input.EventData) => {
-          event.stopPropagation();
-          this.activateSlot(index);
-        }
-      );
-
-      this.slots.push({
-        container: slotContainer,
-        frame: frameGraphics,
-        icon,
-        keyText,
-        isActive: true,
-        baseScale: icon ? icon.scale : 1
-      });
-    }
-
-    this.redrawSlots();
-  }
-
-  /**
-   * Select a weapon slot from user input (pointer tile or number key).
-   * Plays the click sound, pulses the tile, and marks the slot selected.
-   * Locked/inactive slots are ignored.
-   */
-  private activateSlot(index: number): void {
-    const slot = this.slots[index];
-    if (!slot || !slot.isActive) {
-      return;
-    }
-
-    this.controller.getAudioSystem()?.play("sfx_pickup", 0.4);
-
-    if (slot.icon) {
-      this.scene.tweens.add({
-        targets: slot.icon,
-        scale: slot.baseScale * 1.15,
-        duration: 100,
-        yoyo: true,
-        ease: "Quad.easeOut"
-      });
-    }
-
-    this.selectSlot(index);
-  }
-
-  private selectSlot(index: number): void {
-    if (this.currentSelection === index) {
-      return;
-    }
-
-    this.currentSelection = index;
-    this.redrawSlots();
-  }
-
-  private redrawSlots(): void {
-    const half = this.slotSize / 2;
-
-    for (let index = 0; index < this.slots.length; index++) {
-      const slot = this.slots[index];
-      const g = slot.frame;
-      g.clear();
-
-      const isSelected = this.currentSelection === index;
-
-      if (!slot.isActive) {
-        // Render Empty/Locked Slot (Carved Outwards/Inwards)
-        this.drawStoneFrame(g, -half, -half, this.slotSize, this.slotSize, false, true);
-        slot.keyText.setColor("#444444");
-      } else {
-        // Render Active Slot
-        this.drawStoneFrame(g, -half, -half, this.slotSize, this.slotSize, isSelected, false);
-        slot.keyText.setColor(isSelected ? "#ff7700" : "#888888");
-      }
-    }
+  protected getSlotKeyColor(isSelected: boolean): string {
+    return isSelected ? "#ff7700" : "#888888";
   }
 
   /**
@@ -346,28 +126,9 @@ export class StoneGameHUD {
   }
 
   /**
-   * Reposition the entire HUD container at the bottom center of the game camera viewport.
-   */
-  private reposition(gameSize: Phaser.Structs.Size): void {
-    const x = gameSize.width / 2 - this.panelWidth / 2;
-    const y = gameSize.height - this.panelHeight - 14;
-
-    this.hudContainer.setPosition(x, y);
-
-    this.drawMainPanel();
-
-    if (this.levelContainer) {
-      const levelX = gameSize.width - this.getLocationPanelWidth() - 8;
-      const levelY = 74;
-      this.levelContainer.setPosition(levelX, levelY);
-      this.drawLevelSelectionPanel();
-    }
-  }
-
-  /**
    * Redraw the core stone backing panel frame that holds the list of hotbar slots.
    */
-  private drawMainPanel(): void {
+  protected drawMainPanel(): void {
     const g = this.backgroundGraphics;
     g.clear();
 
@@ -462,99 +223,7 @@ export class StoneGameHUD {
     g.strokePath();
   }
 
-  /**
-   * Run-time updater for HUD animations and status (deprecated, no current tasks).
-   */
-  public update(_delta?: number): void {}
-
-  private createLevelSelection(): void {
-    this.levelContainer = this.scene.add.container(0, 0);
-    this.levelContainer.setScrollFactor(0);
-    this.levelContainer.setDepth(DepthLayer.Hud);
-
-    this.levelBackgroundRect = this.scene.add.graphics();
-    this.levelContainer.add(this.levelBackgroundRect);
-
-    const panelWidth = this.getLocationPanelWidth();
-    const panelHeight = this.getLocationPanelHeight();
-    const levelBlocker = this.scene.add.zone(0, 0, panelWidth, panelHeight).setOrigin(0, 0);
-    levelBlocker.setInteractive();
-    this.levelContainer.add(levelBlocker);
-
-    const availableLevels = getLevels();
-    const currentLevelId = this.controller.getLevelId();
-
-    availableLevels.forEach((level, index) => {
-      const itemY = this.locationPanelPadding + index * (this.locationIconSize + this.locationIconPadding);
-
-      const itemContainer = this.scene.add.container(this.locationPanelPadding, itemY);
-      this.levelContainer.add(itemContainer);
-
-      const isSelected = level.id === currentLevelId;
-
-      // Item background / frame
-      const itemBg = this.scene.add.graphics();
-      itemContainer.add(itemBg);
-
-      const icon = this.scene.add.image(
-        this.locationIconSize / 2,
-        this.locationIconSize / 2,
-        this.getLocationIconTexture(level.id)
-      );
-      const maxIconDimension = this.locationIconSize - 10;
-      icon.setScale(maxIconDimension / Math.max(icon.width, icon.height));
-      itemContainer.add(icon);
-
-      const interactionZone = this.scene.add.zone(0, 0, this.locationIconSize, this.locationIconSize).setOrigin(0, 0);
-      interactionZone.setInteractive({ useHandCursor: true });
-      itemContainer.add(interactionZone);
-
-      this.drawStoneFrame(itemBg, 0, 0, this.locationIconSize, this.locationIconSize, isSelected, false);
-
-      interactionZone.on("pointerover", () => {
-        itemBg.clear();
-        this.drawStoneFrame(itemBg, 0, 0, this.locationIconSize, this.locationIconSize, true, false);
-      });
-
-      interactionZone.on("pointerout", () => {
-        itemBg.clear();
-        this.drawStoneFrame(itemBg, 0, 0, this.locationIconSize, this.locationIconSize, isSelected, false);
-      });
-
-      interactionZone.on(
-        "pointerdown",
-        (_p: Phaser.Input.Pointer, _lx: number, _ly: number, event: Phaser.Types.Input.EventData) => {
-          event.stopPropagation();
-          if (level.id !== currentLevelId) {
-            this.controller.getAudioSystem()?.play("sfx_pickup", 0.4);
-            // Defer the restart: GameScene's AudioSystem closes its AudioContext on
-            // shutdown, which would cut the selection sound. Wait for it to finish.
-            // Scheduled on this.scene (MainScene), which survives the GameScene restart.
-            this.scene.time.delayedCall(220, () => this.controller.restartLevel(level.id));
-          }
-        }
-      );
-    });
-  }
-
-  private getLocationIconTexture(levelId: string): string {
-    return levelId === "arena" ? "obstacle" : "door_1";
-  }
-
-  private getLocationPanelWidth(): number {
-    return this.locationIconSize + this.locationPanelPadding * 2;
-  }
-
-  private getLocationPanelHeight(): number {
-    const locations = getLevels().length;
-    return (
-      locations * this.locationIconSize +
-      Math.max(0, locations - 1) * this.locationIconPadding +
-      this.locationPanelPadding * 2
-    );
-  }
-
-  private drawLevelSelectionPanel(): void {
+  protected drawLevelSelectionPanel(): void {
     const g = this.levelBackgroundRect;
     g.clear();
 
@@ -609,28 +278,5 @@ export class StoneGameHUD {
     // 6. Carved inner line track
     g.lineStyle(1.5, 0x111213, 0.7);
     g.strokeRoundedRect(5, 5, w - 10, h - 10, 4);
-  }
-
-  public destroy(): void {
-    if (this.resizeHandler) {
-      this.scene.scale.off("resize", this.resizeHandler);
-    }
-    if (this.keySelectHandler) {
-      this.scene.input.keyboard?.off("keydown", this.keySelectHandler);
-      this.keySelectHandler = undefined;
-    }
-    this.settingsButton?.destroy();
-    this.settingsButton = undefined;
-    this.hudContainer.destroy();
-    this.backgroundGraphics.destroy();
-
-    if (this.levelContainer) {
-      this.levelContainer.destroy();
-    }
-    if (this.levelBackgroundRect) {
-      this.levelBackgroundRect.destroy();
-    }
-
-    this.slots = [];
   }
 }
