@@ -1,0 +1,8 @@
+{
+  "relayUrls": [
+    "wss://relay.damus.io",
+    "wss://nos.lol",
+    "wss://relay.fountain.fm"
+  ]
+}
+
