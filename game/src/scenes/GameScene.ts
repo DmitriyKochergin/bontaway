@@ -260,7 +260,8 @@ export default class GameScene extends BaseScene {
   private getOrCreateDevModeOverlay(): DevModeOverlay {
     this.devModeOverlay ??= new DevModeOverlay(this, this.dungeonSystem, {
       getFovRaycastTimeMs: () => this.fovSystem?.getLastRaycastTimeMs() ?? 0,
-      getNetworkStats: () => this.sharedNet?.getNetworkStats() ?? { peerCount: 0, pingMs: null },
+      getNetworkStats: () =>
+        this.sharedNet?.getNetworkStats() ?? { peerCount: 0, pingMs: null, connectionState: "offline" },
       getActiveLightsCount: () =>
         (this.lights as { lights?: unknown[] })?.lights?.length ?? this.torchManager?.getLightCount() ?? 0
     });

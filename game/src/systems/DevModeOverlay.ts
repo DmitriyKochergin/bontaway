@@ -1,10 +1,15 @@
 import Phaser from "phaser";
+import { type NetworkConnectionState } from "../multiplayer/NetworkManager";
 import { DepthLayer } from "../types/depth-layer";
 import { type DungeonSystem } from "./DungeonSystem";
 
 export interface DevOverlayStatsProvider {
   getFovRaycastTimeMs?: () => number;
-  getNetworkStats?: () => { peerCount: number; pingMs: number | null };
+  getNetworkStats?: () => {
+    peerCount: number;
+    pingMs: number | null;
+    connectionState?: NetworkConnectionState;
+  };
   getActiveLightsCount?: () => number;
 }
 
@@ -145,7 +150,13 @@ export class DevModeOverlay {
     const netStats = this.statsProvider?.getNetworkStats?.();
     let netText = "Offline";
     if (netStats) {
-      if (netStats.peerCount > 0) {
+      if (netStats.connectionState === "room-full") {
+        netText = "Room full";
+      } else if (netStats.connectionState === "reconnecting") {
+        netText = "Reconnecting...";
+      } else if (netStats.connectionState === "connecting") {
+        netText = "Connecting...";
+      } else if (netStats.peerCount > 0) {
         netText =
           `${netStats.peerCount} peer${netStats.peerCount > 1 ? "s" : ""} ${netStats.pingMs !== null ? `(${netStats.pingMs} ms)` : ""}`.trim();
       } else {

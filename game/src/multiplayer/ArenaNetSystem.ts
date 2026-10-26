@@ -1,7 +1,7 @@
 import Phaser from "phaser";
 import { type Player } from "../entities/Player";
 import { WeaponSystem } from "../systems/WeaponSystem";
-import { NetworkManager } from "./NetworkManager";
+import { MAX_ROOM_PEERS, type NetworkConnectionState, NetworkManager } from "./NetworkManager";
 import { RemotePlayer } from "./RemotePlayer";
 import { type SyncMessage, type WeaponKind } from "./SyncMessages";
 
@@ -76,6 +76,7 @@ export class ArenaNetSystem {
       return;
     }
 
+    this.network.update();
     this.broadcastPosition(time);
 
     if (time - this.lastPingSampleAt > 2000) {
@@ -88,10 +89,11 @@ export class ArenaNetSystem {
     }
   }
 
-  getNetworkStats(): { peerCount: number; pingMs: number | null } {
+  getNetworkStats(): { peerCount: number; pingMs: number | null; connectionState: NetworkConnectionState } {
     return {
       peerCount: this.network.getPeerCount(),
-      pingMs: this.network.getLastPingMs()
+      pingMs: this.network.getLastPingMs(),
+      connectionState: this.network.getConnectionState()
     };
   }
 
@@ -136,6 +138,11 @@ export class ArenaNetSystem {
   }
 
   private greetPeer(peerId: string): void {
+    if (this.network.getPeerCount() >= MAX_ROOM_PEERS - 1) {
+      this.network.rejectPeer(peerId);
+      return;
+    }
+
     // Snapshot self straight to the newcomer so we appear on their screen immediately.
     this.network.send({ type: "hello", x: this.player.x, y: this.player.y, rotation: this.player.rotation }, peerId);
   }
@@ -170,6 +177,9 @@ export class ArenaNetSystem {
         break;
       case "chat":
         this.remotePlayers.get(peerId)?.say(message.text);
+        break;
+      case "room-full":
+        this.network.markRoomFull();
         break;
     }
   }

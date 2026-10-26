@@ -45,4 +45,14 @@ export type PlayerChatMessage = {
   readonly text: string;
 };
 
-export type SyncMessage = PlayerHelloMessage | PlayerPosMessage | PlayerFireMessage | PlayerChatMessage;
+/** Rejection sent to a newcomer when the room has reached its mesh limit. */
+export type RoomFullMessage = {
+  readonly type: "room-full";
+};
+
+export type SyncMessage =
+  | PlayerHelloMessage
+  | PlayerPosMessage
+  | PlayerFireMessage
+  | PlayerChatMessage
+  | RoomFullMessage;
