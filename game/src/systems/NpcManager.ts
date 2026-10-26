@@ -4,6 +4,8 @@ import { getLevelDefinition } from "../levels";
 import { DungeonSystem } from "./DungeonSystem";
 import { FieldOfViewSystem } from "./FieldOfViewSystem";
 
+const NPC_CULLING_MARGIN = 160;
+
 export class NpcManager {
   private npcs: NPC[] = [];
   private npcGroup?: Phaser.Physics.Arcade.StaticGroup;
@@ -54,10 +56,25 @@ export class NpcManager {
   }
 
   public update(playerX: number, playerY: number, currentTime: number, delta: number): void {
+    const camera = this.scene.cameras.main;
+    const viewportCenterX = camera.worldView.centerX;
+    const viewportCenterY = camera.worldView.centerY;
+    const viewportDiagonal = Math.hypot(camera.worldView.width, camera.worldView.height) / 2;
+    const cullingRadius = viewportDiagonal + NPC_CULLING_MARGIN;
+    const cullingRadiusSquared = cullingRadius * cullingRadius;
+
     for (const npc of this.npcs) {
-      if (npc.active) {
-        npc.update(playerX, playerY, currentTime, delta);
+      if (!npc.active) {
+        continue;
       }
+
+      const distanceX = npc.x - viewportCenterX;
+      const distanceY = npc.y - viewportCenterY;
+      if (distanceX * distanceX + distanceY * distanceY > cullingRadiusSquared) {
+        continue;
+      }
+
+      npc.update(playerX, playerY, currentTime, delta);
     }
   }
 
