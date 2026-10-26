@@ -8,6 +8,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
 
   public playerLight!: Phaser.GameObjects.Light;
   public joystickVector: Phaser.Math.Vector2 | null = null;
+  private readonly movementVector = new Phaser.Math.Vector2();
   private nextBlinkTime = 0;
   private isBlinking = false;
 
@@ -121,10 +122,10 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
       this.playerLight.y = this.y;
     }
 
-    const movementVector = new Phaser.Math.Vector2(0, 0);
+    this.movementVector.set(0, 0);
 
     if (this.joystickVector && this.joystickVector.lengthSq() > 0) {
-      movementVector.copy(this.joystickVector);
+      this.movementVector.copy(this.joystickVector);
     } else {
       const horizontalInput =
         (this.cursors.left.isDown || this.keys.A?.isDown ? -1 : 0) +
@@ -133,15 +134,15 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
         (this.cursors.up.isDown || this.keys.W?.isDown ? -1 : 0) +
         (this.cursors.down.isDown || this.keys.S?.isDown ? 1 : 0);
 
-      movementVector.set(horizontalInput, verticalInput);
+      this.movementVector.set(horizontalInput, verticalInput);
 
-      if (movementVector.lengthSq() > 0) {
-        movementVector.normalize().scale(this.movementSpeed);
+      if (this.movementVector.lengthSq() > 0) {
+        this.movementVector.normalize().scale(this.movementSpeed);
       }
     }
 
-    if (movementVector.lengthSq() > 0) {
-      this.targetRotation = Math.atan2(movementVector.y, movementVector.x) + Math.PI / 2;
+    if (this.movementVector.lengthSq() > 0) {
+      this.targetRotation = Math.atan2(this.movementVector.y, this.movementVector.x) + Math.PI / 2;
       const diff = Phaser.Math.Angle.Wrap(this.targetRotation - this.rotation);
       const rotationSpeed = 0.01 * delta;
 
@@ -151,7 +152,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
         this.rotation += Math.sign(diff) * rotationSpeed;
       }
 
-      this.setVelocity(movementVector.x, movementVector.y);
+      this.setVelocity(this.movementVector.x, this.movementVector.y);
     } else {
       this.setVelocity(0, 0);
     }
