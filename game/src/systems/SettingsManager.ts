@@ -27,7 +27,8 @@ class SettingsManagerClass {
     try {
       const stored = localStorage.getItem(STORAGE_KEY);
       if (stored) {
-        const parsed = JSON.parse(stored) as Partial<GameSettings>;
+        const parsed = JSON.parse(stored) as Partial<GameSettings> & { pauseEffectMode?: unknown };
+        delete parsed.pauseEffectMode;
         return {
           ...DEFAULT_SETTINGS,
           ...parsed,

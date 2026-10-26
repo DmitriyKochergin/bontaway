@@ -1,6 +1,7 @@
 import Phaser from "phaser";
 import { EDITOR_MODE_ENABLED } from "../editor/editorMode";
 import { SettingsManager } from "../systems/SettingsManager";
+import { GrayscaleFx } from "../systems/rtwp/GrayscaleFx";
 import { DepthLayer } from "../types/depth-layer";
 import { BaseGameHUD, type GameHudController } from "../ui/BaseGameHUD";
 import { ChatInputOverlay } from "../ui/ChatInputOverlay";
@@ -23,6 +24,7 @@ export default class MainScene extends BaseScene {
   private pausedLabel?: Phaser.GameObjects.Text;
   private pausedLabelResizeHandler?: (gameSize: Phaser.Structs.Size) => void;
   private gameplayPaused = false;
+  private grayscaleFx?: GrayscaleFx;
   private gameHUD?: BaseGameHUD;
   private messageButton?: MessageButton;
   private levelEditorButton?: LevelEditorButton;
@@ -37,6 +39,8 @@ export default class MainScene extends BaseScene {
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       this.removeKeyHandlers();
       this.removePausedLabel();
+      this.grayscaleFx?.destroy();
+      this.grayscaleFx = undefined;
       this.scene.get("GameScene")?.events.off(Phaser.Scenes.Events.CREATE, this.rebuildHud, this);
       this.gameHUD?.destroy();
       this.gameHUD = undefined;
@@ -75,16 +79,22 @@ export default class MainScene extends BaseScene {
   /** (Re)create the HUD bound to the current GameScene instance. */
   private rebuildHud(): void {
     const selectedWeaponSlot = this.gameHUD?.getSelectedWeaponSlot() ?? 0;
+    const gameScene = this.scene.get("GameScene") as GameScene;
+    this.grayscaleFx?.destroy();
+    this.grayscaleFx = new GrayscaleFx(this, gameScene.cameras.main);
+    if (this.gameplayPaused) {
+      this.grayscaleFx.setPaused(true);
+    }
     this.gameHUD?.destroy();
     this.messageButton?.destroy();
     this.messageButton = undefined;
     this.levelEditorButton?.destroy();
     this.levelEditorButton = undefined;
-    const gameScene = this.scene.get("GameScene") as unknown as GameHudController;
+    const hudController = gameScene as unknown as GameHudController;
     this.gameHUD =
       SettingsManager.getHudStyle() === "flat"
-        ? new FlatGameHUD(this, gameScene, () => this.toggleSettings(), selectedWeaponSlot)
-        : new StoneGameHUD(this, gameScene, () => this.toggleSettings(), selectedWeaponSlot);
+        ? new FlatGameHUD(this, hudController, () => this.toggleSettings(), selectedWeaponSlot)
+        : new StoneGameHUD(this, hudController, () => this.toggleSettings(), selectedWeaponSlot);
     this.gameHUD.create();
     this.syncMessageControls();
     this.syncEditorControls();
@@ -282,6 +292,7 @@ export default class MainScene extends BaseScene {
 
     if (this.gameplayPaused) {
       this.gameplayPaused = false;
+      this.grayscaleFx?.setPaused(false);
       this.updatePausedLabel();
     }
 
@@ -306,6 +317,7 @@ export default class MainScene extends BaseScene {
 
     const gameScene = this.scene.get("GameScene") as GameScene;
     gameScene.getAudioSystem()?.setSfxPaused(this.gameplayPaused);
+    this.grayscaleFx?.setPaused(this.gameplayPaused);
   }
 
   private createPausedLabel(): void {
