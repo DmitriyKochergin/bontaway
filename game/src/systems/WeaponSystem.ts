@@ -4,10 +4,14 @@ import { DepthLayer } from "../types/depth-layer";
 import { type AudioSystem } from "./AudioSystem";
 import { type DungeonSystem } from "./DungeonSystem";
 import { type FieldOfViewSystem } from "./FieldOfViewSystem";
-import { createProjectileVisuals, type ProjectileVisualKind } from "./ProjectileVisuals";
+import {
+  createProjectileImpactVisuals,
+  createProjectileVisuals,
+  type ProjectileImpactKind,
+  type ProjectileVisualKind
+} from "./ProjectileVisuals";
 
 type ProjectileKind = ProjectileVisualKind;
-type ExplosionTier = "small" | "large" | "huge";
 
 interface ProjectileState {
   readonly kind: ProjectileKind;
@@ -28,21 +32,7 @@ interface ProjectileProfile {
   readonly speed: number;
   readonly lifetime: number;
   readonly collisionRadius: number;
-  readonly explosionTier: ExplosionTier | "fireball";
-}
-
-interface ExplosionProfile {
-  readonly lightRadius: number;
-  readonly maxRadius: number;
-  readonly intensity: number;
-  readonly duration: number;
-  readonly particleSpeedMin: number;
-  readonly particleSpeedMax: number;
-  readonly particleLifespanMin: number;
-  readonly particleLifespanMax: number;
-  readonly particleCount: number;
-  readonly coreColor: number;
-  readonly ringColor: number;
+  readonly explosionKind: ProjectileImpactKind;
 }
 
 const WEAPON_TEXTURES = {
@@ -59,7 +49,7 @@ const PROJECTILE_PROFILES: Record<ProjectileKind, ProjectileProfile> = {
     speed: 300,
     lifetime: 10000,
     collisionRadius: 0,
-    explosionTier: "fireball"
+    explosionKind: "fireball"
   },
   ray: {
     textureKey: WEAPON_TEXTURES.ray,
@@ -68,7 +58,7 @@ const PROJECTILE_PROFILES: Record<ProjectileKind, ProjectileProfile> = {
     speed: 980,
     lifetime: 5200,
     collisionRadius: 12,
-    explosionTier: "small"
+    explosionKind: "small"
   },
   sphere: {
     textureKey: WEAPON_TEXTURES.sphere,
@@ -77,49 +67,7 @@ const PROJECTILE_PROFILES: Record<ProjectileKind, ProjectileProfile> = {
     speed: 280,
     lifetime: 7000,
     collisionRadius: 26,
-    explosionTier: "large"
-  }
-};
-
-const EXPLOSION_PROFILES: Record<ExplosionTier, ExplosionProfile> = {
-  small: {
-    lightRadius: 90,
-    maxRadius: 58,
-    intensity: 6,
-    duration: 420,
-    particleSpeedMin: 40,
-    particleSpeedMax: 130,
-    particleLifespanMin: 220,
-    particleLifespanMax: 360,
-    particleCount: 14,
-    coreColor: 0xeaf9ff,
-    ringColor: 0x84cfff
-  },
-  large: {
-    lightRadius: 180,
-    maxRadius: 108,
-    intensity: 8,
-    duration: 650,
-    particleSpeedMin: 60,
-    particleSpeedMax: 180,
-    particleLifespanMin: 320,
-    particleLifespanMax: 520,
-    particleCount: 24,
-    coreColor: 0xf6ffff,
-    ringColor: 0x66bfff
-  },
-  huge: {
-    lightRadius: 320,
-    maxRadius: 168,
-    intensity: 12,
-    duration: 980,
-    particleSpeedMin: 90,
-    particleSpeedMax: 260,
-    particleLifespanMin: 420,
-    particleLifespanMax: 780,
-    particleCount: 40,
-    coreColor: 0xffffff,
-    ringColor: 0x9ce8ff
+    explosionKind: "large"
   }
 };
 
@@ -350,13 +298,19 @@ export class WeaponSystem {
     const { sprite } = state;
     if (state.kind === "fireball") {
       this.audioSystem?.playFireballHit(0.55);
-      this.createFireballExplosion(sprite.x, sprite.y);
     } else {
       if (state.kind === "sphere") {
         this.audioSystem?.playShockRifleHit(0.65);
       }
-      this.createExplosion(sprite.x, sprite.y, PROJECTILE_PROFILES[state.kind].explosionTier as ExplosionTier);
     }
+
+    createProjectileImpactVisuals(
+      this.scene,
+      sprite.x,
+      sprite.y,
+      PROJECTILE_PROFILES[state.kind].explosionKind,
+      this.fovSystem
+    );
 
     this.releaseProjectile(state);
   }
@@ -404,10 +358,12 @@ export class WeaponSystem {
       }
 
       this.audioSystem?.playShockRifleHit(0.85);
-      this.createExplosion(
+      createProjectileImpactVisuals(
+        this.scene,
         (rayState.sprite.x + sphereState.sprite.x) * 0.5,
         (rayState.sprite.y + sphereState.sprite.y) * 0.5,
-        "huge"
+        "huge",
+        this.fovSystem
       );
 
       this.releaseProjectile(rayState);
@@ -493,183 +449,6 @@ export class WeaponSystem {
     }
 
     graphics.strokePath();
-  }
-
-  private createExplosion(x: number, y: number, tier: ExplosionTier): void {
-    if (this.isDestroyed) {
-      return;
-    }
-
-    const profile = EXPLOSION_PROFILES[tier];
-    const explosionLight = this.scene.lights.addLight(x, y, profile.lightRadius, 0x8fdcff, profile.intensity);
-    const explosionObj = { x, y, radius: profile.maxRadius };
-    this.fovSystem.addExplosion(explosionObj);
-
-    const flash = this.scene.add.circle(x, y, profile.maxRadius * 0.18, profile.coreColor, 0.95);
-    flash.setDepth(DepthLayer.ExplosionFlash);
-    flash.setBlendMode(Phaser.BlendModes.ADD);
-
-    const ring = this.scene.add.circle(x, y, profile.maxRadius * 0.45, profile.ringColor, 0.35);
-    ring.setDepth(DepthLayer.ExplosionRing);
-    ring.setBlendMode(Phaser.BlendModes.ADD);
-
-    const particles = this.scene.add.particles(x, y, WEAPON_TEXTURES.spark, {
-      speed: { min: profile.particleSpeedMin, max: profile.particleSpeedMax },
-      angle: { min: 0, max: 360 },
-      scale: { start: tier === "huge" ? 1.9 : tier === "large" ? 1.6 : 1.2, end: 0 },
-      alpha: { start: 0.95, end: 0 },
-      blendMode: "ADD",
-      lifespan: { min: profile.particleLifespanMin, max: profile.particleLifespanMax },
-      maxParticles: profile.particleCount
-    });
-    particles.setDepth(DepthLayer.ExplosionParticles);
-
-    const particleDestroyTimer = this.scene.time.delayedCall(profile.duration + 260, () => {
-      destroyParticles();
-    });
-
-    let elapsed = 0;
-    let isCleanedUp = false;
-
-    const destroyParticles = () => {
-      try {
-        particles.destroy();
-      } catch {
-        // Safe guard.
-      }
-    };
-
-    const cleanUp = () => {
-      if (isCleanedUp) {
-        return;
-      }
-
-      isCleanedUp = true;
-      this.activeCleanups.delete(cleanUp);
-
-      try {
-        this.scene.lights.removeLight(explosionLight);
-      } catch {
-        // Safe guard.
-      }
-
-      this.scene.events.off("update", updateLight);
-      this.fovSystem.removeExplosion(explosionObj);
-
-      flash.destroy();
-      ring.destroy();
-
-      if (this.isDestroyed) {
-        particleDestroyTimer.remove(false);
-        destroyParticles();
-      }
-    };
-
-    this.activeCleanups.add(cleanUp);
-
-    const updateLight = (_time: number, delta: number) => {
-      if (this.scene.scene.isPaused()) {
-        return;
-      }
-
-      elapsed += delta;
-      const progress = Math.min(elapsed / profile.duration, 1);
-
-      explosionLight.radius = profile.lightRadius + progress * profile.maxRadius * 2.15;
-      explosionLight.intensity = profile.intensity * (1 - progress);
-      explosionObj.radius = explosionLight.radius;
-
-      flash.setScale(1 + progress * 2.5);
-      flash.setAlpha(Math.max(0, 0.95 * (1 - progress * 1.3)));
-      ring.setScale(1 + progress * 3.2);
-      ring.setAlpha(Math.max(0, 0.35 * (1 - progress)));
-
-      if (progress >= 1) {
-        cleanUp();
-      }
-    };
-
-    this.scene.events.on("update", updateLight);
-  }
-
-  private createFireballExplosion(x: number, y: number): void {
-    if (this.isDestroyed) {
-      return;
-    }
-
-    const explosionLight = this.scene.lights.addLight(x, y, 50, 0xff5500, 10);
-    const explosionObj = { x, y, radius: 50 };
-    this.fovSystem.addExplosion(explosionObj);
-
-    const particles = this.scene.add.particles(x, y, "fireball", {
-      speed: { min: 30, max: 120 },
-      angle: { min: 0, max: 360 },
-      scale: { start: 2, end: 0 },
-      blendMode: "ADD",
-      lifespan: { min: 600, max: 700 },
-      maxParticles: 25
-    });
-    particles.setDepth(DepthLayer.ExplosionFlash);
-
-    const particleDestroyTimer = this.scene.time.delayedCall(1200, () => {
-      destroyParticles();
-    });
-
-    let elapsed = 0;
-    const duration = 1000;
-    let isCleanedUp = false;
-
-    const destroyParticles = () => {
-      try {
-        particles.destroy();
-      } catch {
-        // Safe guard.
-      }
-    };
-
-    const cleanUp = () => {
-      if (isCleanedUp) {
-        return;
-      }
-
-      isCleanedUp = true;
-      this.activeCleanups.delete(cleanUp);
-
-      try {
-        this.scene.lights.removeLight(explosionLight);
-      } catch {
-        // Safe guard.
-      }
-
-      this.scene.events.off("update", updateLight);
-      this.fovSystem.removeExplosion(explosionObj);
-
-      if (this.isDestroyed) {
-        particleDestroyTimer.remove(false);
-        destroyParticles();
-      }
-    };
-
-    this.activeCleanups.add(cleanUp);
-
-    const updateLight = (_time: number, delta: number) => {
-      if (this.scene.scene.isPaused()) {
-        return;
-      }
-
-      elapsed += delta;
-      const progress = Math.min(elapsed / duration, 1);
-
-      explosionLight.radius = 150 + progress * 250;
-      explosionLight.intensity = 10 * (1 - progress);
-      explosionObj.radius = explosionLight.radius;
-
-      if (progress >= 1) {
-        cleanUp();
-      }
-    };
-
-    this.scene.events.on("update", updateLight);
   }
 
   private ensureWeaponTextures(): void {

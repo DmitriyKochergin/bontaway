@@ -1,5 +1,6 @@
 import Phaser from "phaser";
 import { DepthLayer } from "../types/depth-layer";
+import { type FieldOfViewSystem } from "./FieldOfViewSystem";
 
 export type ProjectileVisualKind = "fireball" | "ray" | "sphere";
 export type ProjectileImpactKind = "fireball" | "small" | "large" | "huge";
@@ -72,6 +73,8 @@ const PROJECTILE_VISUALS: Record<ProjectileVisualKind, ProjectileVisualConfig> =
 interface ProjectileImpactConfig {
   readonly lightRadius: number;
   readonly maxRadius: number;
+  readonly animationStartRadius: number;
+  readonly animationRadiusGrowth: number;
   readonly intensity: number;
   readonly lightColor: number;
   readonly duration: number;
@@ -81,19 +84,24 @@ interface ProjectileImpactConfig {
   readonly particleLifespanMin: number;
   readonly particleLifespanMax: number;
   readonly particleCount: number;
+  readonly particleScaleStart: number;
+  readonly particleAlpha?: { readonly start: number; readonly end: number };
+  readonly particleDestroyDelayMs: number;
   readonly particleDepth: DepthLayer;
-  readonly flashDepth: DepthLayer;
-  readonly ringDepth: DepthLayer;
-  readonly coreColor: number;
+  readonly flashColor?: number;
+  readonly flashDepth?: DepthLayer;
   readonly ringColor?: number;
-  readonly flashScale: number;
-  readonly ringScale: number;
+  readonly ringDepth?: DepthLayer;
+  readonly flashScale?: number;
+  readonly ringScale?: number;
 }
 
 const IMPACT_VISUALS: Record<ProjectileImpactKind, ProjectileImpactConfig> = {
   fireball: {
     lightRadius: 50,
     maxRadius: 50,
+    animationStartRadius: 150,
+    animationRadiusGrowth: 250,
     intensity: 10,
     lightColor: 0xff5500,
     duration: 1000,
@@ -103,16 +111,15 @@ const IMPACT_VISUALS: Record<ProjectileImpactKind, ProjectileImpactConfig> = {
     particleLifespanMin: 600,
     particleLifespanMax: 700,
     particleCount: 25,
-    particleDepth: DepthLayer.ExplosionFlash,
-    flashDepth: DepthLayer.ExplosionRing,
-    ringDepth: DepthLayer.ExplosionRing,
-    coreColor: 0xff5500,
-    flashScale: 2.0,
-    ringScale: 1.0
+    particleScaleStart: 2,
+    particleDestroyDelayMs: 1200,
+    particleDepth: DepthLayer.ExplosionFlash
   },
   small: {
     lightRadius: 90,
     maxRadius: 58,
+    animationStartRadius: 90,
+    animationRadiusGrowth: 124.7,
     intensity: 6,
     lightColor: 0x8fdcff,
     duration: 420,
@@ -122,17 +129,22 @@ const IMPACT_VISUALS: Record<ProjectileImpactKind, ProjectileImpactConfig> = {
     particleLifespanMin: 220,
     particleLifespanMax: 360,
     particleCount: 14,
+    particleScaleStart: 1.2,
+    particleAlpha: { start: 0.95, end: 0 },
+    particleDestroyDelayMs: 680,
     particleDepth: DepthLayer.ExplosionParticles,
+    flashColor: 0xeaf9ff,
     flashDepth: DepthLayer.ExplosionFlash,
     ringDepth: DepthLayer.ExplosionRing,
-    coreColor: 0xeaf9ff,
     ringColor: 0x84cfff,
-    flashScale: 1.6,
+    flashScale: 2.5,
     ringScale: 3.2
   },
   large: {
     lightRadius: 180,
     maxRadius: 108,
+    animationStartRadius: 180,
+    animationRadiusGrowth: 232.2,
     intensity: 8,
     lightColor: 0x8fdcff,
     duration: 650,
@@ -142,17 +154,22 @@ const IMPACT_VISUALS: Record<ProjectileImpactKind, ProjectileImpactConfig> = {
     particleLifespanMin: 320,
     particleLifespanMax: 520,
     particleCount: 24,
+    particleScaleStart: 1.6,
+    particleAlpha: { start: 0.95, end: 0 },
+    particleDestroyDelayMs: 910,
     particleDepth: DepthLayer.ExplosionParticles,
+    flashColor: 0xf6ffff,
     flashDepth: DepthLayer.ExplosionFlash,
     ringDepth: DepthLayer.ExplosionRing,
-    coreColor: 0xf6ffff,
     ringColor: 0x66bfff,
-    flashScale: 1.6,
+    flashScale: 2.5,
     ringScale: 3.2
   },
   huge: {
     lightRadius: 320,
     maxRadius: 168,
+    animationStartRadius: 320,
+    animationRadiusGrowth: 361.2,
     intensity: 12,
     lightColor: 0x8fdcff,
     duration: 980,
@@ -162,12 +179,15 @@ const IMPACT_VISUALS: Record<ProjectileImpactKind, ProjectileImpactConfig> = {
     particleLifespanMin: 420,
     particleLifespanMax: 780,
     particleCount: 40,
+    particleScaleStart: 1.9,
+    particleAlpha: { start: 0.95, end: 0 },
+    particleDestroyDelayMs: 1240,
     particleDepth: DepthLayer.ExplosionParticles,
+    flashColor: 0xffffff,
     flashDepth: DepthLayer.ExplosionFlash,
     ringDepth: DepthLayer.ExplosionRing,
-    coreColor: 0xffffff,
     ringColor: 0x9ce8ff,
-    flashScale: 1.9,
+    flashScale: 2.5,
     ringScale: 3.2
   }
 };
@@ -259,42 +279,50 @@ export function createProjectileVisuals(
   };
 }
 
-/**
- * Shared impact burst for remote projectiles and local weapons.
- */
+/** Shared impact burst for local and remote weapons. */
 export function createProjectileImpactVisuals(
   scene: Phaser.Scene,
   x: number,
   y: number,
-  kind: ProjectileImpactKind
+  kind: ProjectileImpactKind,
+  fovSystem: FieldOfViewSystem
 ): void {
   const profile = IMPACT_VISUALS[kind];
   const explosionLight = scene.lights.addLight(x, y, profile.lightRadius, profile.lightColor, profile.intensity);
-  const flash = scene.add.circle(x, y, profile.maxRadius * 0.18, profile.coreColor, 0.95);
-  flash.setDepth(profile.flashDepth);
-  flash.setBlendMode(Phaser.BlendModes.ADD);
+  const explosionObj = { x, y, radius: profile.maxRadius };
+  fovSystem.addExplosion(explosionObj);
+
+  const flash =
+    profile.flashColor === undefined
+      ? undefined
+      : scene.add.circle(x, y, profile.maxRadius * 0.18, profile.flashColor, 0.95);
+  flash?.setDepth(profile.flashDepth ?? DepthLayer.ExplosionFlash);
+  flash?.setBlendMode(Phaser.BlendModes.ADD);
 
   const ring = profile.ringColor
     ? scene.add.circle(x, y, profile.maxRadius * 0.45, profile.ringColor, 0.35)
     : undefined;
-  ring?.setDepth(profile.ringDepth);
+  ring?.setDepth(profile.ringDepth ?? DepthLayer.ExplosionRing);
   ring?.setBlendMode(Phaser.BlendModes.ADD);
 
-  const particles = scene.add.particles(x, y, profile.particleTexture, {
+  const particleConfig: Phaser.Types.GameObjects.Particles.ParticleEmitterConfig = {
     speed: { min: profile.particleSpeedMin, max: profile.particleSpeedMax },
     angle: { min: 0, max: 360 },
-    scale: { start: kind === "fireball" ? 2 : 1.6, end: 0 },
-    alpha: { start: 0.95, end: 0 },
+    scale: { start: profile.particleScaleStart, end: 0 },
     blendMode: "ADD",
     lifespan: { min: profile.particleLifespanMin, max: profile.particleLifespanMax },
     maxParticles: profile.particleCount
-  });
+  };
+  if (profile.particleAlpha) {
+    particleConfig.alpha = profile.particleAlpha;
+  }
+
+  const particles = scene.add.particles(x, y, profile.particleTexture, particleConfig);
   particles.setDepth(profile.particleDepth);
 
-  const explosionObj = { x, y, radius: profile.maxRadius };
   let elapsed = 0;
   let isCleanedUp = false;
-  const particleDestroyTimer = scene.time.delayedCall(profile.duration + 260, () => {
+  const particleDestroyTimer = scene.time.delayedCall(profile.particleDestroyDelayMs, () => {
     destroyParticles();
   });
 
@@ -306,13 +334,14 @@ export function createProjectileImpactVisuals(
     }
   };
 
-  const cleanUp = () => {
+  const cleanUp = (forceImmediate = false) => {
     if (isCleanedUp) {
       return;
     }
 
     isCleanedUp = true;
     scene.events.off("update", updateLight);
+    scene.events.off(Phaser.Scenes.Events.SHUTDOWN, shutdownCleanup);
 
     try {
       scene.lights.removeLight(explosionLight);
@@ -320,11 +349,15 @@ export function createProjectileImpactVisuals(
       // Safe guard.
     }
 
-    flash.destroy();
+    fovSystem.removeExplosion(explosionObj);
+
+    flash?.destroy();
     ring?.destroy();
 
-    particleDestroyTimer.remove(false);
-    destroyParticles();
+    if (forceImmediate) {
+      particleDestroyTimer.remove(false);
+      destroyParticles();
+    }
   };
 
   const updateLight = (_time: number, delta: number) => {
@@ -335,14 +368,14 @@ export function createProjectileImpactVisuals(
     elapsed += delta;
     const progress = Math.min(elapsed / profile.duration, 1);
 
-    explosionLight.radius = profile.lightRadius + progress * profile.maxRadius * 2.15;
+    explosionLight.radius = profile.animationStartRadius + progress * profile.animationRadiusGrowth;
     explosionLight.intensity = profile.intensity * (1 - progress);
     explosionObj.radius = explosionLight.radius;
 
-    flash.setScale(1 + progress * profile.flashScale);
-    flash.setAlpha(Math.max(0, 0.95 * (1 - progress * 1.3)));
+    flash?.setScale(1 + progress * (profile.flashScale ?? 0));
+    flash?.setAlpha(Math.max(0, 0.95 * (1 - progress * 1.3)));
     if (ring) {
-      ring.setScale(1 + progress * profile.ringScale);
+      ring.setScale(1 + progress * (profile.ringScale ?? 0));
       ring.setAlpha(Math.max(0, 0.35 * (1 - progress)));
     }
 
@@ -352,5 +385,6 @@ export function createProjectileImpactVisuals(
   };
 
   scene.events.on("update", updateLight);
-  scene.events.once(Phaser.Scenes.Events.SHUTDOWN, cleanUp);
+  const shutdownCleanup = () => cleanUp(true);
+  scene.events.once(Phaser.Scenes.Events.SHUTDOWN, shutdownCleanup);
 }
