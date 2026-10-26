@@ -2,7 +2,6 @@ import Phaser from "phaser";
 import { EDITOR_MODE_ENABLED } from "../editor/editorMode";
 import { cloneLevelDocument, type LevelDocument } from "../editor/LevelDocument";
 import { type LevelEditorController } from "../editor/LevelEditorController";
-import { NPC } from "../entities/NPC";
 import { Player } from "../entities/Player";
 import { getLevelDefinition } from "../levels";
 import { ArenaNetSystem } from "../multiplayer/ArenaNetSystem";
@@ -10,11 +9,12 @@ import { ChatBubble } from "../multiplayer/ChatBubble";
 import { DevModeOverlay } from "../systems/DevModeOverlay";
 import { DungeonSystem } from "../systems/DungeonSystem";
 import { FieldOfViewSystem } from "../systems/FieldOfViewSystem";
+import { NpcManager } from "../systems/NpcManager";
 import { PlayerControlsSystem } from "../systems/PlayerControlsSystem";
 import { loadPlayerProgress, type PlayerProgressState, savePlayerProgress } from "../systems/PlayerProgressManager";
 import { PlayerTeleport } from "../systems/PlayerTeleport";
+import { TorchManager } from "../systems/TorchManager";
 import { WeaponSystem } from "../systems/WeaponSystem";
-import { DepthLayer } from "../types/depth-layer";
 import { type PhaserRaycasterPlugin } from "../types/phaser-raycaster";
 import { BaseScene } from "./BaseScene";
 
@@ -40,12 +40,8 @@ export default class GameScene extends BaseScene {
   private levelId = "arena";
   private savedPlayerProgress?: PlayerProgressState;
   private lastSavedPlayerProgress?: PlayerProgressState;
-  private npcs: NPC[] = [];
-  private npcGroup!: Phaser.Physics.Arcade.StaticGroup;
-  private torchLights: Phaser.GameObjects.Light[] = [];
-  // Flame sprites and fire/ember emitters spawned per torch. Tracked so a level refresh (which reruns
-  // spawnTorches) can destroy the old flames instead of stacking duplicate emitters on the sconce.
-  private torchFx: Phaser.GameObjects.GameObject[] = [];
+  private npcManager?: NpcManager;
+  private torchManager?: TorchManager;
 
   constructor() {
     super("GameScene");
@@ -96,13 +92,10 @@ export default class GameScene extends BaseScene {
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       this.saveCurrentPlayerProgress(true);
       this.events.off("toggle-dev-mode", this.toggleDevMode, this);
-      this.npcs.forEach(npc => npc.destroy());
-      this.npcs = [];
-      this.torchLights.forEach(light => this.fovSystem.removeTorch(light));
-      this.torchLights.forEach(light => this.lights.removeLight(light));
-      this.torchLights = [];
-      this.torchFx.forEach(fx => fx.destroy());
-      this.torchFx = [];
+      this.npcManager?.destroy();
+      this.npcManager = undefined;
+      this.torchManager?.destroy();
+      this.torchManager = undefined;
       this.sharedNet?.destroy();
       this.sharedNet = undefined;
       this.localChatBubble?.destroy();
@@ -181,10 +174,12 @@ export default class GameScene extends BaseScene {
 
     this.physics.add.collider(this.player, this.dungeonSystem.getPhysicsWalls());
 
-    this.spawnNPCs();
-    this.physics.add.collider(this.player, this.npcGroup);
+    this.npcManager = new NpcManager(this, this.dungeonSystem, this.fovSystem, this.levelId);
+    this.npcManager.spawn();
+    this.physics.add.collider(this.player, this.npcManager.getGroup());
 
-    this.spawnTorches();
+    this.torchManager = new TorchManager(this, this.dungeonSystem, this.fovSystem, this.levelId);
+    this.torchManager.spawn();
 
     this.cameras.main.startFollow(this.player, true, 0.1, 0.1);
 
@@ -266,7 +261,8 @@ export default class GameScene extends BaseScene {
     this.devModeOverlay ??= new DevModeOverlay(this, this.dungeonSystem, {
       getFovRaycastTimeMs: () => this.fovSystem?.getLastRaycastTimeMs() ?? 0,
       getNetworkStats: () => this.sharedNet?.getNetworkStats() ?? { peerCount: 0, pingMs: null },
-      getActiveLightsCount: () => (this.lights as { lights?: unknown[] })?.lights?.length ?? this.torchLights.length
+      getActiveLightsCount: () =>
+        (this.lights as { lights?: unknown[] })?.lights?.length ?? this.torchManager?.getLightCount() ?? 0
     });
     return this.devModeOverlay;
   }
@@ -376,150 +372,11 @@ export default class GameScene extends BaseScene {
     }
     this.saveCurrentPlayerProgress();
 
-    // Update standing NPCs in real-time
-    for (const npc of this.npcs) {
-      if (npc.active) {
-        npc.update(this.player.x, this.player.y, _time, delta);
-      }
-    }
+    this.npcManager?.update(this.player.x, this.player.y, _time, delta);
 
     this.fovSystem.update(delta);
     this.sharedNet?.update(_time);
     this.localChatBubble?.follow(this.player.x, this.player.y);
-  }
-
-  private spawnTorches(): void {
-    const levelDef = getLevelDefinition(this.levelId);
-    if (!levelDef?.torches?.length) {
-      return;
-    }
-
-    const tileSize = this.dungeonSystem.getTileSize();
-    const defaultLightRadius = 150;
-    const baseFireRadius = 12;
-    const defaultFireRadius = 15;
-
-    for (const torch of levelDef.torches) {
-      const worldX = torch.tileX * tileSize;
-      const worldY = torch.tileY * tileSize;
-      const lightRadius = torch.lightRadius ?? defaultLightRadius;
-      const fireRadius = torch.radius ?? defaultFireRadius;
-      const scaleRatio = fireRadius / baseFireRadius;
-
-      const fovMask = this.fovSystem.getNpcVisibilityMask();
-
-      // Iron sconce base seen from above. Drawn dark so the fire on top reads as the light source.
-      const torchSprite = this.add.image(worldX, worldY, "torch");
-      torchSprite.setDepth(DepthLayer.TorchBase);
-      torchSprite.setMask(fovMask);
-      this.torchFx.push(torchSprite);
-
-      // Flickering hot core sitting in the sconce. ADD blend makes it glow like a live coal bed.
-      const flameCore = this.add.image(worldX, worldY, "torch");
-      flameCore.setDepth(DepthLayer.TorchCore);
-      flameCore.setScale(0.6 * scaleRatio);
-      flameCore.setTint(0xffc04d);
-      flameCore.setBlendMode(Phaser.BlendModes.ADD);
-      flameCore.setMask(fovMask);
-      this.torchFx.push(flameCore);
-      this.tweens.add({
-        targets: flameCore,
-        scale: Phaser.Math.FloatBetween(0.78 * scaleRatio, 0.95 * scaleRatio),
-        alpha: { from: 0.85, to: 1 },
-        duration: Phaser.Math.Between(90, 180),
-        delay: Phaser.Math.Between(0, 260),
-        yoyo: true,
-        repeat: -1,
-        repeatDelay: Phaser.Math.Between(40, 200),
-        ease: "Sine.inOut"
-      });
-
-      // Body of the flame seen from directly above: soft particles flare outward in every direction
-      // from the hot core, tinted hot-to-cool as they spread and shrink. No vertical bias — a top-down
-      // fire radiates, it does not rise, so the perspective stays flat.
-      const flame = this.add.particles(worldX, worldY, "fireball", {
-        speed: { min: 8 * scaleRatio, max: 26 * scaleRatio },
-        angle: { min: 0, max: 360 },
-        scale: { start: 0.55 * scaleRatio, end: 0 },
-        alpha: { start: 0.9, end: 0 },
-        lifespan: { min: 260, max: 520 },
-        frequency: 45,
-        quantity: 2,
-        tint: [0xfff2b2, 0xffad00, 0xe65c00, 0xc21f00],
-        blendMode: "ADD",
-        emitZone: {
-          type: "random",
-          source: new Phaser.Geom.Circle(0, 0, Math.max(1, 2 * scaleRatio)),
-          quantity: 1
-        }
-      });
-      flame.setDepth(DepthLayer.TorchFlame);
-      flame.setMask(fovMask);
-      this.torchFx.push(flame);
-
-      // Sparse embers that shoot outward and wink out — "real fire sparks" scattering across the floor.
-      const embers = this.add.particles(worldX, worldY, "fireball", {
-        speed: { min: 30 * scaleRatio, max: 70 * scaleRatio },
-        angle: { min: 0, max: 360 },
-        scale: { start: 0.16 * scaleRatio, end: 0 },
-        alpha: { start: 1, end: 0 },
-        lifespan: { min: 400, max: 800 },
-        frequency: Phaser.Math.Between(140, 240),
-        quantity: 1,
-        tint: [0xffe08a, 0xff8a2b],
-        blendMode: "ADD"
-      });
-      embers.setDepth(DepthLayer.TorchEmbers);
-      embers.setMask(fovMask);
-      this.torchFx.push(embers);
-
-      // Warm glow on nearby Light2D surfaces. Phaser lights render regardless of the player's view
-      // radius, matching the fog reveal registered below.
-      const torchLight = this.lights.addLight(worldX, worldY, lightRadius * 2, 0xff8844, 1.35);
-      this.torchLights.push(torchLight);
-      this.fovSystem.addTorch(torchLight, lightRadius);
-
-      // Independent flicker. Each flame gets its own beat so the room stops breathing in sync.
-      this.tweens.add({
-        targets: torchLight,
-        intensity: Phaser.Math.FloatBetween(1.8, 2.35),
-        duration: Phaser.Math.Between(120, 260),
-        delay: Phaser.Math.Between(120, 420),
-        yoyo: true,
-        repeat: -1,
-        repeatDelay: Phaser.Math.Between(100, 1520),
-        ease: "Sine.inOut"
-      });
-    }
-  }
-
-  private spawnNPCs(): void {
-    this.npcGroup = this.physics.add.staticGroup();
-    this.npcs = [];
-
-    const levelDef = getLevelDefinition(this.levelId);
-    if (!levelDef || !levelDef.npcs) {
-      return;
-    }
-
-    const tileSize = this.dungeonSystem.getTileSize();
-
-    for (const p of levelDef.npcs) {
-      const x = p.tileX * tileSize;
-      const y = p.tileY * tileSize;
-      const style = {
-        bodyColor: p.bodyColor,
-        eyeColor: p.eyeColor,
-        eyeSize: p.eyeSize,
-        eyeSpread: p.eyeSpread,
-        showBrows: p.showBrows
-      };
-
-      const npc = new NPC(this, x, y, p.name, p.dialogue, p.emotion, p.restTarget, style);
-      npc.setMask(this.fovSystem.getNpcVisibilityMask());
-      this.npcGroup.add(npc);
-      this.npcs.push(npc);
-    }
   }
 
   private getStartingPlayerProgress(): PlayerProgressState {
@@ -608,17 +465,15 @@ export default class GameScene extends BaseScene {
   }
 
   public refreshRuntimeObjects(): void {
-    this.torchLights.forEach(light => this.fovSystem.removeTorch(light));
-    this.torchLights.forEach(light => this.lights.removeLight(light));
-    this.torchLights = [];
-    this.torchFx.forEach(fx => fx.destroy());
-    this.torchFx = [];
-    this.npcs.forEach(npc => npc.destroy());
-    this.npcs = [];
-    this.npcGroup?.destroy(true);
-    this.spawnNPCs();
-    this.physics.add.collider(this.player, this.npcGroup);
-    this.spawnTorches();
+    if (!this.npcManager || !this.torchManager) {
+      return;
+    }
+
+    this.torchManager.destroy();
+    this.npcManager.destroy();
+    this.npcManager.spawn();
+    this.physics.add.collider(this.player, this.npcManager.getGroup());
+    this.torchManager.spawn();
   }
 
   public reloadLevel(): void {
