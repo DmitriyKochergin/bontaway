@@ -14,7 +14,13 @@ export default defineConfig({
       index: "./src/main.ts"
     }
   },
+  performance: {
+    chunkSplit: {
+      strategy: "split-by-size"
+    }
+  },
   output: {
+    legalComments: "none",
     distPath: {
       root: "./build"
     }
