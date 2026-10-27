@@ -1,9 +1,9 @@
 import Phaser from "phaser";
-import { type Player } from "../entities/Player";
-import { WeaponSystem } from "../systems/WeaponSystem";
-import { MAX_ROOM_PEERS, type NetworkStats, NetworkManager } from "./NetworkManager";
+import type { Player } from "../entities/Player";
+import type { WeaponSystem } from "../systems/WeaponSystem";
+import { MAX_ROOM_PEERS, NetworkManager, type NetworkStats } from "./NetworkManager";
 import { RemotePlayer } from "./RemotePlayer";
-import { type SyncMessage, type WeaponKind } from "./SyncMessages";
+import type { SyncMessage, WeaponKind } from "./SyncMessages";
 
 const APP_ID = "bontaway";
 const DEFAULT_ROOM_ID = "bontaway-arena";

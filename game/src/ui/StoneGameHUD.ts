@@ -1,4 +1,4 @@
-import Phaser from "phaser";
+import type Phaser from "phaser";
 import { BaseGameHUD } from "./BaseGameHUD";
 
 export type { GameHudController } from "./BaseGameHUD";

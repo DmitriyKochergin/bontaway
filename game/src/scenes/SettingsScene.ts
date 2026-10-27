@@ -1,6 +1,6 @@
 import Phaser from "phaser";
-import { AudioSystem } from "../systems/AudioSystem";
-import { type HudStyle } from "../systems/SettingsManager";
+import type { AudioSystem } from "../systems/AudioSystem";
+import type { HudStyle } from "../systems/SettingsManager";
 import { SettingsUI } from "../ui/SettingsUI";
 
 type SettingsSceneData = {
@@ -14,7 +14,7 @@ type SettingsSceneData = {
  */
 export default class SettingsScene extends Phaser.Scene {
   private settingsUI: SettingsUI | null = null;
-  private escKey!: Phaser.Input.Keyboard.Key;
+  private escKey: Phaser.Input.Keyboard.Key | null = null;
   private audioSystem: AudioSystem | null = null;
   private isClosing = false;
 
@@ -34,7 +34,7 @@ export default class SettingsScene extends Phaser.Scene {
     };
     this.settingsUI.show();
 
-    this.escKey = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.ESC);
+    this.escKey = this.input.keyboard?.addKey(Phaser.Input.Keyboard.KeyCodes.ESC) ?? null;
 
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       this.settingsUI?.destroy();
@@ -43,7 +43,7 @@ export default class SettingsScene extends Phaser.Scene {
   }
 
   update(): void {
-    if (Phaser.Input.Keyboard.JustDown(this.escKey)) {
+    if (this.escKey && Phaser.Input.Keyboard.JustDown(this.escKey)) {
       this.requestClose();
     }
   }

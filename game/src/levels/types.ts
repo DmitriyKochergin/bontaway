@@ -1,4 +1,4 @@
-import { type NpcEmotion } from "../entities/NpcEmotion";
+import type { NpcEmotion } from "../entities/NpcEmotion";
 
 export interface Door {
   column: number;

@@ -1,8 +1,8 @@
 import Phaser from "phaser";
 import { getLevelDefinition } from "../levels";
 import { DepthLayer } from "../types/depth-layer";
-import { DungeonSystem } from "./DungeonSystem";
-import { FieldOfViewSystem } from "./FieldOfViewSystem";
+import type { DungeonSystem } from "./DungeonSystem";
+import type { FieldOfViewSystem } from "./FieldOfViewSystem";
 
 export class TorchManager {
   private readonly torchLights: Phaser.GameObjects.Light[] = [];
@@ -121,10 +121,16 @@ export class TorchManager {
   }
 
   public destroy(): void {
-    this.torchLights.forEach(light => this.fovSystem.removeTorch(light));
-    this.torchLights.forEach(light => this.scene.lights.removeLight(light));
+    this.torchLights.forEach(light => {
+      this.fovSystem.removeTorch(light);
+    });
+    this.torchLights.forEach(light => {
+      this.scene.lights.removeLight(light);
+    });
     this.torchLights.length = 0;
-    this.torchFx.forEach(fx => fx.destroy());
+    this.torchFx.forEach(fx => {
+      fx.destroy();
+    });
     this.torchFx.length = 0;
   }
 

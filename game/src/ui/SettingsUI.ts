@@ -1,5 +1,5 @@
 import Phaser from "phaser";
-import { AudioSystem } from "../systems/AudioSystem";
+import type { AudioSystem } from "../systems/AudioSystem";
 import { type HudStyle, SettingsManager } from "../systems/SettingsManager";
 import { DepthLayer } from "../types/depth-layer";
 
@@ -48,15 +48,16 @@ export class SettingsUI {
   }
 
   private updateSliderValues(): void {
-    if (!this.sliders.master) return;
+    const { master, music, sfx } = this.sliders;
+    if (!master || !music || !sfx) return;
 
     const masterVal = this.audioSystem?.getMasterVolume() ?? SettingsManager.getMasterVolume();
     const musicVal = this.audioSystem?.getMusicVolume() ?? SettingsManager.getMusicVolume();
     const sfxVal = this.audioSystem?.getSFXVolume() ?? SettingsManager.getSFXVolume();
 
-    this.updateSlider(this.sliders.master, masterVal);
-    this.updateSlider(this.sliders.music!, musicVal);
-    this.updateSlider(this.sliders.sfx!, sfxVal);
+    this.updateSlider(master, masterVal);
+    this.updateSlider(music, musicVal);
+    this.updateSlider(sfx, sfxVal);
   }
 
   private updateSlider(slider: SliderData, value: number): void {
@@ -386,22 +387,24 @@ export class SettingsUI {
       setValue,
       value: initialValue
     };
+    const panel = this.panel;
+    if (!panel) throw new Error("Panel not initialized");
 
     hitArea.on("pointerdown", (pointer: Phaser.Input.Pointer) => {
-      const localX = pointer.worldX - (this.panel!.x + this.TRACK_X);
+      const localX = pointer.worldX - (panel.x + this.TRACK_X);
       const newValue = Phaser.Math.Clamp(localX / this.SLIDER_WIDTH, 0, 1);
       this.updateSlider(sliderData, newValue);
       setValue(newValue);
     });
 
     hitArea.on("drag", (pointer: Phaser.Input.Pointer) => {
-      const localX = pointer.worldX - (this.panel!.x + this.TRACK_X);
+      const localX = pointer.worldX - (panel.x + this.TRACK_X);
       const newValue = Phaser.Math.Clamp(localX / this.SLIDER_WIDTH, 0, 1);
       this.updateSlider(sliderData, newValue);
       setValue(newValue);
     });
 
-    this.panel.add(container);
+    panel.add(container);
     return sliderData;
   }
 
@@ -488,7 +491,9 @@ export class SettingsUI {
     ];
     this.hudStyleButtonRedraw = () => {
       const activeStyle = SettingsManager.getHudStyle();
-      buttons.forEach(({ style, redraw }) => redraw(style === activeStyle));
+      buttons.forEach(({ style, redraw }) => {
+        redraw(style === activeStyle);
+      });
     };
     this.hudStyleButtonRedraw();
   }

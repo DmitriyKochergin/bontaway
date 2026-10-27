@@ -1,4 +1,4 @@
-import Phaser from "phaser";
+import type Phaser from "phaser";
 import { MusicDirector } from "./audio/MusicDirector";
 import { SfxLibrary } from "./audio/SfxLibrary";
 import { VolumeMixer } from "./audio/VolumeMixer";

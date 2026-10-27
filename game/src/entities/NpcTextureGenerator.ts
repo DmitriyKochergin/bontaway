@@ -1,5 +1,5 @@
-import Phaser from "phaser";
-import { type NpcEmotion } from "./NpcEmotion";
+import type Phaser from "phaser";
+import type { NpcEmotion } from "./NpcEmotion";
 import { type NpcStyle, resolveNpcStyle } from "./NpcStyle";
 
 const EYE_BROW_PIVOT_Y = 12;

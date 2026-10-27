@@ -1,4 +1,4 @@
-import { type LevelDefinition, type LevelLayout } from "./types";
+import type { LevelDefinition, LevelLayout } from "./types";
 
 // 10 emotions displayed in a horizontal row above the player
 const EMOTIONS_ROW = [

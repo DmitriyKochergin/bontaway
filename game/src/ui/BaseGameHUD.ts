@@ -1,7 +1,7 @@
 import Phaser from "phaser";
 import { getLevels } from "../levels";
-import { type NetworkStats } from "../multiplayer/NetworkManager";
-import { type AudioSystem } from "../systems/AudioSystem";
+import type { NetworkStats } from "../multiplayer/NetworkManager";
+import type { AudioSystem } from "../systems/AudioSystem";
 import { DepthLayer } from "../types/depth-layer";
 import { SettingsButton } from "./SettingsButton";
 
@@ -275,10 +275,7 @@ export abstract class BaseGameHUD {
   }
 
   private createNetworkStatus(): void {
-    this.networkStatusContainer = this.scene.add
-      .container(0, 0)
-      .setScrollFactor(0)
-      .setDepth(DepthLayer.Hud);
+    this.networkStatusContainer = this.scene.add.container(0, 0).setScrollFactor(0).setDepth(DepthLayer.Hud);
     this.networkStatusBackground = this.scene.add.graphics();
     this.networkStatusText = this.scene.add.text(8, 5, "", {
       fontSize: "11px",

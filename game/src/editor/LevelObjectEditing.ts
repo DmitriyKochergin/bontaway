@@ -1,4 +1,4 @@
-import { type GridPoint, type LevelDocument, type Npc, type Torch } from "./LevelDocument";
+import type { GridPoint, LevelDocument, Npc, Torch } from "./LevelDocument";
 
 export type ObjectKind = "torch" | "npc";
 

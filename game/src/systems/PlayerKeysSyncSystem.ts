@@ -1,5 +1,5 @@
 import Phaser from "phaser";
-import { type Player } from "../entities/Player";
+import type { Player } from "../entities/Player";
 
 export class PlayerKeysSyncSystem {
   private windowKeyDownListener?: (event: KeyboardEvent) => void;

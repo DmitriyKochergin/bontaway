@@ -1,7 +1,7 @@
 import Phaser from "phaser";
+import type { Player } from "../entities/Player";
 import { DepthLayer } from "../types/depth-layer";
-import { type Player } from "../entities/Player";
-import { type PhaserRaycasterPlugin, type Raycaster, type RaycasterRay } from "../types/phaser-raycaster";
+import type { PhaserRaycasterPlugin, Raycaster, RaycasterRay } from "../types/phaser-raycaster";
 
 export class FieldOfViewSystem {
   private scene: Phaser.Scene;

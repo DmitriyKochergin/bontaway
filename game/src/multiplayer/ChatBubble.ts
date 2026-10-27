@@ -1,4 +1,4 @@
-import Phaser from "phaser";
+import type Phaser from "phaser";
 import { DepthLayer } from "../types/depth-layer";
 
 const HEAD_OFFSET = 34; // Pixels above the entity's origin where the bubble's tail sits.

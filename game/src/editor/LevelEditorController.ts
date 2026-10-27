@@ -18,7 +18,7 @@ import {
   type ObjectKind,
   type SelectedObject
 } from "./LevelObjectEditing";
-import { type LevelSceneAdapter } from "./LevelSceneAdapter";
+import type { LevelSceneAdapter } from "./LevelSceneAdapter";
 import {
   DEFAULT_MATRIX_EMPTY_TILE,
   DEFAULT_MATRIX_PALETTE,
@@ -626,8 +626,6 @@ export class LevelEditorController {
           this.dragSelectionSnapshot = cloneGridSelection(this.selection);
         }
         return;
-      case "select":
-      case "place":
       default:
         this.beginDrag(cell, "select");
         return;

@@ -1,4 +1,4 @@
-import Phaser from "phaser";
+import type Phaser from "phaser";
 
 const TRANSITION_DURATION_MS = 300;
 

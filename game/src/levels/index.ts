@@ -3,7 +3,7 @@ import { dungeonLevel } from "./dungeon";
 import { emotionsLevel } from "./emotions";
 import { emotions2Level } from "./emotions2";
 import { trademeetLevel } from "./trademeet";
-import { type LevelDefinition } from "./types";
+import type { LevelDefinition } from "./types";
 
 export * from "./types";
 

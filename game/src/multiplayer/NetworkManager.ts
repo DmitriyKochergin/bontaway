@@ -1,5 +1,5 @@
 import { joinRoom, type Room } from "trystero";
-import { type SyncMessage } from "./SyncMessages";
+import type { SyncMessage } from "./SyncMessages";
 
 type MessageHandler = (message: SyncMessage, peerId: string) => void;
 type PeerHandler = (peerId: string) => void;
@@ -30,7 +30,9 @@ function getRelayUrls(value: unknown): string[] {
     return [];
   }
 
-  return relayUrls.filter((relayUrl): relayUrl is string => typeof relayUrl === "string" && relayUrl.startsWith("wss://"));
+  return relayUrls.filter(
+    (relayUrl): relayUrl is string => typeof relayUrl === "string" && relayUrl.startsWith("wss://")
+  );
 }
 
 /**
@@ -241,7 +243,9 @@ export class NetworkManager {
     this.rejectedPeers.clear();
     this.lastPingMs = null;
     this.lastConnectionCheckAt = 0;
-    peersToRemove.forEach(peerId => this.peerLeaveHandler?.(peerId));
+    peersToRemove.forEach(peerId => {
+      this.peerLeaveHandler?.(peerId);
+    });
   }
 
   getPeerCount(): number {

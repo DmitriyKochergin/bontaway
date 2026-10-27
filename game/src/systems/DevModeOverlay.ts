@@ -1,7 +1,7 @@
 import Phaser from "phaser";
-import { type NetworkConnectionState } from "../multiplayer/NetworkManager";
+import type { NetworkConnectionState } from "../multiplayer/NetworkManager";
 import { DepthLayer } from "../types/depth-layer";
-import { type DungeonSystem } from "./DungeonSystem";
+import type { DungeonSystem } from "./DungeonSystem";
 
 export interface DevOverlayStatsProvider {
   getFovRaycastTimeMs?: () => number;

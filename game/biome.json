@@ -1,5 +1,5 @@
 {
-  "$schema": "https://biomejs.dev/schemas/2.4.6/schema.json",
+  "$schema": "https://biomejs.dev/schemas/2.6.2/schema.json",
   "vcs": {
     "enabled": true,
     "clientKind": "git",
@@ -18,42 +18,12 @@
   },
   "linter": {
     "rules": {
-      "recommended": true,
-      "a11y": {
-        "useKeyWithClickEvents": "off",
-        "noSvgWithoutTitle": "off",
-        "useGenericFontNames": "off",
-        "noLabelWithoutControl": "off",
-        "noStaticElementInteractions": "off"
-      },
-      "style": {
-        "noNonNullAssertion": "off",
-        "useDefaultParameterLast": "off",
-        "useTemplate": "off",
-        "noUselessElse": "off",
-        "noUnusedTemplateLiteral": "off",
-        "useImportType": "off"
-      },
-      "complexity": {
-        "useOptionalChain": "off",
-        "noUselessSwitchCase": "off",
-        "useLiteralKeys": "off",
-        "noForEach": "off"
-      },
-      "performance": {
-        "noAccumulatingSpread": "off"
-      },
+      "preset": "recommended",
       "suspicious": {
-        "noEmptyInterface": "off",
-        "noConfusingVoidType": "off",
-        "noArrayIndexKey": "off",
-        "noAssignInExpressions": "off",
-        "noExplicitAny": "error",
-        "useIterableCallbackReturn": "off"
+        "noExplicitAny": "error"
       },
       "correctness": {
-        "noUnusedVariables": "off",
-        "useExhaustiveDependencies": "off",
+        "noUnusedVariables": "error",
         "noUnusedImports": {
           "level": "error",
           "fix": "safe"

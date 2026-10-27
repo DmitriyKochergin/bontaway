@@ -1,16 +1,16 @@
 import Phaser from "phaser";
 import { EDITOR_MODE_ENABLED } from "../editor/editorMode";
-import { SettingsManager } from "../systems/SettingsManager";
 import { GrayscaleFx } from "../systems/rtwp/GrayscaleFx";
+import { SettingsManager } from "../systems/SettingsManager";
 import { DepthLayer } from "../types/depth-layer";
-import { BaseGameHUD, type GameHudController } from "../ui/BaseGameHUD";
+import type { BaseGameHUD, GameHudController } from "../ui/BaseGameHUD";
 import { ChatInputOverlay } from "../ui/ChatInputOverlay";
 import { FlatGameHUD } from "../ui/FlatGameHUD";
 import { LevelEditorButton } from "../ui/LevelEditorButton";
 import { MessageButton } from "../ui/MessageButton";
 import { StoneGameHUD } from "../ui/StoneGameHUD";
 import { BaseScene } from "./BaseScene";
-import GameScene from "./GameScene";
+import type GameScene from "./GameScene";
 
 /**
  * Supervisor scene.

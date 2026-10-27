@@ -1,5 +1,5 @@
-import Phaser from "phaser";
-import { type GridPoint, type LevelDocument } from "./LevelDocument";
+import type Phaser from "phaser";
+import type { GridPoint, LevelDocument } from "./LevelDocument";
 
 export interface LevelSceneAdapter {
   getLevelDocument(): LevelDocument;

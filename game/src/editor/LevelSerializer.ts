@@ -1,4 +1,4 @@
-import { type LevelDocument, type MatrixLevelDocument, type TsLevelDocument } from "./LevelDocument";
+import type { LevelDocument, MatrixLevelDocument, TsLevelDocument } from "./LevelDocument";
 
 function formatNumber(value: number): string {
   return Number.isInteger(value) ? String(value) : value.toFixed(2).replace(/\.00$/, "");

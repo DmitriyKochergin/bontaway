@@ -1,4 +1,4 @@
-import { type GridPoint, type GridRect, type GridSelection, type MatrixLevelDocument } from "./LevelDocument";
+import type { GridPoint, GridRect, GridSelection, MatrixLevelDocument } from "./LevelDocument";
 
 export const DEFAULT_MATRIX_EMPTY_TILE = 0;
 export const DEFAULT_MATRIX_PALETTE = [0, 1, 2, 3, 4, 5, 6, 7] as const;

@@ -1,9 +1,9 @@
 import Phaser from "phaser";
-import { type Player } from "../entities/Player";
+import type { Player } from "../entities/Player";
 import { DepthLayer } from "../types/depth-layer";
-import { type AudioSystem } from "./AudioSystem";
-import { type DungeonSystem } from "./DungeonSystem";
-import { type FieldOfViewSystem } from "./FieldOfViewSystem";
+import type { AudioSystem } from "./AudioSystem";
+import type { DungeonSystem } from "./DungeonSystem";
+import type { FieldOfViewSystem } from "./FieldOfViewSystem";
 import {
   createProjectileImpactVisuals,
   createProjectileVisuals,

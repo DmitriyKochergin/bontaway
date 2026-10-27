@@ -1,8 +1,8 @@
-import Phaser from "phaser";
+import type Phaser from "phaser";
 import { NPC } from "../entities/NPC";
 import { getLevelDefinition } from "../levels";
-import { DungeonSystem } from "./DungeonSystem";
-import { FieldOfViewSystem } from "./FieldOfViewSystem";
+import type { DungeonSystem } from "./DungeonSystem";
+import type { FieldOfViewSystem } from "./FieldOfViewSystem";
 
 const NPC_CULLING_MARGIN = 160;
 
@@ -87,7 +87,9 @@ export class NpcManager {
   }
 
   public destroy(): void {
-    this.npcs.forEach(npc => npc.destroy());
+    this.npcs.forEach(npc => {
+      npc.destroy();
+    });
     this.npcs = [];
     this.npcGroup?.destroy(true);
     this.npcGroup = undefined;

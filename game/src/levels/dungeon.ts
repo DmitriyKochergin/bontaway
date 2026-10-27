@@ -1,4 +1,4 @@
-import { type LevelDefinition, type LevelLayout } from "./types";
+import type { LevelDefinition, LevelLayout } from "./types";
 
 export const dungeonLevel: LevelDefinition = {
   id: "dungeon",

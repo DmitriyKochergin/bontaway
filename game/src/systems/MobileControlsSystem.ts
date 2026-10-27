@@ -1,5 +1,5 @@
 import Phaser from "phaser";
-import { type Player } from "../entities/Player";
+import type { Player } from "../entities/Player";
 import { DepthLayer } from "../types/depth-layer";
 
 export class MobileControlsSystem {

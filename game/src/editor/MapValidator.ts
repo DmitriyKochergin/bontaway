@@ -1,9 +1,4 @@
-import {
-  type GridSelection,
-  type LevelDocument,
-  type MatrixLevelDocument,
-  type TsLevelDocument
-} from "./LevelDocument";
+import type { GridSelection, LevelDocument, MatrixLevelDocument, TsLevelDocument } from "./LevelDocument";
 
 export interface ValidationIssue {
   path: string;

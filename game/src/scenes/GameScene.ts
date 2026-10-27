@@ -1,12 +1,12 @@
 import Phaser from "phaser";
 import { EDITOR_MODE_ENABLED } from "../editor/editorMode";
 import { cloneLevelDocument, type LevelDocument } from "../editor/LevelDocument";
-import { type LevelEditorController } from "../editor/LevelEditorController";
+import type { LevelEditorController } from "../editor/LevelEditorController";
 import { Player } from "../entities/Player";
 import { getLevelDefinition } from "../levels";
 import { ArenaNetSystem } from "../multiplayer/ArenaNetSystem";
 import { ChatBubble } from "../multiplayer/ChatBubble";
-import { type NetworkStats } from "../multiplayer/NetworkManager";
+import type { NetworkStats } from "../multiplayer/NetworkManager";
 import { DevModeOverlay } from "../systems/DevModeOverlay";
 import { DungeonSystem } from "../systems/DungeonSystem";
 import { FieldOfViewSystem } from "../systems/FieldOfViewSystem";
@@ -16,7 +16,7 @@ import { loadPlayerProgress, type PlayerProgressState, savePlayerProgress } from
 import { PlayerTeleport } from "../systems/PlayerTeleport";
 import { TorchManager } from "../systems/TorchManager";
 import { WeaponSystem } from "../systems/WeaponSystem";
-import { type PhaserRaycasterPlugin } from "../types/phaser-raycaster";
+import type { PhaserRaycasterPlugin } from "../types/phaser-raycaster";
 import { BaseScene } from "./BaseScene";
 
 /**
@@ -360,7 +360,7 @@ export default class GameScene extends BaseScene {
   }
 
   update(_time: number, delta: number) {
-    if (!this.player || !this.player.body) return;
+    if (!this.player?.body) return;
 
     this.levelEditorController?.update();
     this.devModeOverlay?.update();

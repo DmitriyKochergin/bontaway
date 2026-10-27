@@ -1,4 +1,4 @@
-import Phaser from "phaser";
+import type Phaser from "phaser";
 import { BaseGameHUD } from "./BaseGameHUD";
 
 /** Flat HUD variant, styled to match the settings dialog and gear control. */

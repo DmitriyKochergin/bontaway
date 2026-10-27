@@ -1,6 +1,6 @@
 import Phaser from "phaser";
 import { DepthLayer } from "../types/depth-layer";
-import { type FieldOfViewSystem } from "./FieldOfViewSystem";
+import type { FieldOfViewSystem } from "./FieldOfViewSystem";
 
 export type ProjectileVisualKind = "fireball" | "ray" | "sphere";
 export type ProjectileImpactKind = "fireball" | "small" | "large" | "huge";

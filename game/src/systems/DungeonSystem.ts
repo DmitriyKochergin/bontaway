@@ -1,6 +1,6 @@
-import Phaser from "phaser";
-import { DepthLayer } from "../types/depth-layer";
+import type Phaser from "phaser";
 import { type Door, getLevelDefinition, type LevelDefinition } from "../levels";
+import { DepthLayer } from "../types/depth-layer";
 
 export class DungeonSystem {
   private scene: Phaser.Scene;

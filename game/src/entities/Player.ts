@@ -25,7 +25,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     // Initialize light around player (radius 500, yellowish color, intensity 2)
     this.playerLight = scene.lights.addLight(this.x, this.y, 500, 0xffeebb, 2);
 
-    if (scene.input && scene.input.keyboard) {
+    if (scene.input?.keyboard) {
       this.cursors = scene.input.keyboard.createCursorKeys();
       this.keys = scene.input.keyboard.addKeys("W,A,S,D") as Partial<
         Record<"W" | "A" | "S" | "D", Phaser.Input.Keyboard.Key>

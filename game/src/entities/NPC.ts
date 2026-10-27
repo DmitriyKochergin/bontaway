@@ -1,8 +1,8 @@
 import Phaser from "phaser";
-import { type NpcEmotion } from "./NpcEmotion";
+import { DepthLayer } from "../types/depth-layer";
+import type { NpcEmotion } from "./NpcEmotion";
 import { type NpcStyle, resolveNpcStyle } from "./NpcStyle";
 import { ensureNpcTexture } from "./NpcTextureGenerator";
-import { DepthLayer } from "../types/depth-layer";
 
 export class NPC extends Phaser.Physics.Arcade.Sprite {
   private npcName: string;

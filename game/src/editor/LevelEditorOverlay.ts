@@ -301,11 +301,17 @@ export class LevelEditorOverlay {
     if (this.destroyed) return;
     this.destroyed = true;
 
-    this.toolButtons.forEach(button => button.destroy());
+    this.toolButtons.forEach(button => {
+      button.destroy();
+    });
     this.toolButtons.clear();
-    this.paletteButtons.forEach(button => button.destroy());
+    this.paletteButtons.forEach(button => {
+      button.destroy();
+    });
     this.paletteButtons.clear();
-    this.objectKindButtons.forEach(button => button.destroy());
+    this.objectKindButtons.forEach(button => {
+      button.destroy();
+    });
     this.objectKindButtons.clear();
 
     this.closeButton?.destroy();

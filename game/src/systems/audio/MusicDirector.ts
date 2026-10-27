@@ -1,5 +1,5 @@
-import { type MusicStyle } from "../AudioSystem";
-import { type VolumeMixer } from "./VolumeMixer";
+import type { MusicStyle } from "../AudioSystem";
+import type { VolumeMixer } from "./VolumeMixer";
 
 const DORIAN_SCALE = [220, 247.5, 264, 293.3, 330, 367.5, 396, 440];
 

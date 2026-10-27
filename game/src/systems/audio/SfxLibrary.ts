@@ -1,5 +1,5 @@
 import Phaser from "phaser";
-import { type VolumeMixer } from "./VolumeMixer";
+import type { VolumeMixer } from "./VolumeMixer";
 
 type ManagedPhaserSound = Phaser.Sound.HTML5AudioSound | Phaser.Sound.WebAudioSound;
 
