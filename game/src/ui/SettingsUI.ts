@@ -3,6 +3,8 @@ import type { AudioSystem } from "../systems/AudioSystem";
 import { type HudStyle, SettingsManager } from "../systems/SettingsManager";
 import { DepthLayer } from "../types/depth-layer";
 
+declare const __BONTAWAY_BUILD_TIME__: string;
+
 interface SliderData {
   container: Phaser.GameObjects.Container;
   track: Phaser.GameObjects.Graphics;
@@ -252,6 +254,14 @@ export class SettingsUI {
     });
     title.setOrigin(0, 0.5);
     this.panel.add(title);
+
+    const buildLabel = this.scene.add.text(70, -halfH + 68, `BUILD: ${__BONTAWAY_BUILD_TIME__}`, {
+      fontSize: "10px",
+      fontFamily: "Roboto Mono, Courier New, monospace",
+      color: this.isStoneStyle() ? "#c4b08a" : "#888888"
+    });
+    buildLabel.setOrigin(0.5, 0.5);
+    this.panel.add(buildLabel);
 
     const closeBtn = this.scene.add.text(halfW - 30, -halfH + 35, "✕", {
       fontSize: "16px",
