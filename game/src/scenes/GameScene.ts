@@ -35,6 +35,7 @@ export default class GameScene extends BaseScene {
   private localChatBubble?: ChatBubble;
   private isChatTyping = false;
   private devModeEnabled = false;
+  private devModeOverlayVisible = false;
   private devModeOverlay?: DevModeOverlay;
   private levelEditorController?: LevelEditorController;
   private currentLevelDocument?: LevelDocument;
@@ -117,6 +118,7 @@ export default class GameScene extends BaseScene {
       this.levelEditorController?.destroy();
       this.levelEditorController = undefined;
       this.devModeEnabled = false;
+      this.devModeOverlayVisible = false;
     });
     this.events.on(Phaser.Scenes.Events.PAUSE, () => {
       this.player?.setVelocity(0, 0);
@@ -240,6 +242,7 @@ export default class GameScene extends BaseScene {
 
     if (!this.devModeEnabled) {
       this.devModeEnabled = true;
+      this.devModeOverlayVisible = true;
       this.getOrCreateDevModeOverlay().show();
     }
 
@@ -251,19 +254,25 @@ export default class GameScene extends BaseScene {
   }
 
   private toggleDevMode(): void {
-    if (!EDITOR_MODE_ENABLED) {
-      return;
-    }
+    this.devModeOverlayVisible = !this.devModeOverlayVisible;
 
-    this.devModeEnabled = !this.devModeEnabled;
-
-    if (this.devModeEnabled) {
+    if (this.devModeOverlayVisible) {
       this.getOrCreateDevModeOverlay().show();
-      void this.ensureLevelEditorController();
+
+      if (EDITOR_MODE_ENABLED) {
+        this.devModeEnabled = true;
+        void this.ensureLevelEditorController();
+      }
       return;
     }
 
     this.devModeOverlay?.hide();
+
+    if (!EDITOR_MODE_ENABLED) {
+      return;
+    }
+
+    this.devModeEnabled = false;
     this.levelEditorController?.destroy();
     this.levelEditorController = undefined;
   }
