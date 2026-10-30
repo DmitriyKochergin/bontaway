@@ -13,7 +13,7 @@
 - **Engine:** Phaser 3.x (latest stable) using TypeScript.
 - **Logic:** Finite State Machines (FSM) for entities. Object pooling for high-frequency objects.
 - **Audio:** Priority for "heavy" tactile sounds (stone clicks) and atmospheric incantations.
-- **Architecture:** All game logic and assets live under `./game2`.
+- **Architecture:** All game logic and assets live under `./game`.
 
 ## AI Guidelines
 - **Consistency:** Always adhere to the "Ecological Design" philosophy — everything in the game world must have a logical cause and effect.

@@ -22,6 +22,7 @@ export class DevModeOverlay {
   private readonly hudInset = 16;
   private lastUpdateMs = 0;
   private readonly updateIntervalMs = 120; // Refresh rate throttled to eliminate string allocation churn
+  private gpuInfo?: string;
 
   constructor(
     scene: Phaser.Scene,
@@ -93,8 +94,8 @@ export class DevModeOverlay {
     this.container.setDepth(DepthLayer.Modal);
     this.container.setScrollFactor(0);
 
-    const panelWidth = 244;
-    const panelHeight = 152;
+    const panelWidth = 444;
+    const panelHeight = 172;
 
     const background = this.scene.add.graphics();
     // Glassy dark panel
@@ -135,8 +136,8 @@ export class DevModeOverlay {
 
   private formatStats(): string {
     const loop = this.scene.game.loop;
-    const actualFps = Math.round(loop.actualFps);
-    const frameTimeMs = loop.delta.toFixed(1);
+    const actualFps = Number.isFinite(loop.actualFps) ? Math.round(loop.actualFps) : 0;
+    const frameTimeMs = Number.isFinite(loop.delta) ? loop.delta.toFixed(1) : "0.0";
 
     const activeObjectsCount = this.scene.children?.list?.length ?? this.scene.children?.length ?? 0;
 
@@ -172,11 +173,38 @@ export class DevModeOverlay {
 
     return [
       `FPS:        ${actualFps.toString().padEnd(3)} (${frameTimeMs} ms)`,
+      `GPU:        ${this.getGpuInfo()}`,
       `Objects:    ${activeObjectsCount}`,
       `Lights:     ${lightsCount}`,
       `FOV Ray:    ${fovText}`,
       `Network:    ${netText}`,
       `Physics:    ${physicsText}`
     ].join("\n");
+  }
+
+  private getGpuInfo(): string {
+    if (this.gpuInfo !== undefined) {
+      return this.gpuInfo;
+    }
+
+    const renderer = this.scene.game.renderer;
+    if (renderer.type !== Phaser.WEBGL || !("gl" in renderer)) {
+      this.gpuInfo = "Canvas 2D";
+      return this.gpuInfo;
+    }
+
+    if (renderer.contextLost) {
+      this.gpuInfo = "WebGL context lost";
+      return this.gpuInfo;
+    }
+
+    const gl = renderer.gl;
+    const debugInfo = gl.getExtension("WEBGL_debug_renderer_info");
+    const rendererName = String(gl.getParameter(debugInfo?.UNMASKED_RENDERER_WEBGL ?? gl.RENDERER))
+      .replace(/\s+/g, " ")
+      .trim();
+
+    this.gpuInfo = rendererName.length > 42 ? `${rendererName.slice(0, 39)}...` : rendererName;
+    return this.gpuInfo;
   }
 }
