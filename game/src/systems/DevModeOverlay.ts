@@ -203,7 +203,7 @@ export class DevModeOverlay {
     const rendererName = String(gl.getParameter(debugInfo?.UNMASKED_RENDERER_WEBGL ?? gl.RENDERER))
       .replace(/\s+/g, " ")
       .trim();
-
+    console.log("GPU Renderer Name: ", rendererName);
     this.gpuInfo = rendererName.length > 42 ? `${rendererName.slice(0, 39)}...` : rendererName;
     return this.gpuInfo;
   }
