@@ -216,11 +216,6 @@ export default class GameScene extends BaseScene {
     }
 
     this.localChatBubble = new ChatBubble(this);
-
-    if (EDITOR_MODE_ENABLED) {
-      this.devModeEnabled = true;
-      void this.ensureLevelEditorController(true);
-    }
   }
 
   /**
