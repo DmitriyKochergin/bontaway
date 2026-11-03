@@ -67,7 +67,7 @@ const PROJECTILE_PROFILES: Record<ProjectileKind, ProjectileProfile> = {
     alpha: 0.94,
     speed: 280,
     lifetime: 7000,
-    collisionRadius: 26,
+    collisionRadius: 20,
     explosionKind: "large"
   }
 };
@@ -236,6 +236,11 @@ export class WeaponSystem {
     sprite.setActive(false);
     sprite.setVisible(false);
     sprite.body.enable = false;
+    if (profile.collisionRadius > 0) {
+      const collisionDiameter = profile.collisionRadius * 2;
+      const collisionOffset = (sprite.width - collisionDiameter) * 0.5;
+      sprite.body.setCircle(profile.collisionRadius, collisionOffset, collisionOffset);
+    }
 
     const state: ProjectileState = {
       kind,
