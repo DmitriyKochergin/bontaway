@@ -58,7 +58,7 @@ const PROJECTILE_PROFILES: Record<ProjectileKind, ProjectileProfile> = {
     alpha: 0.98,
     speed: 980,
     lifetime: 5200,
-    collisionRadius: 12,
+    collisionRadius: 6,
     explosionKind: "small"
   },
   sphere: {
