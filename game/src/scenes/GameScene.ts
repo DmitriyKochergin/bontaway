@@ -216,6 +216,11 @@ export default class GameScene extends BaseScene {
     }
 
     this.localChatBubble = new ChatBubble(this);
+
+    if (EDITOR_MODE_ENABLED) {
+      this.devModeEnabled = true;
+      void this.ensureLevelEditorController(true);
+    }
   }
 
   /**
@@ -241,14 +246,8 @@ export default class GameScene extends BaseScene {
   }
 
   public async toggleLevelEditor(): Promise<void> {
-    if (!EDITOR_MODE_ENABLED) {
+    if (!EDITOR_MODE_ENABLED || !this.devModeEnabled) {
       return;
-    }
-
-    if (!this.devModeEnabled) {
-      this.devModeEnabled = true;
-      this.devModeOverlayVisible = true;
-      this.getOrCreateDevModeOverlay().show();
     }
 
     if (!this.levelEditorController) {
@@ -256,6 +255,7 @@ export default class GameScene extends BaseScene {
     }
 
     this.levelEditorController?.toggleEnabled();
+    this.events.emit("level-editor-state-changed");
   }
 
   private toggleDevMode(): void {
@@ -266,7 +266,7 @@ export default class GameScene extends BaseScene {
 
       if (EDITOR_MODE_ENABLED) {
         this.devModeEnabled = true;
-        void this.ensureLevelEditorController();
+        void this.ensureLevelEditorController(true);
       }
       return;
     }
@@ -280,6 +280,7 @@ export default class GameScene extends BaseScene {
     this.devModeEnabled = false;
     this.levelEditorController?.destroy();
     this.levelEditorController = undefined;
+    this.events.emit("level-editor-state-changed");
   }
 
   private getOrCreateDevModeOverlay(): DevModeOverlay {
@@ -293,7 +294,7 @@ export default class GameScene extends BaseScene {
     return this.devModeOverlay;
   }
 
-  private async ensureLevelEditorController(): Promise<void> {
+  private async ensureLevelEditorController(enable = false): Promise<void> {
     if (!this.devModeEnabled || this.levelEditorController) {
       return;
     }
@@ -306,7 +307,8 @@ export default class GameScene extends BaseScene {
 
     this.levelEditorController = new LevelEditorController(this, this, pointer => this.isPointerOverHud(pointer));
     this.levelEditorController.attachDocument(this.getLevelDocument());
-    this.levelEditorController.setEnabled(false);
+    this.levelEditorController.setEnabled(enable);
+    this.events.emit("level-editor-state-changed");
   }
 
   private getSelectedWeaponSlot(): number {

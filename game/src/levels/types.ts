@@ -1,5 +1,9 @@
 import type { NpcEmotion } from "../entities/NpcEmotion";
 
+export const MATRIX_WALL_TILE = 0;
+export const MATRIX_FLOOR_TILE = 1;
+export const MATRIX_EMPTY_TILE = 2;
+
 export interface Door {
   column: number;
   row: number;
@@ -62,9 +66,9 @@ export interface LevelDefinition {
   torches?: Torch[];
   npcs?: Npc[];
   /**
-   * Present on matrix levels only. The 2-D tile grid where 0 = solid wall and any
-   * other integer = walkable floor. When set, `GameScene.buildLevelDocument` returns a
-   * `MatrixLevelDocument` instead of a `TsLevelDocument`.
+   * Present on matrix levels only. The 2-D tile grid where 0 = solid wall, 1 = walkable
+   * floor, and 2 = blank walkable space. When set, `GameScene.buildLevelDocument`
+   * returns a `MatrixLevelDocument` instead of a `TsLevelDocument`.
    */
   tiles?: number[][];
   generateLayout: (tileSize: number) => LevelLayout;

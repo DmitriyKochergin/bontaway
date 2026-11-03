@@ -9,6 +9,9 @@ export enum DepthLayer {
   // Walls, doors, obstacles
   Walls = 200,
 
+  // Editor selection guides remain above shadows and walls.
+  EditorSelection = 220,
+
   // Torch components.
   TorchBase = 208,
   TorchCore = 212,

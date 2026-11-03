@@ -42,6 +42,7 @@ export default class MainScene extends BaseScene {
       this.grayscaleFx?.destroy();
       this.grayscaleFx = undefined;
       this.scene.get("GameScene")?.events.off(Phaser.Scenes.Events.CREATE, this.rebuildHud, this);
+      this.scene.get("GameScene")?.events.off("level-editor-state-changed", this.syncEditorControls, this);
       this.gameHUD?.destroy();
       this.gameHUD = undefined;
       this.messageButton?.destroy();
@@ -61,7 +62,9 @@ export default class MainScene extends BaseScene {
   createScene(): void {
     this.scene.launch("GameScene");
     // Rebuild the HUD whenever GameScene (re)creates, e.g. after a level switch.
-    this.scene.get("GameScene").events.on(Phaser.Scenes.Events.CREATE, this.rebuildHud, this);
+    const gameScene = this.scene.get("GameScene");
+    gameScene.events.on(Phaser.Scenes.Events.CREATE, this.rebuildHud, this);
+    gameScene.events.on("level-editor-state-changed", this.syncEditorControls, this);
     this.input.keyboard?.addCapture([
       Phaser.Input.Keyboard.KeyCodes.SPACE,
       Phaser.Input.Keyboard.KeyCodes.ESC,
@@ -225,14 +228,14 @@ export default class MainScene extends BaseScene {
   }
 
   private syncEditorControls(): void {
-    if (!EDITOR_MODE_ENABLED) {
+    const gameScene = this.scene.get("GameScene") as GameScene;
+    if (!EDITOR_MODE_ENABLED || !gameScene.isDevModeEnabled()) {
       this.levelEditorButton?.destroy();
       this.levelEditorButton = undefined;
       return;
     }
 
     const getMarginRight = () => (this.messageButton ? 146 : 88);
-    const gameScene = this.scene.get("GameScene") as GameScene;
 
     if (!this.levelEditorButton) {
       this.levelEditorButton = new LevelEditorButton(

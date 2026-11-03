@@ -1,7 +1,7 @@
 import Phaser from "phaser";
+import { MATRIX_EMPTY_TILE, MATRIX_FLOOR_TILE, MATRIX_WALL_TILE } from "../levels/types";
 import { DepthLayer } from "../types/depth-layer";
-import type { LevelEditorSnapshot, LevelEditorTool } from "./LevelEditorController";
-import type { ObjectKind } from "./LevelObjectEditing";
+import type { LevelEditorSnapshot } from "./LevelEditorController";
 import { DEFAULT_MATRIX_PALETTE } from "./MatrixEditing";
 
 interface OverlayButtonConfig {
@@ -10,7 +10,6 @@ interface OverlayButtonConfig {
   width: number;
   height: number;
   label: string;
-  badge?: string;
   onClick: () => void;
 }
 
@@ -18,7 +17,6 @@ class OverlayButton {
   private readonly container: Phaser.GameObjects.Container;
   private readonly background: Phaser.GameObjects.Graphics;
   private readonly label: Phaser.GameObjects.Text;
-  private readonly badgeLabel?: Phaser.GameObjects.Text;
   private readonly hitArea: Phaser.GameObjects.Zone;
   private active = false;
   private hovered = false;
@@ -39,7 +37,7 @@ class OverlayButton {
     }
 
     this.background = this.scene.add.graphics();
-    this.label = this.scene.add.text(config.badge ? -6 : 0, 0, config.label, {
+    this.label = this.scene.add.text(0, 0, config.label, {
       fontFamily: "Roboto Mono, Courier New, monospace",
       fontSize: "12px",
       fontStyle: "bold",
@@ -47,25 +45,12 @@ class OverlayButton {
     });
     this.label.setOrigin(0.5, 0.5);
 
-    if (config.badge) {
-      this.badgeLabel = this.scene.add.text(config.width / 2 - 12, -config.height / 2 + 7, config.badge, {
-        fontFamily: "Roboto Mono, Courier New, monospace",
-        fontSize: "9px",
-        color: "#8a929a"
-      });
-      this.badgeLabel.setOrigin(0.5, 0.5);
-    }
-
-    this.hitArea = this.scene
-      .add.zone(0, 0, config.width, config.height)
+    this.hitArea = this.scene.add
+      .zone(0, 0, config.width, config.height)
       .setScrollFactor(0)
       .setInteractive({ useHandCursor: true });
 
-    const elements: Phaser.GameObjects.GameObject[] = [this.background, this.label, this.hitArea];
-    if (this.badgeLabel) {
-      elements.push(this.badgeLabel);
-    }
-    this.container.add(elements);
+    this.container.add([this.background, this.label, this.hitArea]);
     this.redraw();
 
     this.hitArea.on("pointerover", () => {
@@ -135,7 +120,6 @@ class OverlayButton {
       this.background.lineStyle(1, 0x272b30, 0.5);
       this.background.strokeRoundedRect(-halfWidth, -halfHeight, width, height, 5);
       this.label.setColor("#6c727a");
-      if (this.badgeLabel) this.badgeLabel.setColor("#4c525a");
       return;
     }
 
@@ -145,21 +129,18 @@ class OverlayButton {
       this.background.lineStyle(1.5, 0xffa500, 1.0);
       this.background.strokeRoundedRect(-halfWidth, -halfHeight, width, height, 5);
       this.label.setColor("#ffca6e");
-      if (this.badgeLabel) this.badgeLabel.setColor("#ff9900");
     } else if (this.hovered) {
       this.background.fillStyle(0x242830, 0.95);
       this.background.fillRoundedRect(-halfWidth, -halfHeight, width, height, 5);
       this.background.lineStyle(1, 0x6e7682, 0.9);
       this.background.strokeRoundedRect(-halfWidth, -halfHeight, width, height, 5);
       this.label.setColor("#ffffff");
-      if (this.badgeLabel) this.badgeLabel.setColor("#abb3bf");
     } else {
       this.background.fillStyle(0x13161a, 0.9);
       this.background.fillRoundedRect(-halfWidth, -halfHeight, width, height, 5);
       this.background.lineStyle(1, 0x343942, 0.85);
       this.background.strokeRoundedRect(-halfWidth, -halfHeight, width, height, 5);
       this.label.setColor("#d1d5db");
-      if (this.badgeLabel) this.badgeLabel.setColor("#727a85");
     }
   }
 }
@@ -169,19 +150,16 @@ export class LevelEditorOverlay {
   private titleLabel?: Phaser.GameObjects.Text;
   private statusDot?: Phaser.GameObjects.Graphics;
   private statusLabel?: Phaser.GameObjects.Text;
-  private modeLabel?: Phaser.GameObjects.Text;
+  private paletteLabel?: Phaser.GameObjects.Text;
   private selectionLabel?: Phaser.GameObjects.Text;
   private hoverLabel?: Phaser.GameObjects.Text;
   private saveStatusLabel?: Phaser.GameObjects.Text;
+  private resizeHandler?: (gameSize: Phaser.Structs.Size) => void;
 
   private closeButton?: OverlayButton;
   private saveButton?: OverlayButton;
-  private undoButton?: OverlayButton;
-  private redoButton?: OverlayButton;
 
-  private toolButtons = new Map<LevelEditorTool, OverlayButton>();
   private paletteButtons = new Map<number, OverlayButton>();
-  private objectKindButtons = new Map<ObjectKind, OverlayButton>();
   private visible = false;
   private destroyed = false;
 
@@ -192,11 +170,7 @@ export class LevelEditorOverlay {
   constructor(
     private scene: Phaser.Scene,
     private onToggleActive: () => void,
-    private onToolSelected: (tool: LevelEditorTool) => void,
     private onPaletteSelected: (tileValue: number) => void,
-    private onObjectKindSelected: (objectKind: ObjectKind) => void,
-    private onUndo: () => void,
-    private onRedo: () => void,
     private onSave: () => void
   ) {
     this.scene.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
@@ -233,29 +207,12 @@ export class LevelEditorOverlay {
     this.saveButton?.setLabel(snapshot.saving ? "Saving..." : snapshot.dirty ? "Save *" : "Save");
     this.saveButton?.setActive(snapshot.dirty);
 
-    this.undoButton?.setEnabled(snapshot.canUndo);
-    this.redoButton?.setEnabled(snapshot.canRedo);
-
-    // Tools
-    for (const [tool, button] of this.toolButtons) {
-      button.setActive(snapshot.enabled && snapshot.tool === tool);
-      button.setEnabled(snapshot.enabled);
-    }
-
-    // Palette / Objects
+    // Palette
     const isMatrix = snapshot.matrixReady;
-    this.modeLabel?.setText(isMatrix ? "TILE PALETTE" : "OBJECT MODE");
 
-    for (const [tileValue, button] of this.paletteButtons) {
+    for (const button of this.paletteButtons.values()) {
       button.setVisible(this.visible && isMatrix);
-      button.setActive(isMatrix && snapshot.paletteTile === tileValue);
       button.setEnabled(snapshot.enabled && isMatrix);
-    }
-
-    for (const [objectKind, button] of this.objectKindButtons) {
-      button.setVisible(this.visible && !isMatrix);
-      button.setActive(!isMatrix && snapshot.objectKind === objectKind);
-      button.setEnabled(snapshot.enabled && !isMatrix);
     }
 
     // Selection Readout
@@ -264,20 +221,15 @@ export class LevelEditorOverlay {
       const w = b.right - b.left + 1;
       const h = b.bottom - b.top + 1;
       this.selectionLabel?.setText(`Selection: Rect (${b.left},${b.top}) → (${b.right},${b.bottom}) [${w}×${h}]`);
-    } else if (snapshot.selectedObject) {
-      this.selectionLabel?.setText(
-        `Selection: Object ${snapshot.selectedObject.kind} #${snapshot.selectedObject.index}`
-      );
     } else {
       this.selectionLabel?.setText("Selection: None");
     }
 
-    // Hover & Clipboard Readout
+    // Hover Readout
     const hoverStr = snapshot.hoveredCell
       ? `Cell (${snapshot.hoveredCell.column}, ${snapshot.hoveredCell.row})`
       : "None";
-    const clipStr = snapshot.hasClipboard ? "Ready" : "Empty";
-    this.hoverLabel?.setText(`Hover: ${hoverStr}   |   Clipboard: ${clipStr}`);
+    this.hoverLabel?.setText(`Hover: ${hoverStr}`);
 
     // Save Status Readout
     if (snapshot.saveError) {
@@ -304,35 +256,39 @@ export class LevelEditorOverlay {
     if (this.destroyed) return;
     this.destroyed = true;
 
-    this.toolButtons.forEach(button => {
-      button.destroy();
-    });
-    this.toolButtons.clear();
     this.paletteButtons.forEach(button => {
       button.destroy();
     });
     this.paletteButtons.clear();
-    this.objectKindButtons.forEach(button => {
-      button.destroy();
-    });
-    this.objectKindButtons.clear();
 
     this.closeButton?.destroy();
     this.saveButton?.destroy();
-    this.undoButton?.destroy();
-    this.redoButton?.destroy();
 
     this.container?.destroy(true);
     this.container = undefined;
+    if (this.resizeHandler) {
+      this.scene.scale.off("resize", this.resizeHandler);
+      this.resizeHandler = undefined;
+    }
     this.visible = false;
   }
 
   private ensureCreated(): void {
     if (this.container) return;
 
-    this.container = this.scene.add.container(16, 16);
+    this.container = this.scene.add.container(
+      this.leftMargin,
+      Math.max(this.leftMargin, this.scene.scale.gameSize.height - this.panelHeight - this.leftMargin)
+    );
     this.container.setScrollFactor(0);
     this.container.setDepth(DepthLayer.EditorPanel);
+    this.resizeHandler = (gameSize: Phaser.Structs.Size) => {
+      this.container?.setPosition(
+        this.leftMargin,
+        Math.max(this.leftMargin, gameSize.height - this.panelHeight - this.leftMargin)
+      );
+    };
+    this.scene.scale.on("resize", this.resizeHandler);
 
     const margin = this.leftMargin; // 20px uniform left margin
     const rightEdge = this.panelWidth - margin; // 380px uniform right edge
@@ -352,7 +308,7 @@ export class LevelEditorOverlay {
     background.lineStyle(1, 0x22262c, 0.8);
     background.lineBetween(margin, 42, rightEdge, 42); // Header divider
     background.lineBetween(margin, 84, rightEdge, 84); // Actions divider
-    background.lineBetween(margin, 172, rightEdge, 172); // Tools divider
+    background.lineBetween(margin, 222, rightEdge, 222); // Palette divider
 
     // Inspector Inset Card Background (aligned with 20px left & right margins)
     background.fillStyle(0x050608, 0.9);
@@ -378,14 +334,7 @@ export class LevelEditorOverlay {
     });
 
     // Section Headers (aligned at left margin: 20px)
-    const toolsHeader = this.scene.add.text(margin, 90, "EDITING TOOLS", {
-      fontFamily: "Roboto Mono, Courier New, monospace",
-      fontSize: "10px",
-      fontStyle: "bold",
-      color: "#727a85"
-    });
-
-    this.modeLabel = this.scene.add.text(margin, 177, "TILE PALETTE", {
+    this.paletteLabel = this.scene.add.text(margin, 90, "TILE PALETTE", {
       fontFamily: "Roboto Mono, Courier New, monospace",
       fontSize: "10px",
       fontStyle: "bold",
@@ -399,7 +348,7 @@ export class LevelEditorOverlay {
       color: "#e5e7eb"
     });
 
-    this.hoverLabel = this.scene.add.text(margin + 12, 262, "Hover: None   |   Clipboard: Empty", {
+    this.hoverLabel = this.scene.add.text(margin + 12, 262, "Hover: None", {
       fontFamily: "Roboto Mono, Courier New, monospace",
       fontSize: "11px",
       color: "#9ca3af"
@@ -413,16 +362,11 @@ export class LevelEditorOverlay {
     });
 
     // Shortcuts Footer Bar
-    const shortcutsText = this.scene.add.text(
-      this.panelWidth / 2,
-      330,
-      "Ctrl+E Toggle  |  Ctrl+S Save  |  Ctrl+Z/Y Undo/Redo  |  Del Clear",
-      {
-        fontFamily: "Roboto Mono, Courier New, monospace",
-        fontSize: "9px",
-        color: "#5b626d"
-      }
-    );
+    const shortcutsText = this.scene.add.text(this.panelWidth / 2, 330, "Drag to select  |  Click palette to apply", {
+      fontFamily: "Roboto Mono, Courier New, monospace",
+      fontSize: "9px",
+      color: "#5b626d"
+    });
     shortcutsText.setOrigin(0.5, 0.5);
 
     this.container.add([
@@ -430,8 +374,7 @@ export class LevelEditorOverlay {
       this.titleLabel,
       this.statusDot,
       this.statusLabel,
-      toolsHeader,
-      this.modeLabel,
+      this.paletteLabel,
       this.selectionLabel,
       this.hoverLabel,
       this.saveStatusLabel,
@@ -452,67 +395,25 @@ export class LevelEditorOverlay {
       this.container
     );
 
-    // Action Bar Buttons (Y: 62) - 3 buttons aligned from x: 20 to x: 380
-    // Usable width = 360px. Button width = 114px. Gap = 9px.
+    // Save button (Y: 62).
     this.saveButton = new OverlayButton(
       this.scene,
-      { x: margin + 57, y: 62, width: 114, height: 28, label: "Save", badge: "Ctrl+S", onClick: this.onSave },
+      { x: margin + 57, y: 62, width: 114, height: 28, label: "Save", onClick: this.onSave },
       this.container
     );
-    this.undoButton = new OverlayButton(
-      this.scene,
-      { x: margin + 180, y: 62, width: 114, height: 28, label: "Undo", badge: "Ctrl+Z", onClick: this.onUndo },
-      this.container
-    );
-    this.redoButton = new OverlayButton(
-      this.scene,
-      { x: margin + 303, y: 62, width: 114, height: 28, label: "Redo", badge: "Ctrl+Y", onClick: this.onRedo },
-      this.container
-    );
-
-    // Tool Selector Grid aligned from x: 20 to x: 380
-    const toolConfigs: Array<{ tool: LevelEditorTool; label: string; badge: string; col: number; row: number }> = [
-      { tool: "select", label: "Select", badge: "1", col: 0, row: 0 },
-      { tool: "move", label: "Move", badge: "2", col: 1, row: 0 },
-      { tool: "paint", label: "Paint", badge: "3", col: 2, row: 0 },
-      { tool: "erase", label: "Erase", badge: "4", col: 0, row: 1 },
-      { tool: "duplicate", label: "Duplicate", badge: "5", col: 1, row: 1 }
-    ];
-
-    for (const item of toolConfigs) {
-      const bx = margin + 57 + item.col * 123;
-      const by = 120 + item.row * 34;
-      this.toolButtons.set(
-        item.tool,
-        new OverlayButton(
-          this.scene,
-          {
-            x: bx,
-            y: by,
-            width: 114,
-            height: 28,
-            label: item.label,
-            badge: item.badge,
-            onClick: () => this.onToolSelected(item.tool)
-          },
-          this.container
-        )
-      );
-    }
-
-    // Tile Palette Buttons (Matrix Mode) - 4 buttons aligned from x: 20 to x: 380
-    // Usable width = 360px. Button width = 84px. Gap = 8px.
+    // Tile Palette Buttons (Matrix Mode) - 3 buttons per row.
     const paletteTiles = [...DEFAULT_MATRIX_PALETTE];
     const tileNames: Record<number, string> = {
-      0: "0: Empty",
-      1: "1: Wall",
-      2: "2: Floor",
-      3: "3: Deco"
+      [MATRIX_EMPTY_TILE]: "Empty",
+      [MATRIX_WALL_TILE]: "Wall",
+      [MATRIX_FLOOR_TILE]: "Floor"
     };
 
     paletteTiles.forEach((tileValue, index) => {
-      const bx = margin + 42 + index * 92;
-      const by = 206;
+      const column = index % 3;
+      const row = Math.floor(index / 3);
+      const bx = margin + 57 + column * 123;
+      const by = 120 + row * 34;
       this.paletteButtons.set(
         tileValue,
         new OverlayButton(
@@ -520,7 +421,7 @@ export class LevelEditorOverlay {
           {
             x: bx,
             y: by,
-            width: 84,
+            width: 114,
             height: 28,
             label: tileNames[tileValue] ?? `Tile ${tileValue}`,
             onClick: () => this.onPaletteSelected(tileValue)
@@ -530,61 +431,13 @@ export class LevelEditorOverlay {
       );
     });
 
-    // Object Kind Buttons (Object Mode) - 2 buttons aligned from x: 20 to x: 380
-    // Usable width = 360px. Button width = 174px. Gap = 12px.
-    this.objectKindButtons.set(
-      "torch",
-      new OverlayButton(
-        this.scene,
-        {
-          x: margin + 87,
-          y: 206,
-          width: 174,
-          height: 28,
-          label: "Torch Object",
-          badge: "7",
-          onClick: () => this.onObjectKindSelected("torch")
-        },
-        this.container
-      )
-    );
-
-    this.objectKindButtons.set(
-      "npc",
-      new OverlayButton(
-        this.scene,
-        {
-          x: margin + 273,
-          y: 206,
-          width: 174,
-          height: 28,
-          label: "NPC Object",
-          badge: "8",
-          onClick: () => this.onObjectKindSelected("npc")
-        },
-        this.container
-      )
-    );
-
     this.hide();
   }
 
   private setInteractiveState(enabled: boolean): void {
-    for (const button of [this.closeButton, this.saveButton, this.undoButton, this.redoButton]) {
+    for (const button of [this.closeButton, this.saveButton]) {
       button?.setEnabled(enabled);
       button?.setVisible(this.visible);
-    }
-
-    for (const button of this.toolButtons.values()) {
-      button.setVisible(this.visible);
-    }
-
-    for (const button of this.paletteButtons.values()) {
-      button.setVisible(this.visible);
-    }
-
-    for (const button of this.objectKindButtons.values()) {
-      button.setVisible(this.visible);
     }
   }
 }

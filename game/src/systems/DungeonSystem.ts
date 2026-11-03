@@ -1,12 +1,17 @@
 import type Phaser from "phaser";
-import { type Door, getLevelDefinition, type LevelDefinition, type LevelLayout } from "../levels";
+import {
+  type Door,
+  getLevelDefinition,
+  type LevelDefinition,
+  type LevelLayout,
+  MATRIX_EMPTY_TILE,
+  MATRIX_WALL_TILE
+} from "../levels";
 import { DepthLayer } from "../types/depth-layer";
-
-const EMPTY_MATRIX_TILE = 0;
 
 export function matrixToLevelLayout(tiles: number[][], spawnX: number, spawnY: number): LevelLayout {
   return {
-    walkable: tiles.map(row => row.map(tile => tile !== EMPTY_MATRIX_TILE)),
+    walkable: tiles.map(row => row.map(tile => tile !== MATRIX_WALL_TILE)),
     spawnX,
     spawnY
   };
@@ -113,8 +118,14 @@ export class DungeonSystem {
 
     const tileSize = this.tileSize;
 
+    const floorTileData = this.currentLevel.tiles
+      ? this.currentLevel.tiles.map(row =>
+          row.map(tile => (tile !== MATRIX_WALL_TILE && tile !== MATRIX_EMPTY_TILE ? 0 : -1))
+        )
+      : this.walkable.map(row => row.map(isWalkable => (isWalkable ? 0 : -1)));
+
     this.floorTilemap = this.scene.make.tilemap({
-      data: this.walkable.map(row => row.map(isWalkable => (isWalkable ? 0 : -1))),
+      data: floorTileData,
       tileWidth: tileSize,
       tileHeight: tileSize,
       insertNull: true
