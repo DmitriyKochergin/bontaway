@@ -285,6 +285,16 @@ export class FieldOfViewSystem {
     }
   }
 
+  public replaceOccluders(occluders: Phaser.GameObjects.GameObject[]): void {
+    this.raycaster.removeMappedObjects(this.raycasterOccluders);
+    this.raycasterOccluders = [...occluders];
+    this.raycaster.mapGameObjects(this.raycasterOccluders, false);
+    this.occludersInView.length = 0;
+    this.cachedVisibilityPolygon = [];
+    this.lastRedrawOriginX = Number.NaN;
+    this.lastRedrawOriginY = Number.NaN;
+  }
+
   public addProjectile(projectile: Phaser.Types.Physics.Arcade.SpriteWithDynamicBody) {
     this.activeProjectiles.add(projectile);
   }

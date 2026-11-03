@@ -1,6 +1,29 @@
 import type Phaser from "phaser";
-import { type Door, getLevelDefinition, type LevelDefinition } from "../levels";
+import { type Door, getLevelDefinition, type LevelDefinition, type LevelLayout } from "../levels";
 import { DepthLayer } from "../types/depth-layer";
+
+const EMPTY_MATRIX_TILE = 0;
+
+export function matrixToLevelLayout(tiles: number[][], spawnX: number, spawnY: number): LevelLayout {
+  return {
+    walkable: tiles.map(row => row.map(tile => tile !== EMPTY_MATRIX_TILE)),
+    spawnX,
+    spawnY
+  };
+}
+
+export function createLevelLayout(level: LevelDefinition, tileSize: number): LevelLayout {
+  const generatedLayout = level.generateLayout(tileSize);
+  if (!level.tiles) {
+    return generatedLayout;
+  }
+
+  return matrixToLevelLayout(
+    level.tiles,
+    level.spawnX ?? generatedLayout.spawnX,
+    level.spawnY ?? generatedLayout.spawnY
+  );
+}
 
 export class DungeonSystem {
   private scene: Phaser.Scene;
@@ -12,6 +35,7 @@ export class DungeonSystem {
   private walkable!: boolean[][];
   private physicsWalls!: Phaser.Physics.Arcade.StaticGroup;
   private occluders: Phaser.GameObjects.GameObject[] = [];
+  private floorTilemap?: Phaser.Tilemaps.Tilemap;
 
   private spawnX!: number;
   private spawnY!: number;
@@ -73,26 +97,32 @@ export class DungeonSystem {
     );
   }
 
-  private buildDungeon() {
-    const layout = this.currentLevel.generateLayout(this.tileSize);
+  public rebuild(): void {
+    this.destroyRenderedLevel();
+    this.doors = this.currentLevel.doors;
+    this.buildDungeon();
+  }
+
+  private buildDungeon(): void {
+    const layout = createLevelLayout(this.currentLevel, this.tileSize);
     this.walkable = layout.walkable;
     this.spawnX = layout.spawnX;
     this.spawnY = layout.spawnY;
 
     const tileSize = this.tileSize;
 
-    const floorTilemap = this.scene.make.tilemap({
+    this.floorTilemap = this.scene.make.tilemap({
       data: this.walkable.map(row => row.map(isWalkable => (isWalkable ? 0 : -1))),
       tileWidth: tileSize,
       tileHeight: tileSize,
       insertNull: true
     });
-    const floorTileset = floorTilemap.addTilesetImage("floor", "floor", tileSize, tileSize);
+    const floorTileset = this.floorTilemap.addTilesetImage("floor", "floor", tileSize, tileSize);
     if (!floorTileset) {
       throw new Error('Failed to create the "floor" tilemap tileset.');
     }
 
-    const floorLayer = floorTilemap.createLayer(0, floorTileset, 0, 0);
+    const floorLayer = this.floorTilemap.createLayer(0, floorTileset, 0, 0);
     if (!floorLayer) {
       throw new Error("Failed to create the dungeon floor tilemap layer.");
     }
@@ -128,7 +158,14 @@ export class DungeonSystem {
     }
   }
 
-  private addWallBlock(x: number, y: number, column: number, row: number) {
+  private destroyRenderedLevel(): void {
+    this.floorTilemap?.destroy();
+    this.floorTilemap = undefined;
+    this.physicsWalls.clear(true, true);
+    this.occluders.length = 0;
+  }
+
+  private addWallBlock(x: number, y: number, column: number, row: number): void {
     const wallBlock = this.scene.physics.add.staticImage(x, y, "wall");
     wallBlock.setPipeline("Light2D");
     wallBlock.setDepth(DepthLayer.Walls);
@@ -144,7 +181,7 @@ export class DungeonSystem {
     this.occluders.push(wallBlock);
   }
 
-  private addDoorBlock(x: number, y: number, column: number, row: number, textureKey: string) {
+  private addDoorBlock(x: number, y: number, column: number, row: number, textureKey: string): void {
     const doorBlock = this.scene.physics.add.staticImage(x, y, textureKey);
     doorBlock.setPipeline("Light2D");
     doorBlock.setDepth(DepthLayer.Walls);
@@ -160,7 +197,7 @@ export class DungeonSystem {
     this.occluders.push(doorBlock);
   }
 
-  private addObstacle(x: number, y: number, width: number, height: number) {
+  private addObstacle(x: number, y: number, width: number, height: number): void {
     const obstacle = this.scene.physics.add.staticImage(x, y, "obstacle");
     obstacle.setPipeline("Light2D");
     obstacle.setDisplaySize(width, height);

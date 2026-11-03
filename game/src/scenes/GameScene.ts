@@ -8,7 +8,7 @@ import { ArenaNetSystem } from "../multiplayer/ArenaNetSystem";
 import { ChatBubble } from "../multiplayer/ChatBubble";
 import type { NetworkStats } from "../multiplayer/NetworkManager";
 import { DevModeOverlay } from "../systems/DevModeOverlay";
-import { DungeonSystem } from "../systems/DungeonSystem";
+import { createLevelLayout, DungeonSystem } from "../systems/DungeonSystem";
 import { FieldOfViewSystem } from "../systems/FieldOfViewSystem";
 import { NpcManager } from "../systems/NpcManager";
 import { PlayerControlsSystem } from "../systems/PlayerControlsSystem";
@@ -473,7 +473,7 @@ export default class GameScene extends BaseScene {
     this.currentLevelDocument = cloneLevelDocument(document);
     const levelDef = getLevelDefinition(this.levelId);
 
-    if (!levelDef || document.type === "matrix") {
+    if (!levelDef) {
       return;
     }
 
@@ -483,6 +483,14 @@ export default class GameScene extends BaseScene {
     levelDef.npcs = document.npcs?.map(npc => ({ ...npc }));
     levelDef.spawnX = document.spawnX;
     levelDef.spawnY = document.spawnY;
+
+    if (document.type === "matrix") {
+      levelDef.tiles = document.tiles.map(row => [...row]);
+      this.fovSystem?.replaceOccluders([]);
+      this.dungeonSystem.rebuild();
+      this.fovSystem?.replaceOccluders(this.dungeonSystem.getOccluders());
+      return;
+    }
   }
 
   public refreshRuntimeObjects(): void {
@@ -519,7 +527,7 @@ export default class GameScene extends BaseScene {
     if (!levelDef) {
       throw new Error(`Level definition not found for levelId: ${this.levelId}`);
     }
-    const layout = levelDef.generateLayout(this.dungeonSystem.getTileSize());
+    const layout = createLevelLayout(levelDef, this.dungeonSystem.getTileSize());
 
     // Matrix levels carry their tile grid on the definition object.
     if (levelDef.tiles) {
