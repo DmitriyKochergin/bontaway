@@ -12,15 +12,34 @@ export interface ValidationResult {
 
 type ValidationIssueList = ValidationIssue[];
 
-function validateLevelDocument(document: LevelDocument): ValidationResult {
+export function validateLevelDocument(document: unknown): ValidationResult {
   const issues: ValidationIssueList = [];
 
-  validateBaseLevel(document, issues);
+  if (!document || typeof document !== "object" || Array.isArray(document)) {
+    return {
+      valid: false,
+      issues: [{ path: "document", message: "Level document must be an object." }]
+    };
+  }
 
-  if (document.type === "matrix") {
-    validateMatrixLevel(document, issues);
-  } else {
-    validateTsLevel(document, issues);
+  const levelDocument = document as LevelDocument;
+  if (levelDocument.type !== "matrix" && levelDocument.type !== "ts") {
+    return {
+      valid: false,
+      issues: [{ path: "type", message: "Level document type must be \"matrix\" or \"ts\"." }]
+    };
+  }
+
+  try {
+    validateBaseLevel(levelDocument, issues);
+
+    if (levelDocument.type === "matrix") {
+      validateMatrixLevel(levelDocument, issues);
+    } else {
+      validateTsLevel(levelDocument, issues);
+    }
+  } catch {
+    issues.push({ path: "document", message: "Level document contains malformed nested data." });
   }
 
   return {
@@ -390,5 +409,3 @@ export const MapValidator = {
   validateLevelDocument,
   validateSelection
 };
-
-void MapValidator;

@@ -101,7 +101,7 @@ export function moveSelection(
     }
   }
 
-  return createSelectionFromCells(document, targetRect, targetCells);
+  return createMatrixSelection(document, targetRect);
 }
 
 export function pasteClipboard(
@@ -116,17 +116,28 @@ export function pasteClipboard(
     right: origin.column + clipboard.width - 1,
     bottom: origin.row + clipboard.height - 1
   });
+  const sourceColumnOffset = Math.max(0, targetRect.left - origin.column);
+  const sourceRowOffset = Math.max(0, targetRect.top - origin.row);
+  const targetWidth = Math.min(clipboard.width - sourceColumnOffset, document.columns - targetRect.left);
+  const targetHeight = Math.min(clipboard.height - sourceRowOffset, document.rows - targetRect.top);
+  const clippedTargetRect = {
+    left: targetRect.left,
+    top: targetRect.top,
+    right: targetRect.left + targetWidth - 1,
+    bottom: targetRect.top + targetHeight - 1
+  };
 
-  for (let rowOffset = 0; rowOffset < clipboard.height; rowOffset += 1) {
-    for (let columnOffset = 0; columnOffset < clipboard.width; columnOffset += 1) {
-      const targetColumn = targetRect.left + columnOffset;
-      const targetRow = targetRect.top + rowOffset;
-      const cellValue = clipboard.cells[rowOffset][columnOffset] ?? emptyTileValue;
+  for (let rowOffset = 0; rowOffset < targetHeight; rowOffset += 1) {
+    for (let columnOffset = 0; columnOffset < targetWidth; columnOffset += 1) {
+      const targetColumn = clippedTargetRect.left + columnOffset;
+      const targetRow = clippedTargetRect.top + rowOffset;
+      const cellValue =
+        clipboard.cells[rowOffset + sourceRowOffset]?.[columnOffset + sourceColumnOffset] ?? emptyTileValue;
       setTileValue(document, targetColumn, targetRow, cellValue);
     }
   }
 
-  return createSelectionFromCells(document, targetRect, clipboard.cells);
+  return createMatrixSelection(document, clippedTargetRect);
 }
 
 export function duplicateSelection(
@@ -148,13 +159,12 @@ export function createSelectionFromCells(
   rect: GridRect,
   cells: number[][]
 ): GridSelection<number> {
-  const selectionCells = cells.map(row => [...row]);
   const normalizedRect = clampRectToDocument(document, rect);
 
   return {
     bounds: normalizedRect,
     origin: { column: normalizedRect.left, row: normalizedRect.top },
-    cells: selectionCells
+    cells: cells.map(row => [...row])
   };
 }
 

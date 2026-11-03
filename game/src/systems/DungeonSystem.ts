@@ -99,6 +99,8 @@ export class DungeonSystem {
 
   public rebuild(): void {
     this.destroyRenderedLevel();
+    this.dungeonColumns = this.currentLevel.columns;
+    this.dungeonRows = this.currentLevel.rows;
     this.doors = this.currentLevel.doors;
     this.buildDungeon();
   }

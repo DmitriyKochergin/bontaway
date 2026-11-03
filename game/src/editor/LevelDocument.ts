@@ -71,7 +71,21 @@ export interface MatrixLevelDocument extends LevelDocumentBase {
   tiles: number[][];
 }
 
+export type MatrixLevelFile = Omit<MatrixLevelDocument, "columns" | "rows">;
+
 export type LevelDocument = TsLevelDocument | MatrixLevelDocument;
+
+export function createMatrixLevelDocument(file: MatrixLevelFile): MatrixLevelDocument {
+  const rows = file.tiles.length;
+  const columns = file.tiles[0]?.length ?? 0;
+
+  return {
+    ...file,
+    columns,
+    rows,
+    tiles: file.tiles.map(row => [...row])
+  };
+}
 
 export function cloneGridSelection<TCell>(selection: GridSelection<TCell>): GridSelection<TCell> {
   return {

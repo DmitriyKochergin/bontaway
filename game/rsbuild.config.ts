@@ -1,12 +1,20 @@
 import { defineConfig } from "@rsbuild/core";
 import { pluginTypeCheck } from "@rsbuild/plugin-type-check";
+import { createEditorSaveMiddleware } from "./devSaveEndpoint";
 
 const buildTime = process.env.BONTAWAY_BUILD_TIME ?? new Date().toISOString();
 
 export default defineConfig({
   server: {
     open: true,
-    base: "/bontaway"
+    base: "/bontaway",
+    setup: ({ action, server }) => {
+      if (action !== "dev") {
+        return;
+      }
+
+      server.middlewares.use("/api/editor/save", createEditorSaveMiddleware(process.cwd()));
+    }
   },
   html: {
     template: "./index.html"

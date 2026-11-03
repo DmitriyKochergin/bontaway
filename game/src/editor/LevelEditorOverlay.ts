@@ -31,10 +31,10 @@ class OverlayButton {
     parentContainer?: Phaser.GameObjects.Container
   ) {
     this.container = this.scene.add.container(config.x, config.y);
+    this.container.setScrollFactor(0);
     if (parentContainer) {
       parentContainer.add(this.container);
     } else {
-      this.container.setScrollFactor(0);
       this.container.setDepth(DepthLayer.EditorControl);
     }
 
@@ -56,7 +56,10 @@ class OverlayButton {
       this.badgeLabel.setOrigin(0.5, 0.5);
     }
 
-    this.hitArea = this.scene.add.zone(0, 0, config.width, config.height).setInteractive({ useHandCursor: true });
+    this.hitArea = this.scene
+      .add.zone(0, 0, config.width, config.height)
+      .setScrollFactor(0)
+      .setInteractive({ useHandCursor: true });
 
     const elements: Phaser.GameObjects.GameObject[] = [this.background, this.label, this.hitArea];
     if (this.badgeLabel) {
@@ -467,14 +470,13 @@ export class LevelEditorOverlay {
       this.container
     );
 
-    // Tool Selector Grid (2 rows of 3 buttons) aligned from x: 20 to x: 380
+    // Tool Selector Grid aligned from x: 20 to x: 380
     const toolConfigs: Array<{ tool: LevelEditorTool; label: string; badge: string; col: number; row: number }> = [
       { tool: "select", label: "Select", badge: "1", col: 0, row: 0 },
       { tool: "move", label: "Move", badge: "2", col: 1, row: 0 },
       { tool: "paint", label: "Paint", badge: "3", col: 2, row: 0 },
       { tool: "erase", label: "Erase", badge: "4", col: 0, row: 1 },
-      { tool: "place", label: "Place", badge: "5", col: 1, row: 1 },
-      { tool: "duplicate", label: "Duplicate", badge: "6", col: 2, row: 1 }
+      { tool: "duplicate", label: "Duplicate", badge: "5", col: 1, row: 1 }
     ];
 
     for (const item of toolConfigs) {

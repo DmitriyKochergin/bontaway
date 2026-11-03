@@ -44,27 +44,32 @@ export default class GameScene extends BaseScene {
   private lastSavedPlayerProgress?: PlayerProgressState;
   private npcManager?: NpcManager;
   private torchManager?: TorchManager;
+  private playerDungeonCollider?: Phaser.Physics.Arcade.Collider;
 
   constructor() {
     super("GameScene");
   }
 
-  init(data?: { levelId?: string }): void {
+  init(data?: { levelId?: string; levelDocument?: LevelDocument }): void {
     const savedPlayerProgress = loadPlayerProgress();
+    this.currentLevelDocument = data?.levelDocument ? cloneLevelDocument(data.levelDocument) : undefined;
 
     if (data?.levelId) {
       this.levelId = data.levelId;
       this.savedPlayerProgress = savedPlayerProgress?.levelId === data.levelId ? savedPlayerProgress : undefined;
+      this.applyPendingLevelDocumentToDefinition();
       return;
     }
 
     if (savedPlayerProgress && getLevelDefinition(savedPlayerProgress.levelId)) {
       this.levelId = savedPlayerProgress.levelId;
       this.savedPlayerProgress = savedPlayerProgress;
+      this.applyPendingLevelDocumentToDefinition();
       return;
     }
 
     this.savedPlayerProgress = undefined;
+    this.applyPendingLevelDocumentToDefinition();
   }
 
   public getLevelId(): string {
@@ -151,11 +156,12 @@ export default class GameScene extends BaseScene {
     this.lights.enable();
     this.lights.setAmbientColor(0x111122); // Dark blue night/dungeon environment
 
+    const levelDef = getLevelDefinition(this.levelId);
+    this.applyPendingLevelDocumentToDefinition();
     this.dungeonSystem = new DungeonSystem(this, this.levelId);
 
     this.physics.world.setBounds(0, 0, this.dungeonSystem.getMapWidth(), this.dungeonSystem.getMapHeight());
-    const levelDef = getLevelDefinition(this.levelId);
-    this.currentLevelDocument = this.buildLevelDocument();
+    this.currentLevelDocument ??= this.buildLevelDocument();
 
     // Player
     const startingPlayerProgress = this.getStartingPlayerProgress();
@@ -182,10 +188,10 @@ export default class GameScene extends BaseScene {
       this.player,
       (x, y) => this.castSelectedPrimaryWeapon(x, y),
       (x, y) => this.castSelectedSecondaryWeapon(x, y),
-      pointer => this.isPointerOverHud(pointer)
+      pointer => this.isPointerOverGameplayInteraction(pointer)
     );
 
-    this.physics.add.collider(this.player, this.dungeonSystem.getPhysicsWalls());
+    this.playerDungeonCollider = this.physics.add.collider(this.player, this.dungeonSystem.getPhysicsWalls());
 
     this.npcManager = new NpcManager(this, this.dungeonSystem, this.fovSystem, this.levelId);
     this.npcManager.spawn();
@@ -214,21 +220,20 @@ export default class GameScene extends BaseScene {
 
   /**
    * True when the pointer is over an interactive HUD element on the supervisor (MainScene),
-   * or when the level editor is active (editor owns all world-space pointer events while enabled).
+   * while the level editor is active (editor owns all world-space pointer events while enabled).
    * The HUD renders on a sibling scene, so its buttons cannot stop this scene's cast via
    * event propagation; this cross-scene hit test replaces that guard.
    */
   private isPointerOverHud(pointer: Phaser.Input.Pointer): boolean {
-    // Block player firing while the level editor owns the viewport.
-    if (this.levelEditorController?.isEnabled()) {
-      return true;
-    }
-
     const mainScene = this.scene.get("MainScene");
     if (!mainScene?.input) {
       return false;
     }
     return mainScene.input.hitTestPointer(pointer).length > 0;
+  }
+
+  private isPointerOverGameplayInteraction(pointer: Phaser.Input.Pointer): boolean {
+    return this.levelEditorController?.isEnabled() === true || this.isPointerOverHud(pointer);
   }
 
   public isLevelEditorActive(): boolean {
@@ -477,18 +482,14 @@ export default class GameScene extends BaseScene {
       return;
     }
 
-    levelDef.doors = document.doors.map(door => ({ ...door }));
-    levelDef.obstacles = document.obstacles.map(obstacle => ({ ...obstacle }));
-    levelDef.torches = document.torches?.map(torch => ({ ...torch }));
-    levelDef.npcs = document.npcs?.map(npc => ({ ...npc }));
-    levelDef.spawnX = document.spawnX;
-    levelDef.spawnY = document.spawnY;
+    this.applyDocumentToLevelDefinition(levelDef, document);
 
     if (document.type === "matrix") {
-      levelDef.tiles = document.tiles.map(row => [...row]);
       this.fovSystem?.replaceOccluders([]);
       this.dungeonSystem.rebuild();
       this.fovSystem?.replaceOccluders(this.dungeonSystem.getOccluders());
+      this.playerDungeonCollider?.destroy();
+      this.playerDungeonCollider = this.physics.add.collider(this.player, this.dungeonSystem.getPhysicsWalls());
       return;
     }
   }
@@ -506,11 +507,14 @@ export default class GameScene extends BaseScene {
   }
 
   public reloadLevel(): void {
-    this.scene.restart({ levelId: this.levelId });
+    this.scene.restart({
+      levelId: this.levelId,
+      levelDocument: this.currentLevelDocument ? cloneLevelDocument(this.currentLevelDocument) : undefined
+    });
   }
 
   public getLevelSourcePath(): string {
-    return `src/levels/${this.levelId}.ts`;
+    return `src/levels/${this.currentLevelDocument?.type === "matrix" ? `${this.levelId}.json` : `${this.levelId}.ts`}`;
   }
 
   public getWorldPoint(pointer: Phaser.Input.Pointer): { column: number; row: number } {
@@ -531,12 +535,14 @@ export default class GameScene extends BaseScene {
 
     // Matrix levels carry their tile grid on the definition object.
     if (levelDef.tiles) {
+      const rows = levelDef.tiles.length;
+      const columns = levelDef.tiles[0]?.length ?? 0;
       return {
         type: "matrix",
         id: levelDef.id,
         name: levelDef.name,
-        columns: levelDef.columns,
-        rows: levelDef.rows,
+        columns,
+        rows,
         spawnX: layout.spawnX,
         spawnY: layout.spawnY,
         fogOfWarEnabled: levelDef.fogOfWarEnabled,
@@ -566,5 +572,34 @@ export default class GameScene extends BaseScene {
         blueprints: []
       }
     };
+  }
+
+  private applyPendingLevelDocumentToDefinition(): void {
+    if (!this.currentLevelDocument) {
+      return;
+    }
+
+    const levelDef = getLevelDefinition(this.levelId);
+    if (levelDef) {
+      this.applyDocumentToLevelDefinition(levelDef, this.currentLevelDocument);
+    }
+  }
+
+  private applyDocumentToLevelDefinition(
+    levelDef: NonNullable<ReturnType<typeof getLevelDefinition>>,
+    document: LevelDocument
+  ): void {
+    levelDef.doors = document.doors.map(door => ({ ...door }));
+    levelDef.obstacles = document.obstacles.map(obstacle => ({ ...obstacle }));
+    levelDef.torches = document.torches?.map(torch => ({ ...torch }));
+    levelDef.npcs = document.npcs?.map(npc => ({ ...npc }));
+    levelDef.spawnX = document.spawnX;
+    levelDef.spawnY = document.spawnY;
+
+    if (document.type === "matrix") {
+      levelDef.columns = document.columns;
+      levelDef.rows = document.rows;
+      levelDef.tiles = document.tiles.map(row => [...row]);
+    }
   }
 }

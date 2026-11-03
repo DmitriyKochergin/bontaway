@@ -1,4 +1,10 @@
-import type { LevelDocument, MatrixLevelDocument, TsLevelDocument } from "./LevelDocument";
+import {
+  createMatrixLevelDocument,
+  type LevelDocument,
+  type MatrixLevelDocument,
+  type MatrixLevelFile,
+  type TsLevelDocument
+} from "./LevelDocument";
 
 function formatNumber(value: number): string {
   return Number.isInteger(value) ? String(value) : value.toFixed(2).replace(/\.00$/, "");
@@ -82,5 +88,29 @@ ${fogLine}${spawnLine}  doors: ${formatObjects(document.doors)},
 }
 
 export function serializeMatrixLevelDocument(document: MatrixLevelDocument): string {
-  return `${JSON.stringify(document, null, 2)}\n`;
+  const { columns: _columns, rows: _rows, ...file } = document;
+  void _columns;
+  void _rows;
+  return `${JSON.stringify(file, null, 2)}\n`;
+}
+
+export function deserializeMatrixLevelDocument(content: string): MatrixLevelDocument {
+  let parsed: unknown;
+
+  try {
+    parsed = JSON.parse(content);
+  } catch {
+    throw new Error("Matrix level content is not valid JSON.");
+  }
+
+  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+    throw new Error("Matrix level content must be a JSON object.");
+  }
+
+  const file = parsed as MatrixLevelFile;
+  if (file.type !== "matrix" || !Array.isArray(file.tiles)) {
+    throw new Error("Matrix level content must contain type \"matrix\" and a tiles array.");
+  }
+
+  return createMatrixLevelDocument(file);
 }

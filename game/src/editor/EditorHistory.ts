@@ -9,8 +9,8 @@ export class EditorHistory {
     this.futureSnapshots = [];
   }
 
-  public push(document: LevelDocument): void {
-    this.pastSnapshots.push(cloneLevelDocument(document));
+  public push(snapshot: LevelDocument): void {
+    this.pastSnapshots.push(cloneLevelDocument(snapshot));
     this.futureSnapshots = [];
   }
 
