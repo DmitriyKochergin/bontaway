@@ -315,6 +315,7 @@ export abstract class BaseGameHUD {
     this.networkStatusBackground.fillRoundedRect(0, 0, this.networkStatusText.width + 16, 26, 4);
     this.networkStatusBackground.lineStyle(1, Phaser.Display.Color.HexStringToColor(color).color, 0.8);
     this.networkStatusBackground.strokeRoundedRect(0, 0, this.networkStatusText.width + 16, 26, 4);
+    this.repositionStatusPanels(this.scene.scale.gameSize);
   }
 
   private createHealthDisplay(): void {
@@ -400,9 +401,27 @@ export abstract class BaseGameHUD {
   private reposition(gameSize: Phaser.Structs.Size): void {
     this.hudContainer.setPosition(gameSize.width / 2 - this.panelWidth / 2, gameSize.height - this.panelHeight - 14);
     this.levelContainer.setPosition(gameSize.width - this.getLocationPanelWidth() - 8, 74);
-    this.networkStatusContainer.setPosition(12, 14);
-    this.healthContainer.setPosition(12, 50);
+    this.repositionStatusPanels(gameSize);
     this.drawMainPanel();
     this.drawLevelSelectionPanel();
+  }
+
+  private repositionStatusPanels(gameSize: Phaser.Structs.Size): void {
+    if (!this.networkStatusContainer || !this.healthContainer) {
+      return;
+    }
+
+    const rightMargin = 12;
+    const bottomMargin = 14;
+    const panelGap = 8;
+    const healthWidth = 192;
+    const healthHeight = 42;
+    const networkHeight = 26;
+    const networkWidth = this.networkStatusText.width + 16;
+    const healthY = gameSize.height - bottomMargin - healthHeight;
+    const networkY = healthY - panelGap - networkHeight;
+
+    this.healthContainer.setPosition(gameSize.width - healthWidth - rightMargin, healthY);
+    this.networkStatusContainer.setPosition(gameSize.width - networkWidth - rightMargin, networkY);
   }
 }
