@@ -81,8 +81,8 @@ export default class MainScene extends BaseScene {
 
   /** (Re)create the HUD bound to the current GameScene instance. */
   private rebuildHud(): void {
-    const selectedWeaponSlot = this.gameHUD?.getSelectedWeaponSlot() ?? 0;
     const gameScene = this.scene.get("GameScene") as GameScene;
+    const selectedWeaponSlot = this.gameHUD?.getSelectedWeaponSlot() ?? gameScene.getSelectedWeaponSlot();
     this.grayscaleFx?.destroy();
     this.grayscaleFx = new GrayscaleFx(this, gameScene.cameras.main);
     if (this.gameplayPaused) {
@@ -105,8 +105,8 @@ export default class MainScene extends BaseScene {
     this.scene.bringToTop();
   }
 
-  public getSelectedWeaponSlot(): number {
-    return this.gameHUD?.getSelectedWeaponSlot() ?? 0;
+  public getSelectedWeaponSlot(): number | undefined {
+    return this.gameHUD?.getSelectedWeaponSlot();
   }
 
   update(_time: number, delta: number): void {

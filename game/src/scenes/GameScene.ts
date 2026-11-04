@@ -40,6 +40,7 @@ export default class GameScene extends BaseScene {
   private levelEditorController?: LevelEditorController;
   private currentLevelDocument?: LevelDocument;
   private levelId = "arena";
+  private selectedWeaponSlot = 0;
   private savedPlayerProgress?: PlayerProgressState;
   private lastSavedPlayerProgress?: PlayerProgressState;
   private npcManager?: NpcManager;
@@ -57,18 +58,14 @@ export default class GameScene extends BaseScene {
     if (data?.levelId) {
       this.levelId = data.levelId;
       this.savedPlayerProgress = savedPlayerProgress?.levelId === data.levelId ? savedPlayerProgress : undefined;
-      this.applyPendingLevelDocumentToDefinition();
-      return;
-    }
-
-    if (savedPlayerProgress && getLevelDefinition(savedPlayerProgress.levelId)) {
+    } else if (savedPlayerProgress && getLevelDefinition(savedPlayerProgress.levelId)) {
       this.levelId = savedPlayerProgress.levelId;
       this.savedPlayerProgress = savedPlayerProgress;
-      this.applyPendingLevelDocumentToDefinition();
-      return;
+    } else {
+      this.savedPlayerProgress = undefined;
     }
 
-    this.savedPlayerProgress = undefined;
+    this.selectedWeaponSlot = this.savedPlayerProgress?.selectedWeaponSlot ?? 0;
     this.applyPendingLevelDocumentToDefinition();
   }
 
@@ -306,12 +303,16 @@ export default class GameScene extends BaseScene {
     this.events.emit("level-editor-state-changed");
   }
 
-  private getSelectedWeaponSlot(): number {
+  public getSelectedWeaponSlot(): number {
+    return this.selectedWeaponSlot;
+  }
+
+  private getActiveSelectedWeaponSlot(): number {
     const mainScene = this.scene.get("MainScene") as unknown as {
-      getSelectedWeaponSlot?: () => number;
+      getSelectedWeaponSlot?: () => number | undefined;
     };
 
-    return mainScene.getSelectedWeaponSlot?.() ?? 0;
+    return mainScene.getSelectedWeaponSlot?.() ?? this.selectedWeaponSlot;
   }
 
   private getMultiplayerRoomId(): string | undefined {
@@ -323,7 +324,7 @@ export default class GameScene extends BaseScene {
   }
 
   private castSelectedPrimaryWeapon(targetX: number, targetY: number): void {
-    if (this.getSelectedWeaponSlot() === 1) {
+    if (this.getActiveSelectedWeaponSlot() === 1) {
       this.weaponSystem.castRay(targetX, targetY);
       this.sharedNet?.broadcastFire("ray", this.player.x, this.player.y, targetX, targetY);
       return;
@@ -334,7 +335,7 @@ export default class GameScene extends BaseScene {
   }
 
   private castSelectedSecondaryWeapon(targetX: number, targetY: number): void {
-    if (this.getSelectedWeaponSlot() === 1) {
+    if (this.getActiveSelectedWeaponSlot() === 1) {
       this.weaponSystem.castSphere(targetX, targetY);
       this.sharedNet?.broadcastFire("sphere", this.player.x, this.player.y, targetX, targetY);
       return;
@@ -411,7 +412,8 @@ export default class GameScene extends BaseScene {
       levelId: this.levelId,
       x: this.dungeonSystem.getSpawnX(),
       y: this.dungeonSystem.getSpawnY(),
-      rotation: 0
+      rotation: 0,
+      selectedWeaponSlot: this.selectedWeaponSlot
     };
   }
 
@@ -442,8 +444,10 @@ export default class GameScene extends BaseScene {
       levelId: this.levelId,
       x: this.player.x,
       y: this.player.y,
-      rotation: this.player.rotation
+      rotation: this.player.rotation,
+      selectedWeaponSlot: this.getActiveSelectedWeaponSlot()
     };
+    this.selectedWeaponSlot = currentPlayerProgress.selectedWeaponSlot;
 
     if (!force && this.isSamePlayerProgress(currentPlayerProgress, this.lastSavedPlayerProgress)) {
       return;
@@ -462,7 +466,8 @@ export default class GameScene extends BaseScene {
       currentProgress.levelId === savedProgress.levelId &&
       Math.abs(currentProgress.x - savedProgress.x) < 0.5 &&
       Math.abs(currentProgress.y - savedProgress.y) < 0.5 &&
-      Math.abs(Phaser.Math.Angle.Wrap(currentProgress.rotation - savedProgress.rotation)) < 0.01
+      Math.abs(Phaser.Math.Angle.Wrap(currentProgress.rotation - savedProgress.rotation)) < 0.01 &&
+      currentProgress.selectedWeaponSlot === savedProgress.selectedWeaponSlot
     );
   }
 
