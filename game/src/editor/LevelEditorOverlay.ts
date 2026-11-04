@@ -1,5 +1,5 @@
 import Phaser from "phaser";
-import { MATRIX_EMPTY_TILE, MATRIX_FLOOR_TILE, MATRIX_WALL_TILE } from "../levels/types";
+import { MATRIX_EMPTY_TILE, MATRIX_FLOOR_TILE, MATRIX_ROOM_TILE, MATRIX_WALL_TILE } from "../levels/types";
 import { DepthLayer } from "../types/depth-layer";
 import type { LevelEditorSnapshot } from "./LevelEditorController";
 import { DEFAULT_MATRIX_PALETTE } from "./MatrixEditing";
@@ -406,7 +406,8 @@ export class LevelEditorOverlay {
     const tileNames: Record<number, string> = {
       [MATRIX_EMPTY_TILE]: "Empty",
       [MATRIX_WALL_TILE]: "Wall",
-      [MATRIX_FLOOR_TILE]: "Floor"
+      [MATRIX_FLOOR_TILE]: "Floor",
+      [MATRIX_ROOM_TILE]: "Room"
     };
 
     paletteTiles.forEach((tileValue, index) => {

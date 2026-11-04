@@ -1,8 +1,13 @@
-import { MATRIX_EMPTY_TILE, MATRIX_FLOOR_TILE, MATRIX_WALL_TILE } from "../levels/types";
+import { MATRIX_EMPTY_TILE, MATRIX_FLOOR_TILE, MATRIX_ROOM_TILE, MATRIX_WALL_TILE } from "../levels/types";
 import type { GridPoint, GridRect, GridSelection, MatrixLevelDocument } from "./LevelDocument";
 
 export const DEFAULT_MATRIX_EMPTY_TILE = MATRIX_EMPTY_TILE;
-export const DEFAULT_MATRIX_PALETTE = [MATRIX_EMPTY_TILE, MATRIX_WALL_TILE, MATRIX_FLOOR_TILE] as const;
+export const DEFAULT_MATRIX_PALETTE = [
+  MATRIX_EMPTY_TILE,
+  MATRIX_WALL_TILE,
+  MATRIX_FLOOR_TILE,
+  MATRIX_ROOM_TILE
+] as const;
 
 export function normalizeGridRect(start: GridPoint, end: GridPoint): GridRect {
   return {

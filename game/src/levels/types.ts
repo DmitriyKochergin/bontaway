@@ -3,6 +3,11 @@ import type { NpcEmotion } from "../entities/NpcEmotion";
 export const MATRIX_WALL_TILE = 0;
 export const MATRIX_FLOOR_TILE = 1;
 export const MATRIX_EMPTY_TILE = 2;
+export const MATRIX_ROOM_TILE = 3;
+
+export function isMatrixWalkableTile(tile: number): boolean {
+  return tile === MATRIX_FLOOR_TILE || tile === MATRIX_ROOM_TILE;
+}
 
 export interface Door {
   column: number;
@@ -67,7 +72,7 @@ export interface LevelDefinition {
   npcs?: Npc[];
   /**
    * Present on matrix levels only. The 2-D tile grid where 0 = solid wall, 1 = walkable
-   * floor, and 2 = blank walkable space. When set, `GameScene.buildLevelDocument`
+   * floor, 2 = blank space, and 3 = room floor. When set, `GameScene.buildLevelDocument`
    * returns a `MatrixLevelDocument` instead of a `TsLevelDocument`.
    */
   tiles?: number[][];
