@@ -10,6 +10,9 @@ export interface NpcCombatConfig {
   movementSpeed?: number;
   contactDamage?: number;
   attackCooldownMs?: number;
+  bodyScale?: number;
+  explodesOnContact?: boolean;
+  explosionDamage?: number;
 }
 
 export class NPC extends Phaser.Physics.Arcade.Sprite {
@@ -37,9 +40,13 @@ export class NPC extends Phaser.Physics.Arcade.Sprite {
   private readonly movementSpeed: number;
   private readonly contactDamage: number;
   private readonly attackCooldownMs: number;
+  private readonly bodyScale: number;
+  private readonly explodesOnContact: boolean;
+  private readonly explosionDamage: number;
   private nextAttackTime = 0;
   private defeated = false;
   private healthBar: Phaser.GameObjects.Graphics | null = null;
+  private deathTween?: Phaser.Tweens.Tween;
 
   constructor(
     scene: Phaser.Scene,
@@ -72,17 +79,21 @@ export class NPC extends Phaser.Physics.Arcade.Sprite {
     this.movementSpeed = Math.max(0, combat?.movementSpeed ?? 0);
     this.contactDamage = Math.max(0, Math.round(combat?.contactDamage ?? 0));
     this.attackCooldownMs = Math.max(250, combat?.attackCooldownMs ?? 900);
+    this.bodyScale = Math.max(0.65, combat?.bodyScale ?? 1);
+    this.explodesOnContact = combat?.explodesOnContact === true && this.hostile;
+    this.explosionDamage = Math.max(0, Math.round(combat?.explosionDamage ?? 0));
 
     scene.add.existing(this);
     scene.physics.add.existing(this, true); // Create as static body
 
     this.setDepth(DepthLayer.Npc);
     this.setPipeline("Light2D");
+    this.setScale(this.bodyScale);
 
     // Collisions
-    this.setCircle(14);
+    this.setCircle(14 * this.bodyScale);
     if (this.body) {
-      this.body.setOffset(2, 2);
+      this.body.setOffset(2 * this.bodyScale, 2 * this.bodyScale);
     }
 
     if (this.isDamageable()) {
@@ -102,7 +113,9 @@ export class NPC extends Phaser.Physics.Arcade.Sprite {
     if (this.canBlink) {
       this.scheduleNextBlink(scene.time?.now || 0);
     }
-    this.createSpeechBubble();
+    if (!this.hostile) {
+      this.createSpeechBubble();
+    }
   }
 
   private scheduleNextBlink(currentTime: number): void {
@@ -198,23 +211,27 @@ export class NPC extends Phaser.Physics.Arcade.Sprite {
       this.scheduleNextBlink(currentTime);
     }
 
-    // Distance-based interaction trigger
     const distance = Phaser.Math.Distance.Between(this.x, this.y, playerX, playerY);
-    const triggerRadius = 110;
-    const exitRadius = 140;
     const rotationSpeed = 0.007;
 
-    if (!this.playerInRange && distance <= triggerRadius) {
-      this.playerInRange = true;
-      this.showDialogue();
-    } else if (this.playerInRange && distance >= exitRadius) {
-      this.playerInRange = false;
-      this.hideDialogue();
-    }
+    if (!this.hostile) {
+      const triggerRadius = 110;
+      const exitRadius = 140;
 
-    if (this.playerInRange) {
-      // Sprite art faces "up" (north); Angle.Between measures from east, so correct by +90 degrees
-      this.targetRotation = Phaser.Math.Angle.Between(this.x, this.y, playerX, playerY) + Math.PI / 2;
+      if (!this.playerInRange && distance <= triggerRadius) {
+        this.playerInRange = true;
+        this.showDialogue();
+      } else if (this.playerInRange && distance >= exitRadius) {
+        this.playerInRange = false;
+        this.hideDialogue();
+      }
+
+      if (this.playerInRange) {
+        // Sprite art faces "up" (north); Angle.Between measures from east, so correct by +90 degrees
+        this.targetRotation = Phaser.Math.Angle.Between(this.x, this.y, playerX, playerY) + Math.PI / 2;
+      } else {
+        this.targetRotation = Phaser.Math.Angle.Between(this.x, this.y, this.restTargetX, this.restTargetY) + Math.PI / 2;
+      }
     } else {
       this.targetRotation = Phaser.Math.Angle.Between(this.x, this.y, this.restTargetX, this.restTargetY) + Math.PI / 2;
     }
@@ -244,6 +261,18 @@ export class NPC extends Phaser.Physics.Arcade.Sprite {
 
   public getMovementSpeed(): number {
     return this.movementSpeed;
+  }
+
+  public getCollisionRadius(): number {
+    return 14 * this.bodyScale;
+  }
+
+  public isExplosive(): boolean {
+    return this.explodesOnContact;
+  }
+
+  public getExplosionDamage(): number {
+    return this.explosionDamage;
   }
 
   public moveTo(x: number, y: number): void {
@@ -291,6 +320,7 @@ export class NPC extends Phaser.Physics.Arcade.Sprite {
       }
       this.setTint(0x3a3038);
       this.speechContainer?.setAlpha(0);
+      this.beginDefeatTransition();
     }
 
     return true;
@@ -302,10 +332,26 @@ export class NPC extends Phaser.Physics.Arcade.Sprite {
   }
 
   private syncHealthBarPosition(): void {
-    this.healthBar?.setPosition(this.x, this.y);
+    this.healthBar?.setPosition(this.x, this.y).setAlpha(this.alpha);
     if (this.hostile) {
       this.speechContainer?.setPosition(this.x, this.y - 50);
     }
+  }
+
+  private beginDefeatTransition(): void {
+    this.deathTween = this.scene.tweens.add({
+      targets: this,
+      y: this.y - 64,
+      alpha: 0,
+      duration: 500,
+      ease: "Sine.inOut",
+      onUpdate: () => this.syncHealthBarPosition(),
+      onComplete: () => {
+        this.healthBar?.setVisible(false);
+        this.setActive(false);
+        this.setVisible(false);
+      }
+    });
   }
 
   private updateHealthBar(): void {
@@ -320,11 +366,12 @@ export class NPC extends Phaser.Physics.Arcade.Sprite {
 
     this.healthBar.clear();
     this.healthBar.fillStyle(0x090b0f, 0.9);
-    this.healthBar.fillRect(-barWidth / 2, -24, barWidth, barHeight);
+    const healthBarY = -24 * this.bodyScale;
+    this.healthBar.fillRect(-barWidth / 2, healthBarY, barWidth, barHeight);
     this.healthBar.fillStyle(healthColor, 0.95);
-    this.healthBar.fillRect(-barWidth / 2, -24, barWidth * healthRatio, barHeight);
+    this.healthBar.fillRect(-barWidth / 2, healthBarY, barWidth * healthRatio, barHeight);
     this.healthBar.lineStyle(1, 0x101318, 0.95);
-    this.healthBar.strokeRect(-barWidth / 2, -24, barWidth, barHeight);
+    this.healthBar.strokeRect(-barWidth / 2, healthBarY, barWidth, barHeight);
   }
 
   private showDialogue(): void {
@@ -361,6 +408,8 @@ export class NPC extends Phaser.Physics.Arcade.Sprite {
   }
 
   public destroy(fromScene?: boolean): void {
+    this.deathTween?.stop();
+    this.deathTween = undefined;
     this.healthBar?.destroy(fromScene);
     this.healthBar = null;
     this.speechContainer?.destroy(fromScene);

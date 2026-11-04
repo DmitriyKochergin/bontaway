@@ -195,7 +195,11 @@ export default class GameScene extends BaseScene {
       this.dungeonSystem,
       this.fovSystem,
       this.levelId,
-      damage => this.player.takeDamage(damage)
+      damage => this.player.takeDamage(damage),
+      npc => {
+        this.player.takeDamage(npc.getExplosionDamage());
+        this.weaponSystem.createHostileExplosion(npc.x, npc.y);
+      }
     );
     this.npcManager.spawn();
     this.weaponSystem.setNpcTargets(() => this.npcManager?.getNpcs() ?? []);

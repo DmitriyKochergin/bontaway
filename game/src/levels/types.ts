@@ -60,6 +60,34 @@ export interface Npc {
   contactDamage?: number;
   /** Delay between contact attacks in milliseconds. */
   attackCooldownMs?: number;
+  /** Visual and combat size multiplier for large hostiles. */
+  bodyScale?: number;
+  /** Causes a one-shot blast when the hostile reaches the player. */
+  explodesOnContact?: boolean;
+  /** Player damage dealt by a contact detonation. */
+  explosionDamage?: number;
+}
+
+export interface HostileSpawnConfig {
+  /** Delay before the first escalation check, in milliseconds. */
+  initialDelayMs?: number;
+  /** Base delay between escalation checks, in milliseconds. */
+  baseIntervalMs?: number;
+  /** Fastest allowed delay between escalation checks, in milliseconds. */
+  minimumIntervalMs?: number;
+  /** Time between spawn-pressure increases, in milliseconds. */
+  intervalRampMs?: number;
+  /** Amount removed from the interval after each pressure increase. */
+  intervalDecreaseMs?: number;
+  /** Starting number of active hostiles allowed in the level. */
+  initialMaxHostiles?: number;
+  /** Hard upper bound for active hostiles. */
+  maximumHostiles?: number;
+}
+
+export interface HostileSpawnPoint {
+  tileX: number;
+  tileY: number;
 }
 
 export interface LevelLayout {
@@ -80,6 +108,8 @@ export interface LevelDefinition {
   obstacles: Obstacle[];
   torches?: Torch[];
   npcs?: Npc[];
+  hostileSpawnConfig?: HostileSpawnConfig;
+  hostileSpawnPoints?: HostileSpawnPoint[];
   /**
    * Present on matrix levels only. The 2-D tile grid where 0 = solid wall, 1 = walkable
    * floor, 2 = blank space, and 3 = room floor. When set, `GameScene.buildLevelDocument`

@@ -360,10 +360,19 @@ function validateNpcs(npcs: LevelDocument["npcs"], columns: number, rows: number
       issues.push({ path: `npcs[${index}].hostile`, message: "NPC hostility must be a boolean when provided." });
     }
 
+    if (npc.explodesOnContact !== undefined && typeof npc.explodesOnContact !== "boolean") {
+      issues.push({
+        path: `npcs[${index}].explodesOnContact`,
+        message: "NPC contact detonation must be a boolean when provided."
+      });
+    }
+
     validateOptionalPositiveNumber(npc.maxHealth, `npcs[${index}].maxHealth`, issues);
     validateOptionalPositiveNumber(npc.movementSpeed, `npcs[${index}].movementSpeed`, issues);
     validateOptionalPositiveNumber(npc.contactDamage, `npcs[${index}].contactDamage`, issues);
     validateOptionalPositiveNumber(npc.attackCooldownMs, `npcs[${index}].attackCooldownMs`, issues);
+    validateOptionalPositiveNumber(npc.bodyScale, `npcs[${index}].bodyScale`, issues);
+    validateOptionalPositiveNumber(npc.explosionDamage, `npcs[${index}].explosionDamage`, issues);
 
     if (npc.tileX < 0 || npc.tileX >= columns || npc.tileY < 0 || npc.tileY >= rows) {
       issues.push({ path: `npcs[${index}]`, message: "NPC must stay within level bounds." });

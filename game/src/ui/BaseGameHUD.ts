@@ -105,6 +105,7 @@ export abstract class BaseGameHUD {
 
   public update(_delta?: number): void {
     this.updateNetworkStatus();
+    this.updateHealthDisplay();
   }
 
   public destroy(): void {

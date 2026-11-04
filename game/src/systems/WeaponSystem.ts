@@ -83,7 +83,7 @@ const EXPLOSION_DAMAGE_PROFILES: Record<ProjectileImpactKind, ExplosionDamagePro
   fireball: { maxDamage: 34, minimumDamage: 4 },
   small: { maxDamage: 24, minimumDamage: 2 },
   large: { maxDamage: 64, minimumDamage: 6 },
-  huge: { maxDamage: 112, minimumDamage: 12 }
+  huge: { maxDamage: 224, minimumDamage: 24 }
 };
 
 export class WeaponSystem {
@@ -128,6 +128,10 @@ export class WeaponSystem {
 
   public setNpcTargets(getNpcTargets: () => readonly NPC[]): void {
     this.npcTargets = getNpcTargets;
+  }
+
+  public createHostileExplosion(x: number, y: number): void {
+    this.createExplosion(x, y, "large");
   }
 
   public destroy(): void {
@@ -390,7 +394,7 @@ export class WeaponSystem {
       }
 
       const distance = Phaser.Math.Distance.Between(projectileState.sprite.x, projectileState.sprite.y, npc.x, npc.y);
-      if (distance > projectileRadius + 14) {
+      if (distance > projectileRadius + npc.getCollisionRadius()) {
         continue;
       }
 
@@ -458,7 +462,7 @@ export class WeaponSystem {
       }
 
       const distance = Phaser.Math.Distance.Between(x, y, npc.x, npc.y);
-      const distanceFromBodyEdge = Math.max(0, distance - 14);
+      const distanceFromBodyEdge = Math.max(0, distance - npc.getCollisionRadius());
       if (distanceFromBodyEdge > explosionRadius) {
         continue;
       }
