@@ -356,9 +356,24 @@ function validateNpcs(npcs: LevelDocument["npcs"], columns: number, rows: number
       validateNumber(npc.restTarget.y, `npcs[${index}].restTarget.y`, issues);
     }
 
+    if (npc.hostile !== undefined && typeof npc.hostile !== "boolean") {
+      issues.push({ path: `npcs[${index}].hostile`, message: "NPC hostility must be a boolean when provided." });
+    }
+
+    validateOptionalPositiveNumber(npc.maxHealth, `npcs[${index}].maxHealth`, issues);
+    validateOptionalPositiveNumber(npc.movementSpeed, `npcs[${index}].movementSpeed`, issues);
+    validateOptionalPositiveNumber(npc.contactDamage, `npcs[${index}].contactDamage`, issues);
+    validateOptionalPositiveNumber(npc.attackCooldownMs, `npcs[${index}].attackCooldownMs`, issues);
+
     if (npc.tileX < 0 || npc.tileX >= columns || npc.tileY < 0 || npc.tileY >= rows) {
       issues.push({ path: `npcs[${index}]`, message: "NPC must stay within level bounds." });
     }
+  }
+}
+
+function validateOptionalPositiveNumber(value: unknown, path: string, issues: ValidationIssueList): void {
+  if (value !== undefined && (typeof value !== "number" || !Number.isFinite(value) || value <= 0)) {
+    issues.push({ path, message: "Value must be a positive number when provided." });
   }
 }
 

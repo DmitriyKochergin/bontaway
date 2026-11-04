@@ -4,6 +4,14 @@ import type { NpcEmotion } from "./NpcEmotion";
 import { type NpcStyle, resolveNpcStyle } from "./NpcStyle";
 import { ensureNpcTexture } from "./NpcTextureGenerator";
 
+export interface NpcCombatConfig {
+  hostile?: boolean;
+  maxHealth?: number;
+  movementSpeed?: number;
+  contactDamage?: number;
+  attackCooldownMs?: number;
+}
+
 export class NPC extends Phaser.Physics.Arcade.Sprite {
   private npcName: string;
   private dialogueLines: string[];
@@ -23,6 +31,15 @@ export class NPC extends Phaser.Physics.Arcade.Sprite {
   private bubbleBackground: Phaser.GameObjects.Graphics | null = null;
   private bubbleText: Phaser.GameObjects.Text | null = null;
   private playerInRange = false;
+  private readonly maxHealth: number;
+  private health: number;
+  private readonly hostile: boolean;
+  private readonly movementSpeed: number;
+  private readonly contactDamage: number;
+  private readonly attackCooldownMs: number;
+  private nextAttackTime = 0;
+  private defeated = false;
+  private healthBar: Phaser.GameObjects.Graphics | null = null;
 
   constructor(
     scene: Phaser.Scene,
@@ -32,7 +49,8 @@ export class NPC extends Phaser.Physics.Arcade.Sprite {
     dialogueLines: string[],
     emotion?: NpcEmotion,
     restTarget?: { x: number; y: number },
-    styleInput?: Partial<NpcStyle>
+    styleInput?: Partial<NpcStyle>,
+    combat?: NpcCombatConfig
   ) {
     const style = resolveNpcStyle(styleInput);
     const textureKey = ensureNpcTexture(scene, style, emotion);
@@ -48,6 +66,12 @@ export class NPC extends Phaser.Physics.Arcade.Sprite {
     this.npcName = npcName;
     this.dialogueLines = dialogueLines;
     this.canBlink = emotion === undefined || emotion === "neutral";
+    this.maxHealth = Math.max(0, Math.round(combat?.maxHealth ?? 0));
+    this.health = this.maxHealth;
+    this.hostile = combat?.hostile === true && this.maxHealth > 0;
+    this.movementSpeed = Math.max(0, combat?.movementSpeed ?? 0);
+    this.contactDamage = Math.max(0, Math.round(combat?.contactDamage ?? 0));
+    this.attackCooldownMs = Math.max(250, combat?.attackCooldownMs ?? 900);
 
     scene.add.existing(this);
     scene.physics.add.existing(this, true); // Create as static body
@@ -59,6 +83,12 @@ export class NPC extends Phaser.Physics.Arcade.Sprite {
     this.setCircle(14);
     if (this.body) {
       this.body.setOffset(2, 2);
+    }
+
+    if (this.isDamageable()) {
+      this.healthBar = scene.add.graphics();
+      this.healthBar.setDepth(DepthLayer.SpeechBubble - 1);
+      this.updateHealthBar();
     }
 
     // Blinking animation completed handler
@@ -156,6 +186,11 @@ export class NPC extends Phaser.Physics.Arcade.Sprite {
   }
 
   public update(playerX: number, playerY: number, currentTime: number, _delta: number): void {
+    this.syncHealthBarPosition();
+    if (this.defeated) {
+      return;
+    }
+
     // Blinking trigger logic
     if (this.canBlink && !this.isBlinking && currentTime >= this.nextBlinkTime) {
       this.isBlinking = true;
@@ -185,6 +220,111 @@ export class NPC extends Phaser.Physics.Arcade.Sprite {
     }
 
     this.rotation = Phaser.Math.Angle.RotateTo(this.rotation, this.targetRotation, rotationSpeed * _delta);
+  }
+
+  public isDamageable(): boolean {
+    return this.maxHealth > 0;
+  }
+
+  public isHostile(): boolean {
+    return this.hostile;
+  }
+
+  public isDefeated(): boolean {
+    return this.defeated;
+  }
+
+  public getHealth(): number {
+    return this.health;
+  }
+
+  public getMaxHealth(): number {
+    return this.maxHealth;
+  }
+
+  public getMovementSpeed(): number {
+    return this.movementSpeed;
+  }
+
+  public moveTo(x: number, y: number): void {
+    if (!this.hostile || this.defeated) {
+      return;
+    }
+
+    this.setPosition(x, y);
+    this.body?.updateFromGameObject();
+    this.syncHealthBarPosition();
+  }
+
+  public tryContactAttack(currentTime: number): number {
+    if (!this.hostile || this.defeated || this.contactDamage <= 0 || currentTime < this.nextAttackTime) {
+      return 0;
+    }
+
+    this.nextAttackTime = currentTime + this.attackCooldownMs;
+    return this.contactDamage;
+  }
+
+  public takeDamage(amount: number): boolean {
+    if (!this.isDamageable() || this.defeated) {
+      return false;
+    }
+
+    const damage = Math.max(0, Math.round(amount));
+    if (damage === 0) {
+      return false;
+    }
+
+    this.health = Math.max(0, this.health - damage);
+    this.updateHealthBar();
+    this.setTint(0xffd0d0);
+    this.scene.time.delayedCall(120, () => {
+      if (this.active && !this.defeated) {
+        this.clearTint();
+      }
+    });
+
+    if (this.health === 0) {
+      this.defeated = true;
+      if (this.body) {
+        this.body.enable = false;
+      }
+      this.setTint(0x3a3038);
+      this.speechContainer?.setAlpha(0);
+    }
+
+    return true;
+  }
+
+  public setVisibilityMask(mask: Phaser.Display.Masks.BitmapMask): void {
+    this.setMask(mask);
+    this.healthBar?.setMask(mask);
+  }
+
+  private syncHealthBarPosition(): void {
+    this.healthBar?.setPosition(this.x, this.y);
+    if (this.hostile) {
+      this.speechContainer?.setPosition(this.x, this.y - 50);
+    }
+  }
+
+  private updateHealthBar(): void {
+    if (!this.healthBar) {
+      return;
+    }
+
+    const barWidth = 34;
+    const barHeight = 4;
+    const healthRatio = this.maxHealth > 0 ? this.health / this.maxHealth : 0;
+    const healthColor = healthRatio > 0.5 ? 0x7dff9b : healthRatio > 0.25 ? 0xffc857 : 0xff5d6c;
+
+    this.healthBar.clear();
+    this.healthBar.fillStyle(0x090b0f, 0.9);
+    this.healthBar.fillRect(-barWidth / 2, -24, barWidth, barHeight);
+    this.healthBar.fillStyle(healthColor, 0.95);
+    this.healthBar.fillRect(-barWidth / 2, -24, barWidth * healthRatio, barHeight);
+    this.healthBar.lineStyle(1, 0x101318, 0.95);
+    this.healthBar.strokeRect(-barWidth / 2, -24, barWidth, barHeight);
   }
 
   private showDialogue(): void {
@@ -221,6 +361,8 @@ export class NPC extends Phaser.Physics.Arcade.Sprite {
   }
 
   public destroy(fromScene?: boolean): void {
+    this.healthBar?.destroy(fromScene);
+    this.healthBar = null;
     this.speechContainer?.destroy(fromScene);
     this.speechContainer = null;
     this.bubbleBackground = null;

@@ -6,10 +6,13 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   private keys: Partial<Record<"W" | "A" | "S" | "D", Phaser.Input.Keyboard.Key>> = {};
   private targetRotation: number = 0;
   public readonly movementSpeed = 180;
+  public readonly maxHealth = 100;
 
   public playerLight!: Phaser.GameObjects.Light;
   public joystickVector: Phaser.Math.Vector2 | null = null;
   private readonly movementVector = new Phaser.Math.Vector2();
+  private health = this.maxHealth;
+  private invulnerableUntil = 0;
   private nextBlinkTime = 0;
   private isBlinking = false;
 
@@ -54,6 +57,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     this.anims.stop();
     this.setTexture("player");
     this.setFrame(0);
+    this.clearTint();
     this.setCircle(14);
     this.body?.setOffset(2, 2);
     this.setPipeline("Light2D");
@@ -61,6 +65,31 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     if (this.scene) {
       this.scheduleNextBlink(this.scene.time?.now || 0);
     }
+  }
+
+  public getHealth(): number {
+    return this.health;
+  }
+
+  public getMaxHealth(): number {
+    return this.maxHealth;
+  }
+
+  public takeDamage(amount: number, currentTime = this.scene.time.now): boolean {
+    const damage = Math.max(0, Math.round(amount));
+    if (!this.active || damage === 0 || this.health <= 0 || currentTime < this.invulnerableUntil) {
+      return false;
+    }
+
+    this.health = Math.max(0, this.health - damage);
+    this.invulnerableUntil = currentTime + 450;
+    this.setTint(0xff6b6b);
+    this.scene.time.delayedCall(140, () => {
+      if (this.active) {
+        this.clearTint();
+      }
+    });
+    return true;
   }
 
   public syncKeys(activePhysicalKeys: Set<string>) {

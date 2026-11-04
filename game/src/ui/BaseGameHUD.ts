@@ -12,6 +12,7 @@ import { SettingsButton } from "./SettingsButton";
 export interface GameHudController {
   getLevelId(): string;
   getNetworkStats(): NetworkStats;
+  getPlayerHealth(): { current: number; max: number };
   restartLevel(levelId: string): void;
   getAudioSystem(): AudioSystem | undefined;
 }
@@ -37,6 +38,10 @@ export abstract class BaseGameHUD {
   protected networkStatusContainer!: Phaser.GameObjects.Container;
   protected networkStatusBackground!: Phaser.GameObjects.Graphics;
   protected networkStatusText!: Phaser.GameObjects.Text;
+  protected healthContainer!: Phaser.GameObjects.Container;
+  protected healthBackground!: Phaser.GameObjects.Graphics;
+  protected healthFill!: Phaser.GameObjects.Graphics;
+  protected healthText!: Phaser.GameObjects.Text;
   protected slots: HudSlot[] = [];
 
   protected keySelectHandler?: (event: KeyboardEvent) => void;
@@ -73,6 +78,7 @@ export abstract class BaseGameHUD {
 
     this.createLevelSelection();
     this.createNetworkStatus();
+    this.createHealthDisplay();
 
     this.settingsButton = new SettingsButton(this.scene, () => {
       this.controller.getAudioSystem()?.play("sfx_tablet", 0.4);
@@ -116,6 +122,7 @@ export abstract class BaseGameHUD {
     this.hudContainer.destroy();
     this.levelContainer.destroy();
     this.networkStatusContainer.destroy();
+    this.healthContainer.destroy();
     this.slots = [];
   }
 
@@ -309,6 +316,47 @@ export abstract class BaseGameHUD {
     this.networkStatusBackground.strokeRoundedRect(0, 0, this.networkStatusText.width + 16, 26, 4);
   }
 
+  private createHealthDisplay(): void {
+    this.healthContainer = this.scene.add.container(0, 0).setScrollFactor(0).setDepth(DepthLayer.Hud);
+    this.healthBackground = this.scene.add.graphics();
+    this.healthFill = this.scene.add.graphics();
+    this.healthText = this.scene.add.text(9, 6, "", {
+      fontSize: "11px",
+      fontFamily: "Roboto Mono, Courier New, monospace",
+      fontStyle: "bold",
+      color: "#f0d7d7",
+      stroke: "#000000",
+      strokeThickness: 2
+    });
+    this.healthContainer.add([this.healthBackground, this.healthFill, this.healthText]);
+    this.updateHealthDisplay();
+  }
+
+  private updateHealthDisplay(): void {
+    if (!this.healthContainer) {
+      return;
+    }
+
+    const health = this.controller.getPlayerHealth();
+    const maxHealth = Math.max(1, health.max);
+    const currentHealth = Phaser.Math.Clamp(health.current, 0, maxHealth);
+    const healthRatio = currentHealth / maxHealth;
+    const healthColor = healthRatio > 0.5 ? 0x7dff9b : healthRatio > 0.25 ? 0xffc857 : 0xff5d6c;
+
+    this.healthText.setText(`VITALITY  ${Math.round(currentHealth)} / ${Math.round(maxHealth)}`);
+    this.healthBackground.clear();
+    this.healthBackground.fillStyle(0x0d0e12, 0.9);
+    this.healthBackground.fillRoundedRect(0, 0, 192, 42, 5);
+    this.healthBackground.lineStyle(1, healthColor, 0.75);
+    this.healthBackground.strokeRoundedRect(0, 0, 192, 42, 5);
+
+    this.healthFill.clear();
+    this.healthFill.fillStyle(0x07080b, 0.95);
+    this.healthFill.fillRoundedRect(8, 25, 176, 9, 3);
+    this.healthFill.fillStyle(healthColor, 0.95);
+    this.healthFill.fillRoundedRect(8, 25, 176 * healthRatio, 9, 3);
+  }
+
   private getNetworkStatusPresentation(networkStats: NetworkStats): {
     label: string;
     color: string;
@@ -352,6 +400,7 @@ export abstract class BaseGameHUD {
     this.hudContainer.setPosition(gameSize.width / 2 - this.panelWidth / 2, gameSize.height - this.panelHeight - 14);
     this.levelContainer.setPosition(gameSize.width - this.getLocationPanelWidth() - 8, 74);
     this.networkStatusContainer.setPosition(12, 14);
+    this.healthContainer.setPosition(12, 50);
     this.drawMainPanel();
     this.drawLevelSelectionPanel();
   }

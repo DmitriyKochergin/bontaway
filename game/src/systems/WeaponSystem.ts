@@ -1,4 +1,5 @@
 import Phaser from "phaser";
+import type { NPC } from "../entities/NPC";
 import type { Player } from "../entities/Player";
 import { DepthLayer } from "../types/depth-layer";
 import type { AudioSystem } from "./AudioSystem";
@@ -7,6 +8,7 @@ import type { FieldOfViewSystem } from "./FieldOfViewSystem";
 import {
   createProjectileImpactVisuals,
   createProjectileVisuals,
+  getProjectileImpactRadius,
   type ProjectileImpactKind,
   type ProjectileImpactVisualBundle,
   type ProjectileVisualKind
@@ -36,6 +38,11 @@ interface ProjectileProfile {
   readonly explosionKind: ProjectileImpactKind;
 }
 
+interface ExplosionDamageProfile {
+  readonly maxDamage: number;
+  readonly minimumDamage: number;
+}
+
 const WEAPON_TEXTURES = {
   ray: "weapon-blue-ray",
   sphere: "weapon-blue-sphere",
@@ -49,7 +56,7 @@ const PROJECTILE_PROFILES: Record<ProjectileKind, ProjectileProfile> = {
     alpha: 1,
     speed: 300,
     lifetime: 10000,
-    collisionRadius: 0,
+    collisionRadius: 6,
     explosionKind: "fireball"
   },
   ray: {
@@ -72,6 +79,13 @@ const PROJECTILE_PROFILES: Record<ProjectileKind, ProjectileProfile> = {
   }
 };
 
+const EXPLOSION_DAMAGE_PROFILES: Record<ProjectileImpactKind, ExplosionDamageProfile> = {
+  fireball: { maxDamage: 34, minimumDamage: 4 },
+  small: { maxDamage: 24, minimumDamage: 2 },
+  large: { maxDamage: 64, minimumDamage: 6 },
+  huge: { maxDamage: 112, minimumDamage: 12 }
+};
+
 export class WeaponSystem {
   private readonly scene: Phaser.Scene;
   private readonly player: Player;
@@ -83,6 +97,7 @@ export class WeaponSystem {
   private readonly activeRays = new Set<ProjectileState>();
   private readonly activeSpheres = new Set<ProjectileState>();
   private readonly activeExplosions = new Set<ProjectileImpactVisualBundle>();
+  private npcTargets: () => readonly NPC[] = () => [];
   private readonly projectilePools: Record<ProjectileKind, ProjectileState[]> = {
     fireball: [],
     ray: [],
@@ -109,6 +124,10 @@ export class WeaponSystem {
     this.scene.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       this.destroy();
     });
+  }
+
+  public setNpcTargets(getNpcTargets: () => readonly NPC[]): void {
+    this.npcTargets = getNpcTargets;
   }
 
   public destroy(): void {
@@ -316,14 +335,7 @@ export class WeaponSystem {
       }
     }
 
-    const explosion = createProjectileImpactVisuals(
-      this.scene,
-      sprite.x,
-      sprite.y,
-      PROJECTILE_PROFILES[state.kind].explosionKind,
-      this.fovSystem
-    );
-    this.activeExplosions.add(explosion);
+    this.createExplosion(sprite.x, sprite.y, PROJECTILE_PROFILES[state.kind].explosionKind);
 
     this.releaseProjectile(state);
   }
@@ -343,7 +355,16 @@ export class WeaponSystem {
 
       if (state.kind === "ray") {
         this.resolveRaySphereImpact(state);
-      } else if (state.kind === "sphere") {
+        if (!state.isActive) {
+          continue;
+        }
+      }
+
+      if (this.resolveNpcImpact(state)) {
+        continue;
+      }
+
+      if (state.kind === "sphere") {
         this.updateSphereEffects(state, time - state.launchedAt);
       }
     }
@@ -353,6 +374,38 @@ export class WeaponSystem {
         this.activeExplosions.delete(explosion);
       }
     }
+  }
+
+  private resolveNpcImpact(projectileState: ProjectileState): boolean {
+    if (!projectileState.isActive) {
+      return false;
+    }
+
+    const profile = PROJECTILE_PROFILES[projectileState.kind];
+    const projectileRadius = projectileState.collisionRadius;
+
+    for (const npc of this.npcTargets()) {
+      if (!npc.active || npc.isDefeated() || !npc.isDamageable()) {
+        continue;
+      }
+
+      const distance = Phaser.Math.Distance.Between(projectileState.sprite.x, projectileState.sprite.y, npc.x, npc.y);
+      if (distance > projectileRadius + 14) {
+        continue;
+      }
+
+      if (projectileState.kind === "fireball") {
+        this.audioSystem?.playFireballHit(0.7);
+      } else {
+        this.audioSystem?.playShockRifleHit(projectileState.kind === "sphere" ? 0.8 : 0.55);
+      }
+
+      this.createExplosion(projectileState.sprite.x, projectileState.sprite.y, profile.explosionKind);
+      this.releaseProjectile(projectileState);
+      return true;
+    }
+
+    return false;
   }
 
   private resolveRaySphereImpact(rayState: ProjectileState): void {
@@ -377,18 +430,42 @@ export class WeaponSystem {
       }
 
       this.audioSystem?.playShockRifleHit(0.85);
-      const explosion = createProjectileImpactVisuals(
-        this.scene,
+      this.createExplosion(
         (rayState.sprite.x + sphereState.sprite.x) * 0.5,
         (rayState.sprite.y + sphereState.sprite.y) * 0.5,
-        "huge",
-        this.fovSystem
+        "huge"
       );
-      this.activeExplosions.add(explosion);
 
       this.releaseProjectile(rayState);
       this.releaseProjectile(sphereState);
       return;
+    }
+  }
+
+  private createExplosion(x: number, y: number, kind: ProjectileImpactKind): void {
+    this.applyExplosionDamage(x, y, kind);
+    const explosion = createProjectileImpactVisuals(this.scene, x, y, kind, this.fovSystem);
+    this.activeExplosions.add(explosion);
+  }
+
+  private applyExplosionDamage(x: number, y: number, kind: ProjectileImpactKind): void {
+    const damageProfile = EXPLOSION_DAMAGE_PROFILES[kind];
+    const explosionRadius = getProjectileImpactRadius(kind);
+
+    for (const npc of this.npcTargets()) {
+      if (!npc.active || npc.isDefeated() || !npc.isDamageable()) {
+        continue;
+      }
+
+      const distance = Phaser.Math.Distance.Between(x, y, npc.x, npc.y);
+      const distanceFromBodyEdge = Math.max(0, distance - 14);
+      if (distanceFromBodyEdge > explosionRadius) {
+        continue;
+      }
+
+      const falloff = 1 - distanceFromBodyEdge / explosionRadius;
+      const damage = Math.max(damageProfile.minimumDamage, Math.round(damageProfile.maxDamage * falloff));
+      npc.takeDamage(damage);
     }
   }
 

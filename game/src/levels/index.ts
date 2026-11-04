@@ -1,4 +1,5 @@
 import { arenaLevel } from "./arena";
+import { bellwetherLevel } from "./bellwether";
 import { dungeonLevel } from "./dungeon";
 import { emotionsLevel } from "./emotions";
 import { emotions2Level } from "./emotions2";
@@ -11,6 +12,7 @@ export * from "./types";
 export const levels: LevelDefinition[] = [
   dungeonLevel,
   arenaLevel,
+  bellwetherLevel,
   trademeetLevel,
   emotionsLevel,
   emotions2Level,

@@ -51,13 +51,14 @@ export default class GameScene extends BaseScene {
     super("GameScene");
   }
 
-  init(data?: { levelId?: string; levelDocument?: LevelDocument }): void {
+  init(data?: { levelId?: string; levelDocument?: LevelDocument; restartAtSpawn?: boolean }): void {
     const savedPlayerProgress = loadPlayerProgress();
     this.currentLevelDocument = data?.levelDocument ? cloneLevelDocument(data.levelDocument) : undefined;
 
     if (data?.levelId) {
       this.levelId = data.levelId;
-      this.savedPlayerProgress = savedPlayerProgress?.levelId === data.levelId ? savedPlayerProgress : undefined;
+      this.savedPlayerProgress =
+        data.restartAtSpawn || savedPlayerProgress?.levelId !== data.levelId ? undefined : savedPlayerProgress;
     } else if (savedPlayerProgress && getLevelDefinition(savedPlayerProgress.levelId)) {
       this.levelId = savedPlayerProgress.levelId;
       this.savedPlayerProgress = savedPlayerProgress;
@@ -145,8 +146,6 @@ export default class GameScene extends BaseScene {
   }
 
   createScene() {
-    this.initAudio("exploration");
-
     this.cameras.main.setBackgroundColor("#000000");
 
     // Enable Phaser lighting system
@@ -154,6 +153,7 @@ export default class GameScene extends BaseScene {
     this.lights.setAmbientColor(0x111122); // Dark blue night/dungeon environment
 
     const levelDef = getLevelDefinition(this.levelId);
+    this.initAudio(levelDef?.id === "bellwether" ? "combat" : "exploration");
     this.applyPendingLevelDocumentToDefinition();
     this.dungeonSystem = new DungeonSystem(this, this.levelId);
 
@@ -190,8 +190,15 @@ export default class GameScene extends BaseScene {
 
     this.playerDungeonCollider = this.physics.add.collider(this.player, this.dungeonSystem.getPhysicsWalls());
 
-    this.npcManager = new NpcManager(this, this.dungeonSystem, this.fovSystem, this.levelId);
+    this.npcManager = new NpcManager(
+      this,
+      this.dungeonSystem,
+      this.fovSystem,
+      this.levelId,
+      damage => this.player.takeDamage(damage)
+    );
     this.npcManager.spawn();
+    this.weaponSystem.setNpcTargets(() => this.npcManager?.getNpcs() ?? []);
     this.physics.add.collider(this.player, this.npcManager.getGroup());
 
     this.torchManager = new TorchManager(this, this.dungeonSystem, this.fovSystem, this.levelId);
@@ -307,6 +314,13 @@ export default class GameScene extends BaseScene {
     return this.selectedWeaponSlot;
   }
 
+  public getPlayerHealth(): { current: number; max: number } {
+    return {
+      current: this.player?.getHealth() ?? 0,
+      max: this.player?.getMaxHealth() ?? 1
+    };
+  }
+
   private getActiveSelectedWeaponSlot(): number {
     const mainScene = this.scene.get("MainScene") as unknown as {
       getSelectedWeaponSlot?: () => number | undefined;
@@ -397,6 +411,11 @@ export default class GameScene extends BaseScene {
     this.saveCurrentPlayerProgress();
 
     this.npcManager?.update(this.player.x, this.player.y, _time, delta);
+    if (this.player.getHealth() <= 0) {
+      this.player.setVelocity(0, 0);
+      this.scene.restart({ levelId: this.levelId, restartAtSpawn: true });
+      return;
+    }
 
     this.fovSystem.update(delta);
     this.sharedNet?.update(_time);

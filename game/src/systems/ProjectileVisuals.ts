@@ -192,6 +192,10 @@ const IMPACT_VISUALS: Record<ProjectileImpactKind, ProjectileImpactConfig> = {
   }
 };
 
+export function getProjectileImpactRadius(kind: ProjectileImpactKind): number {
+  return IMPACT_VISUALS[kind].maxRadius;
+}
+
 export interface ProjectileVisualBundle {
   readonly light?: Phaser.GameObjects.Light;
   readonly particles: ReturnType<Phaser.Scene["add"]["particles"]>;

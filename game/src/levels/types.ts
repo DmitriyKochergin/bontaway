@@ -50,6 +50,16 @@ export interface Npc {
   eyeSpread?: number;
   /** Whether eyebrows/details are shown. */
   showBrows?: boolean;
+  /** Enables pursuit and contact attacks. */
+  hostile?: boolean;
+  /** Hit points. Omit for non-combat dialogue NPCs. */
+  maxHealth?: number;
+  /** Movement speed in pixels per second while pursuing the player. */
+  movementSpeed?: number;
+  /** Damage dealt by a contact attack. */
+  contactDamage?: number;
+  /** Delay between contact attacks in milliseconds. */
+  attackCooldownMs?: number;
 }
 
 export interface LevelLayout {
