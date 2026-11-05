@@ -6,7 +6,7 @@ const RIPPLE_DURATION_MS = 950;
 const RIPPLE_COLOR = 0x9fd8ff;
 const WAVE_FRONT_COUNT = 3;
 const WAVE_FRONT_DELAY = 0.16;
-const WAVE_FRONT_ARC = Math.PI / 3;
+const WAVE_FRONT_ARC = Math.PI / 4;
 const WAVE_TRAVEL_ANGLE = Math.PI / 6;
 
 /**

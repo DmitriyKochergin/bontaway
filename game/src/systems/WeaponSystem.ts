@@ -59,7 +59,8 @@ interface ProjectileState {
 }
 
 // Non-hostile NPCs wear an invisible force sphere that drains projectiles into a slow crawl.
-const FORCE_SHIELD_PADDING = 34;
+const FORCE_SHIELD_PADDING = 50;
+const FORCE_SHIELD_RIPPLE_RADIUS_SCALE = 0.9;
 const FORCE_SHIELD_CRAWL_SPEED = 10;
 const FORCE_SHIELD_CAPTURE_LIFETIME_MS = 500;
 
@@ -478,7 +479,9 @@ export class WeaponSystem {
       projectileState.expiresAt = Math.min(projectileState.expiresAt, time + FORCE_SHIELD_CAPTURE_LIFETIME_MS);
 
       const impactAngle = Phaser.Math.Angle.Between(npc.x, npc.y, sprite.x, sprite.y);
-      this.activeExplosions.add(createForceShieldRipple(this.scene, npc.x, npc.y, shieldRadius, impactAngle));
+      this.activeExplosions.add(
+        createForceShieldRipple(this.scene, npc.x, npc.y, shieldRadius * FORCE_SHIELD_RIPPLE_RADIUS_SCALE, impactAngle)
+      );
     }
 
     return false;
