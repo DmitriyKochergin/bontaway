@@ -15,9 +15,8 @@ import { PlayerControlsSystem } from "../systems/PlayerControlsSystem";
 import { loadPlayerProgress, type PlayerProgressState, savePlayerProgress } from "../systems/PlayerProgressManager";
 import { PlayerTeleport } from "../systems/PlayerTeleport";
 import { TorchManager } from "../systems/TorchManager";
-import { WeaponSystem } from "../systems/WeaponSystem";
+import { PRIMARY_WEAPON_KINDS, type PrimaryWeaponKind, WEAPON_KIND, WeaponSystem } from "../systems/WeaponSystem";
 import type { PhaserRaycasterPlugin } from "../types/phaser-raycaster";
-import { PRIMARY_WEAPON_KINDS, type PrimaryWeaponKind, WEAPON_KIND } from "../types/weapon";
 import { BaseScene } from "./BaseScene";
 
 /**

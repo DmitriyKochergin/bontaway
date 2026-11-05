@@ -1,7 +1,7 @@
 import Phaser from "phaser";
 import { DepthLayer } from "../types/depth-layer";
-import { PROJECTILE_EFFECT_TEXTURE_KEYS, WEAPON_KIND, WEAPON_TEXTURE_KEYS, type WeaponKind } from "../types/weapon";
 import type { FieldOfViewSystem } from "./FieldOfViewSystem";
+import { PROJECTILE_EFFECT_TEXTURE_KEYS, WEAPON_KIND, WEAPON_TEXTURE_KEYS, type WeaponKind } from "./WeaponSystem";
 
 export type ProjectileImpactKind = "fireball" | "small" | "large" | "huge";
 
@@ -15,78 +15,84 @@ interface ProjectileVisualConfig {
   readonly particleDestroyDelayMs: number;
 }
 
-const PROJECTILE_VISUALS: Record<WeaponKind, ProjectileVisualConfig> = {
-  [WEAPON_KIND.fireball]: {
-    particleTexture: WEAPON_TEXTURE_KEYS.fireball,
-    particleDepth: DepthLayer.FireballTrail,
-    particleConfig: {
-      speed: 20,
-      scale: { start: 1, end: 0 },
-      blendMode: "ADD",
-      lifespan: 300
+let projectileVisuals: Record<WeaponKind, ProjectileVisualConfig> | undefined;
+
+function getProjectileVisuals(): Record<WeaponKind, ProjectileVisualConfig> {
+  projectileVisuals ??= {
+    [WEAPON_KIND.fireball]: {
+      particleTexture: WEAPON_TEXTURE_KEYS.fireball,
+      particleDepth: DepthLayer.FireballTrail,
+      particleConfig: {
+        speed: 20,
+        scale: { start: 1, end: 0 },
+        blendMode: "ADD",
+        lifespan: 300
+      },
+      lightRadius: 150,
+      lightColor: 0xff5500,
+      lightIntensity: 3,
+      particleDestroyDelayMs: 500
     },
-    lightRadius: 150,
-    lightColor: 0xff5500,
-    lightIntensity: 3,
-    particleDestroyDelayMs: 500
-  },
-  [WEAPON_KIND.ray]: {
-    particleTexture: PROJECTILE_EFFECT_TEXTURE_KEYS.spark,
-    particleDepth: DepthLayer.RayTrail,
-    particleConfig: {
-      speed: { min: 25, max: 90 },
-      scale: { start: 0.35, end: 0 },
-      alpha: { start: 0.75, end: 0 },
-      lifespan: { min: 100, max: 160 },
-      quantity: 1,
-      frequency: -1,
-      emitting: true,
-      blendMode: "ADD"
+    [WEAPON_KIND.ray]: {
+      particleTexture: PROJECTILE_EFFECT_TEXTURE_KEYS.spark,
+      particleDepth: DepthLayer.RayTrail,
+      particleConfig: {
+        speed: { min: 25, max: 90 },
+        scale: { start: 0.35, end: 0 },
+        alpha: { start: 0.75, end: 0 },
+        lifespan: { min: 100, max: 160 },
+        quantity: 1,
+        frequency: -1,
+        emitting: true,
+        blendMode: "ADD"
+      },
+      lightRadius: 120,
+      lightColor: 0x93dfff,
+      lightIntensity: 3.4,
+      particleDestroyDelayMs: 240
     },
-    lightRadius: 120,
-    lightColor: 0x93dfff,
-    lightIntensity: 3.4,
-    particleDestroyDelayMs: 240
-  },
-  [WEAPON_KIND.icicle]: {
-    particleTexture: PROJECTILE_EFFECT_TEXTURE_KEYS.spark,
-    particleDepth: DepthLayer.IcicleTrail,
-    particleConfig: {
-      speed: { min: 25, max: 90 },
-      scale: { start: 0.35, end: 0 },
-      alpha: { start: 0.75, end: 0 },
-      lifespan: { min: 100, max: 160 },
-      quantity: 1,
-      frequency: -1,
-      emitting: true,
-      blendMode: "ADD"
+    [WEAPON_KIND.icicle]: {
+      particleTexture: PROJECTILE_EFFECT_TEXTURE_KEYS.spark,
+      particleDepth: DepthLayer.IcicleTrail,
+      particleConfig: {
+        speed: { min: 25, max: 90 },
+        scale: { start: 0.35, end: 0 },
+        alpha: { start: 0.75, end: 0 },
+        lifespan: { min: 100, max: 160 },
+        quantity: 1,
+        frequency: -1,
+        emitting: true,
+        blendMode: "ADD"
+      },
+      lightRadius: 120,
+      lightColor: 0x93dfff,
+      lightIntensity: 3.4,
+      particleDestroyDelayMs: 240
     },
-    lightRadius: 120,
-    lightColor: 0x93dfff,
-    lightIntensity: 3.4,
-    particleDestroyDelayMs: 240
-  },
-  [WEAPON_KIND.sphere]: {
-    particleTexture: PROJECTILE_EFFECT_TEXTURE_KEYS.spark,
-    particleDepth: DepthLayer.SphereTrail,
-    particleConfig: {
-      speed: { min: 45, max: 165 },
-      angle: { min: 0, max: 360 },
-      scale: { start: 0.6, end: 0 },
-      alpha: { start: 0.95, end: 0 },
-      lifespan: { min: 120, max: 320 },
-      quantity: 4,
-      frequency: 20,
-      rotate: { min: 0, max: 360 },
-      emitting: false,
-      blendMode: "ADD"
-    },
-    lightRadius: 190,
-    lightColor: 0x5eb7ff,
-    lightIntensity: 5.2,
-    particleDestroyDelayMs: 360
-  }
-};
+    [WEAPON_KIND.sphere]: {
+      particleTexture: PROJECTILE_EFFECT_TEXTURE_KEYS.spark,
+      particleDepth: DepthLayer.SphereTrail,
+      particleConfig: {
+        speed: { min: 45, max: 165 },
+        angle: { min: 0, max: 360 },
+        scale: { start: 0.6, end: 0 },
+        alpha: { start: 0.95, end: 0 },
+        lifespan: { min: 120, max: 320 },
+        quantity: 4,
+        frequency: 20,
+        rotate: { min: 0, max: 360 },
+        emitting: false,
+        blendMode: "ADD"
+      },
+      lightRadius: 190,
+      lightColor: 0x5eb7ff,
+      lightIntensity: 5.2,
+      particleDestroyDelayMs: 360
+    }
+  };
+
+  return projectileVisuals;
+}
 
 interface ProjectileImpactConfig {
   readonly lightRadius: number;
@@ -114,104 +120,109 @@ interface ProjectileImpactConfig {
   readonly ringScale?: number;
 }
 
-const IMPACT_VISUALS: Record<ProjectileImpactKind, ProjectileImpactConfig> = {
-  fireball: {
-    lightRadius: 50,
-    maxRadius: 50,
-    animationStartRadius: 150,
-    animationRadiusGrowth: 250,
-    intensity: 10,
-    lightColor: 0xff5500,
-    duration: 1000,
-    particleTexture: WEAPON_TEXTURE_KEYS.fireball,
-    particleSpeedMin: 30,
-    particleSpeedMax: 120,
-    particleLifespanMin: 600,
-    particleLifespanMax: 700,
-    particleCount: 25,
-    particleScaleStart: 2,
-    particleDestroyDelayMs: 1200,
-    particleDepth: DepthLayer.ExplosionFlash
-  },
-  small: {
-    lightRadius: 90,
-    maxRadius: 58,
-    animationStartRadius: 90,
-    animationRadiusGrowth: 124.7,
-    intensity: 6,
-    lightColor: 0x8fdcff,
-    duration: 420,
-    particleTexture: PROJECTILE_EFFECT_TEXTURE_KEYS.spark,
-    particleSpeedMin: 40,
-    particleSpeedMax: 130,
-    particleLifespanMin: 220,
-    particleLifespanMax: 360,
-    particleCount: 14,
-    particleScaleStart: 1.2,
-    particleAlpha: { start: 0.95, end: 0 },
-    particleDestroyDelayMs: 680,
-    particleDepth: DepthLayer.ExplosionParticles,
-    flashColor: 0xeaf9ff,
-    flashDepth: DepthLayer.ExplosionFlash,
-    ringDepth: DepthLayer.ExplosionRing,
-    ringColor: 0x84cfff,
-    flashScale: 2.5,
-    ringScale: 3.2
-  },
-  large: {
-    lightRadius: 180,
-    maxRadius: 108,
-    animationStartRadius: 180,
-    animationRadiusGrowth: 232.2,
-    intensity: 8,
-    lightColor: 0x8fdcff,
-    duration: 650,
-    particleTexture: PROJECTILE_EFFECT_TEXTURE_KEYS.spark,
-    particleSpeedMin: 60,
-    particleSpeedMax: 180,
-    particleLifespanMin: 320,
-    particleLifespanMax: 520,
-    particleCount: 24,
-    particleScaleStart: 1.6,
-    particleAlpha: { start: 0.95, end: 0 },
-    particleDestroyDelayMs: 910,
-    particleDepth: DepthLayer.ExplosionParticles,
-    flashColor: 0xf6ffff,
-    flashDepth: DepthLayer.ExplosionFlash,
-    ringDepth: DepthLayer.ExplosionRing,
-    ringColor: 0x66bfff,
-    flashScale: 2.5,
-    ringScale: 3.2
-  },
-  huge: {
-    lightRadius: 320,
-    maxRadius: 168,
-    animationStartRadius: 320,
-    animationRadiusGrowth: 361.2,
-    intensity: 12,
-    lightColor: 0x8fdcff,
-    duration: 980,
-    particleTexture: PROJECTILE_EFFECT_TEXTURE_KEYS.spark,
-    particleSpeedMin: 90,
-    particleSpeedMax: 260,
-    particleLifespanMin: 420,
-    particleLifespanMax: 780,
-    particleCount: 40,
-    particleScaleStart: 1.9,
-    particleAlpha: { start: 0.95, end: 0 },
-    particleDestroyDelayMs: 1240,
-    particleDepth: DepthLayer.ExplosionParticles,
-    flashColor: 0xffffff,
-    flashDepth: DepthLayer.ExplosionFlash,
-    ringDepth: DepthLayer.ExplosionRing,
-    ringColor: 0x9ce8ff,
-    flashScale: 2.5,
-    ringScale: 3.2
-  }
-};
+let impactVisuals: Record<ProjectileImpactKind, ProjectileImpactConfig> | undefined;
+
+function getImpactVisuals(): Record<ProjectileImpactKind, ProjectileImpactConfig> {
+  impactVisuals ??= {
+    fireball: {
+      lightRadius: 50,
+      maxRadius: 50,
+      animationStartRadius: 150,
+      animationRadiusGrowth: 250,
+      intensity: 10,
+      lightColor: 0xff5500,
+      duration: 1000,
+      particleTexture: WEAPON_TEXTURE_KEYS.fireball,
+      particleSpeedMin: 30,
+      particleSpeedMax: 120,
+      particleLifespanMin: 600,
+      particleLifespanMax: 700,
+      particleCount: 25,
+      particleScaleStart: 2,
+      particleDestroyDelayMs: 1200,
+      particleDepth: DepthLayer.ExplosionFlash
+    },
+    small: {
+      lightRadius: 90,
+      maxRadius: 58,
+      animationStartRadius: 90,
+      animationRadiusGrowth: 124.7,
+      intensity: 6,
+      lightColor: 0x8fdcff,
+      duration: 420,
+      particleTexture: PROJECTILE_EFFECT_TEXTURE_KEYS.spark,
+      particleSpeedMin: 40,
+      particleSpeedMax: 130,
+      particleLifespanMin: 220,
+      particleLifespanMax: 360,
+      particleCount: 14,
+      particleScaleStart: 1.2,
+      particleAlpha: { start: 0.95, end: 0 },
+      particleDestroyDelayMs: 680,
+      particleDepth: DepthLayer.ExplosionParticles,
+      flashColor: 0xeaf9ff,
+      flashDepth: DepthLayer.ExplosionFlash,
+      ringDepth: DepthLayer.ExplosionRing,
+      ringColor: 0x84cfff,
+      flashScale: 2.5,
+      ringScale: 3.2
+    },
+    large: {
+      lightRadius: 180,
+      maxRadius: 108,
+      animationStartRadius: 180,
+      animationRadiusGrowth: 232.2,
+      intensity: 8,
+      lightColor: 0x8fdcff,
+      duration: 650,
+      particleTexture: PROJECTILE_EFFECT_TEXTURE_KEYS.spark,
+      particleSpeedMin: 60,
+      particleSpeedMax: 180,
+      particleLifespanMin: 320,
+      particleLifespanMax: 520,
+      particleCount: 24,
+      particleScaleStart: 1.6,
+      particleAlpha: { start: 0.95, end: 0 },
+      particleDestroyDelayMs: 910,
+      particleDepth: DepthLayer.ExplosionParticles,
+      flashColor: 0xf6ffff,
+      flashDepth: DepthLayer.ExplosionFlash,
+      ringDepth: DepthLayer.ExplosionRing,
+      ringColor: 0x66bfff,
+      flashScale: 2.5,
+      ringScale: 3.2
+    },
+    huge: {
+      lightRadius: 320,
+      maxRadius: 168,
+      animationStartRadius: 320,
+      animationRadiusGrowth: 361.2,
+      intensity: 12,
+      lightColor: 0x8fdcff,
+      duration: 980,
+      particleTexture: PROJECTILE_EFFECT_TEXTURE_KEYS.spark,
+      particleSpeedMin: 90,
+      particleSpeedMax: 260,
+      particleLifespanMin: 420,
+      particleLifespanMax: 780,
+      particleCount: 40,
+      particleScaleStart: 1.9,
+      particleDestroyDelayMs: 1240,
+      particleDepth: DepthLayer.ExplosionParticles,
+      flashColor: 0xffffff,
+      flashDepth: DepthLayer.ExplosionFlash,
+      ringDepth: DepthLayer.ExplosionRing,
+      ringColor: 0x9ce8ff,
+      flashScale: 2.5,
+      ringScale: 3.2
+    }
+  };
+
+  return impactVisuals;
+}
 
 export function getProjectileImpactRadius(kind: ProjectileImpactKind): number {
-  return IMPACT_VISUALS[kind].maxRadius;
+  return getImpactVisuals()[kind].maxRadius;
 }
 
 export interface ProjectileVisualBundle {
@@ -235,7 +246,7 @@ export function createProjectileVisuals(
   projectile: Phaser.Physics.Arcade.Sprite,
   kind: WeaponKind
 ): ProjectileVisualBundle {
-  const config = PROJECTILE_VISUALS[kind];
+  const config = getProjectileVisuals()[kind];
 
   const light = scene.lights
     ? scene.lights.addLight(projectile.x, projectile.y, config.lightRadius, config.lightColor, config.lightIntensity)
@@ -314,7 +325,7 @@ export function createProjectileImpactVisuals(
   kind: ProjectileImpactKind,
   fovSystem: FieldOfViewSystem
 ): ProjectileImpactVisualBundle {
-  const profile = IMPACT_VISUALS[kind];
+  const profile = getImpactVisuals()[kind];
   const explosionLight = scene.lights.addLight(x, y, profile.lightRadius, profile.lightColor, profile.intensity);
   const explosionObj = { x, y, radius: profile.maxRadius };
   fovSystem.addExplosion(explosionObj);

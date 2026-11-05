@@ -2,7 +2,6 @@ import Phaser from "phaser";
 import type { NPC } from "../entities/NPC";
 import type { Player } from "../entities/Player";
 import { DepthLayer } from "../types/depth-layer";
-import { PROJECTILE_EFFECT_TEXTURE_KEYS, WEAPON_KIND, WEAPON_TEXTURE_KEYS, type WeaponKind } from "../types/weapon";
 import type { AudioSystem } from "./AudioSystem";
 import type { DungeonSystem } from "./DungeonSystem";
 import type { FieldOfViewSystem } from "./FieldOfViewSystem";
@@ -13,6 +12,36 @@ import {
   type ProjectileImpactKind,
   type ProjectileImpactVisualBundle
 } from "./ProjectileVisuals";
+
+export const WEAPON_KIND = {
+  fireball: "fireball",
+  ray: "ray",
+  icicle: "icicle",
+  sphere: "sphere"
+} as const;
+
+export type WeaponKind = (typeof WEAPON_KIND)[keyof typeof WEAPON_KIND];
+
+export const PRIMARY_WEAPON_KINDS = [WEAPON_KIND.fireball, WEAPON_KIND.ray, WEAPON_KIND.icicle] as const;
+
+export type PrimaryWeaponKind = (typeof PRIMARY_WEAPON_KINDS)[number];
+
+export const WEAPON_TEXTURE_KEYS = {
+  fireball: "fireball",
+  ray: "weapon-blue-ray",
+  icicle: "weapon-icicle",
+  sphere: "weapon-blue-sphere"
+} as const satisfies Record<WeaponKind, string>;
+
+export const WEAPON_ICON_TEXTURE_KEYS = {
+  fireball: "fireball_tile",
+  ray: WEAPON_TEXTURE_KEYS.ray,
+  icicle: WEAPON_TEXTURE_KEYS.icicle
+} as const satisfies Record<PrimaryWeaponKind, string>;
+
+export const PROJECTILE_EFFECT_TEXTURE_KEYS = {
+  spark: "weapon-blue-spark"
+} as const;
 
 interface ProjectileState {
   readonly kind: WeaponKind;

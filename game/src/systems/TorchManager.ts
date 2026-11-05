@@ -1,9 +1,9 @@
 import Phaser from "phaser";
 import { getLevelDefinition } from "../levels";
 import { DepthLayer } from "../types/depth-layer";
-import { WEAPON_TEXTURE_KEYS } from "../types/weapon";
 import type { DungeonSystem } from "./DungeonSystem";
 import type { FieldOfViewSystem } from "./FieldOfViewSystem";
+import { WEAPON_TEXTURE_KEYS } from "./WeaponSystem";
 
 export class TorchManager {
   private readonly torchLights: Phaser.GameObjects.Light[] = [];

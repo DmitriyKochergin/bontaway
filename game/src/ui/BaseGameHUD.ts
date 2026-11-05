@@ -2,8 +2,8 @@ import Phaser from "phaser";
 import { getLevels } from "../levels";
 import type { NetworkStats } from "../multiplayer/NetworkManager";
 import type { AudioSystem } from "../systems/AudioSystem";
+import { PRIMARY_WEAPON_KINDS, WEAPON_ICON_TEXTURE_KEYS } from "../systems/WeaponSystem";
 import { DepthLayer } from "../types/depth-layer";
-import { PRIMARY_WEAPON_KINDS, WEAPON_ICON_TEXTURE_KEYS } from "../types/weapon";
 import { SettingsButton } from "./SettingsButton";
 
 /**

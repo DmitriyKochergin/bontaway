@@ -1,4 +1,4 @@
-import type { WeaponKind } from "../types/weapon";
+import type { WeaponKind } from "../systems/WeaponSystem";
 
 export type { WeaponKind };
 

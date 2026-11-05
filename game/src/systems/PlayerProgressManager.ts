@@ -1,4 +1,4 @@
-import { PRIMARY_WEAPON_KINDS } from "../types/weapon";
+import { PRIMARY_WEAPON_KINDS } from "./WeaponSystem";
 
 export interface PlayerProgressState {
   levelId: string;

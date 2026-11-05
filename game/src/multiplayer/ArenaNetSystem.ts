@@ -1,7 +1,6 @@
 import Phaser from "phaser";
 import type { Player } from "../entities/Player";
-import type { WeaponSystem } from "../systems/WeaponSystem";
-import { WEAPON_KIND, type WeaponKind } from "../types/weapon";
+import { WEAPON_KIND, type WeaponKind, type WeaponSystem } from "../systems/WeaponSystem";
 import { MAX_ROOM_PEERS, NetworkManager, type NetworkStats } from "./NetworkManager";
 import { RemotePlayer } from "./RemotePlayer";
 import type { SyncMessage } from "./SyncMessages";

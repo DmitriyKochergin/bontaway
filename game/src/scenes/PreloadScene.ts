@@ -1,8 +1,8 @@
 import Phaser from "phaser";
 import { DEFAULT_NPC_STYLE } from "../entities/NpcStyle";
 import { ensureNpcTexture } from "../entities/NpcTextureGenerator";
+import { WEAPON_ICON_TEXTURE_KEYS, WEAPON_TEXTURE_KEYS } from "../systems/WeaponSystem";
 import { DepthLayer } from "../types/depth-layer";
-import { WEAPON_ICON_TEXTURE_KEYS, WEAPON_TEXTURE_KEYS } from "../types/weapon";
 
 /**
  * Boot scene.
