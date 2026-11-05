@@ -34,6 +34,7 @@ export enum DepthLayer {
 
   // Characters and dialogue.
   Npc = 270,
+  ForceShieldRipple = 272,
   RemotePlayer = 299,
   Player = 300,
   SpeechBubble = 350,

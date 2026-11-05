@@ -5,6 +5,7 @@ import { DepthLayer } from "../types/depth-layer";
 import type { AudioSystem } from "./AudioSystem";
 import type { DungeonSystem } from "./DungeonSystem";
 import type { FieldOfViewSystem } from "./FieldOfViewSystem";
+import { createForceShieldRipple } from "./ForceShieldRipple";
 import {
   createProjectileImpactVisuals,
   createProjectileVisuals,
@@ -52,8 +53,14 @@ interface ProjectileState {
   launchedAt: number;
   expiresAt: number;
   lightningGraphics?: Phaser.GameObjects.Graphics;
+  shieldOwner?: NPC;
   isActive: boolean;
 }
+
+// Non-hostile NPCs wear an invisible force sphere that drains projectiles into a slow crawl.
+const FORCE_SHIELD_PADDING = 34;
+const FORCE_SHIELD_CRAWL_SPEED = 16;
+const FORCE_SHIELD_CAPTURE_LIFETIME_MS = 4000;
 
 interface ProjectileProfile {
   readonly textureKey: string;
@@ -336,6 +343,7 @@ export class WeaponSystem {
     state.isActive = false;
     state.launchedAt = 0;
     state.expiresAt = 0;
+    state.shieldOwner = undefined;
     this.activeCleanups.delete(state.cleanup);
     this.activeProjectiles.delete(state);
     this.activeRays.delete(state);
@@ -404,7 +412,7 @@ export class WeaponSystem {
         }
       }
 
-      if (this.resolveNpcImpact(state)) {
+      if (this.resolveForceShield(state, time) || this.resolveNpcImpact(state)) {
         continue;
       }
 
@@ -418,6 +426,45 @@ export class WeaponSystem {
         this.activeExplosions.delete(explosion);
       }
     }
+  }
+
+  /** Returns true when the shield fully absorbed the projectile. */
+  private resolveForceShield(projectileState: ProjectileState, time: number): boolean {
+    if (!projectileState.isActive) {
+      return false;
+    }
+
+    const { sprite } = projectileState;
+    for (const npc of this.npcTargets()) {
+      if (!npc.active || npc.isDefeated() || npc.isHostile()) {
+        continue;
+      }
+
+      const npcBodyRadius = npc.getCollisionRadius();
+      const distance = Phaser.Math.Distance.Between(sprite.x, sprite.y, npc.x, npc.y);
+      if (distance <= projectileState.collisionRadius + npcBodyRadius) {
+        this.releaseProjectile(projectileState);
+        return true;
+      }
+
+      const shieldRadius = npcBodyRadius + FORCE_SHIELD_PADDING;
+      if (projectileState.shieldOwner === npc || distance > shieldRadius + projectileState.collisionRadius) {
+        continue;
+      }
+
+      projectileState.shieldOwner = npc;
+      const velocity = sprite.body.velocity;
+      if (velocity.lengthSq() > 0) {
+        const crawlVelocity = velocity.clone().normalize().scale(FORCE_SHIELD_CRAWL_SPEED);
+        sprite.setVelocity(crawlVelocity.x, crawlVelocity.y);
+      }
+      projectileState.expiresAt = Math.min(projectileState.expiresAt, time + FORCE_SHIELD_CAPTURE_LIFETIME_MS);
+
+      const impactAngle = Phaser.Math.Angle.Between(npc.x, npc.y, sprite.x, sprite.y);
+      this.activeExplosions.add(createForceShieldRipple(this.scene, npc.x, npc.y, shieldRadius, impactAngle));
+    }
+
+    return false;
   }
 
   private resolveNpcImpact(projectileState: ProjectileState): boolean {
