@@ -50,7 +50,7 @@ export abstract class BaseGameHUD {
 
   protected readonly slotSize = 64;
   protected readonly slotPadding = 12;
-  protected readonly numSlots = 2;
+  protected readonly numSlots = 3;
   protected readonly panelPadding = 10;
   protected readonly panelHeight = 84;
   protected readonly locationIconSize = 36;
@@ -143,7 +143,7 @@ export abstract class BaseGameHUD {
   protected abstract drawLevelSelectionPanel(): void;
 
   private createSlots(): void {
-    const textures = ["fireball_tile", "weapon-blue-sphere"] as const;
+    const textures = ["fireball_tile", "weapon-blue-ray", "weapon-icicle"] as const;
     const centerY = this.panelHeight / 2;
 
     textures.forEach((texture, index) => {

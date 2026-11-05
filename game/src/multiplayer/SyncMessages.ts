@@ -6,7 +6,7 @@
  * is, where it faces, and what it fires. Others render dumb, interpolated replicas.
  */
 
-export type WeaponKind = "fireball" | "ray" | "sphere";
+export type WeaponKind = "fireball" | "ray" | "icicle" | "sphere";
 
 // These are `type` aliases (not interfaces) on purpose: Trystero's makeAction<T> requires the
 // payload to satisfy a JSON index signature, which TS grants implicitly to object type-literals

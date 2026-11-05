@@ -13,7 +13,7 @@ function isFiniteNumber(value: unknown): value is number {
 }
 
 function isValidWeaponSlot(value: unknown): value is number {
-  return typeof value === "number" && Number.isInteger(value) && value >= 0 && value <= 1;
+  return typeof value === "number" && Number.isInteger(value) && value >= 0 && value <= 2;
 }
 
 function isPlayerProgressState(value: unknown): value is PlayerProgressState {

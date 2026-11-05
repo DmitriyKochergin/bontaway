@@ -171,6 +171,8 @@ export class ArenaNetSystem {
           this.weaponSystem.castFireball(message.tx, message.ty, message.ox, message.oy);
         } else if (message.weapon === "ray") {
           this.weaponSystem.castRay(message.tx, message.ty, message.ox, message.oy);
+        } else if (message.weapon === "icicle") {
+          this.weaponSystem.castIcicle(message.tx, message.ty, message.ox, message.oy);
         } else if (message.weapon === "sphere") {
           this.weaponSystem.castSphere(message.tx, message.ty, message.ox, message.oy);
         }

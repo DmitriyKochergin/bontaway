@@ -2,7 +2,7 @@ import Phaser from "phaser";
 import { DepthLayer } from "../types/depth-layer";
 import type { FieldOfViewSystem } from "./FieldOfViewSystem";
 
-export type ProjectileVisualKind = "fireball" | "ray" | "sphere";
+export type ProjectileVisualKind = "fireball" | "ray" | "icicle" | "sphere";
 export type ProjectileImpactKind = "fireball" | "small" | "large" | "huge";
 
 interface ProjectileVisualConfig {
@@ -33,6 +33,24 @@ const PROJECTILE_VISUALS: Record<ProjectileVisualKind, ProjectileVisualConfig> =
   ray: {
     particleTexture: "weapon-blue-spark",
     particleDepth: DepthLayer.RayTrail,
+    particleConfig: {
+      speed: { min: 25, max: 90 },
+      scale: { start: 0.35, end: 0 },
+      alpha: { start: 0.75, end: 0 },
+      lifespan: { min: 100, max: 160 },
+      quantity: 1,
+      frequency: -1,
+      emitting: true,
+      blendMode: "ADD"
+    },
+    lightRadius: 120,
+    lightColor: 0x93dfff,
+    lightIntensity: 3.4,
+    particleDestroyDelayMs: 240
+  },
+  icicle: {
+    particleTexture: "weapon-blue-spark",
+    particleDepth: DepthLayer.IcicleTrail,
     particleConfig: {
       speed: { min: 25, max: 90 },
       scale: { start: 0.35, end: 0 },

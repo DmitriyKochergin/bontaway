@@ -348,6 +348,12 @@ export default class GameScene extends BaseScene {
       return;
     }
 
+    if (this.getActiveSelectedWeaponSlot() === 2) {
+      this.weaponSystem.castIcicle(targetX, targetY);
+      this.sharedNet?.broadcastFire("icicle", this.player.x, this.player.y, targetX, targetY);
+      return;
+    }
+
     this.weaponSystem.castFireball(targetX, targetY);
     this.sharedNet?.broadcastFire("fireball", this.player.x, this.player.y, targetX, targetY);
   }

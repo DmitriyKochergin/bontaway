@@ -4,6 +4,10 @@ import type { NpcEmotion } from "./NpcEmotion";
 import { type NpcStyle, resolveNpcStyle } from "./NpcStyle";
 import { ensureNpcTexture } from "./NpcTextureGenerator";
 
+const FROZEN_DURATION_MS = 5000;
+const BURN_DURATION_MS = 5000;
+const BURN_TICK_INTERVAL_MS = 1000;
+
 export interface NpcCombatConfig {
   hostile?: boolean;
   maxHealth?: number;
@@ -44,6 +48,10 @@ export class NPC extends Phaser.Physics.Arcade.Sprite {
   private readonly explodesOnContact: boolean;
   private readonly explosionDamage: number;
   private nextAttackTime = 0;
+  private frozenUntil = 0;
+  private burningUntil = 0;
+  private nextBurnTickAt = 0;
+  private burnDamagePerSecond = 0;
   private defeated = false;
   private healthBar: Phaser.GameObjects.Graphics | null = null;
   private deathTween?: Phaser.Tweens.Tween;
@@ -230,7 +238,8 @@ export class NPC extends Phaser.Physics.Arcade.Sprite {
         // Sprite art faces "up" (north); Angle.Between measures from east, so correct by +90 degrees
         this.targetRotation = Phaser.Math.Angle.Between(this.x, this.y, playerX, playerY) + Math.PI / 2;
       } else {
-        this.targetRotation = Phaser.Math.Angle.Between(this.x, this.y, this.restTargetX, this.restTargetY) + Math.PI / 2;
+        this.targetRotation =
+          Phaser.Math.Angle.Between(this.x, this.y, this.restTargetX, this.restTargetY) + Math.PI / 2;
       }
     } else {
       this.targetRotation = Phaser.Math.Angle.Between(this.x, this.y, this.restTargetX, this.restTargetY) + Math.PI / 2;
@@ -259,8 +268,47 @@ export class NPC extends Phaser.Physics.Arcade.Sprite {
     return this.maxHealth;
   }
 
-  public getMovementSpeed(): number {
-    return this.movementSpeed;
+  public getMovementSpeed(currentTime = this.scene.time.now): number {
+    return currentTime < this.frozenUntil ? this.movementSpeed * 0.5 : this.movementSpeed;
+  }
+
+  public applyFrozen(currentTime: number): void {
+    if (!this.hostile || this.defeated) {
+      return;
+    }
+
+    this.frozenUntil = currentTime + FROZEN_DURATION_MS;
+  }
+
+  public applyBurn(damagePerSecond: number, currentTime: number): void {
+    if (!this.hostile || this.defeated || damagePerSecond <= 0) {
+      return;
+    }
+
+    this.burnDamagePerSecond = damagePerSecond;
+    this.burningUntil = currentTime + BURN_DURATION_MS;
+    this.nextBurnTickAt = currentTime + BURN_TICK_INTERVAL_MS;
+  }
+
+  public updateStatusEffects(currentTime: number): void {
+    if (!this.hostile || this.defeated || this.burningUntil <= 0) {
+      return;
+    }
+
+    while (this.nextBurnTickAt <= currentTime && this.nextBurnTickAt <= this.burningUntil) {
+      this.takeDamage(this.burnDamagePerSecond);
+      this.nextBurnTickAt += BURN_TICK_INTERVAL_MS;
+
+      if (this.defeated) {
+        return;
+      }
+    }
+
+    if (currentTime >= this.burningUntil) {
+      this.burningUntil = 0;
+      this.nextBurnTickAt = 0;
+      this.burnDamagePerSecond = 0;
+    }
   }
 
   public getCollisionRadius(): number {

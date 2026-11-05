@@ -1,7 +1,7 @@
 import Phaser from "phaser";
 import { NPC } from "../entities/NPC";
-import { getLevelDefinition } from "../levels";
 import type { HostileSpawnConfig, HostileSpawnPoint, Npc } from "../levels";
+import { getLevelDefinition } from "../levels";
 import type { DungeonSystem } from "./DungeonSystem";
 import type { FieldOfViewSystem } from "./FieldOfViewSystem";
 
@@ -66,6 +66,11 @@ export class NpcManager {
     const cullingRadiusSquared = cullingRadius * cullingRadius;
 
     for (const npc of this.npcs) {
+      if (!npc.active) {
+        continue;
+      }
+
+      npc.updateStatusEffects(currentTime);
       if (!npc.active) {
         continue;
       }
@@ -143,11 +148,7 @@ export class NpcManager {
   }
 
   private updateHostileSpawning(playerX: number, playerY: number, delta: number): void {
-    if (
-      !this.hostileSpawnConfig ||
-      this.hostileArchetypes.length === 0 ||
-      this.hostileSpawnPoints.length === 0
-    ) {
+    if (!this.hostileSpawnConfig || this.hostileArchetypes.length === 0 || this.hostileSpawnPoints.length === 0) {
       return;
     }
 
@@ -214,10 +215,7 @@ export class NpcManager {
       const x = point.tileX * tileSize;
       const y = point.tileY * tileSize;
 
-      if (
-        Phaser.Math.Distance.Between(x, y, playerX, playerY) < SPAWN_MIN_PLAYER_DISTANCE ||
-        !this.canOccupy(x, y)
-      ) {
+      if (Phaser.Math.Distance.Between(x, y, playerX, playerY) < SPAWN_MIN_PLAYER_DISTANCE || !this.canOccupy(x, y)) {
         continue;
       }
 
@@ -243,7 +241,7 @@ export class NpcManager {
     }
 
     if (distance > NPC_ATTACK_RANGE) {
-      const movementDistance = (npc.getMovementSpeed() * delta) / 1000;
+      const movementDistance = (npc.getMovementSpeed(currentTime) * delta) / 1000;
       const movementAngle = Phaser.Math.Angle.Between(npc.x, npc.y, playerX, playerY);
       const nextX = npc.x + Math.cos(movementAngle) * movementDistance;
       const nextY = npc.y + Math.sin(movementAngle) * movementDistance;

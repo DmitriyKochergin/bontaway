@@ -21,10 +21,12 @@ export enum DepthLayer {
   // Projectile trails, particles, explosions
   FireballTrail = 240,
   RayTrail = 246,
+  IcicleTrail = 247,
   SphereTrail = 248,
   SphereLightning = 249,
   FireballProjectile = 250,
   SphereProjectile = 253,
+  IcicleProjectile = 254,
   RayProjectile = 255,
   ExplosionRing = 259,
   ExplosionFlash = 260,
