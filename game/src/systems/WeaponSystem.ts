@@ -60,7 +60,7 @@ interface ProjectileState {
 
 // Non-hostile NPCs wear an invisible force sphere that drains projectiles into a slow crawl.
 const FORCE_SHIELD_PADDING = 34;
-const FORCE_SHIELD_CRAWL_SPEED = 20;
+const FORCE_SHIELD_CRAWL_SPEED = 10;
 const FORCE_SHIELD_CAPTURE_LIFETIME_MS = 500;
 
 interface ProjectileProfile {

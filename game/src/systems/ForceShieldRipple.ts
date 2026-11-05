@@ -4,7 +4,6 @@ import type { ProjectileImpactVisualBundle } from "./ProjectileVisuals";
 
 const RIPPLE_DURATION_MS = 950;
 const RIPPLE_COLOR = 0x9fd8ff;
-const RIPPLE_CORE_COLOR = 0xecffff;
 const WAVE_FRONT_COUNT = 3;
 const WAVE_FRONT_DELAY = 0.16;
 const WAVE_FRONT_ARC = Math.PI / 3;
@@ -25,10 +24,6 @@ export function createForceShieldRipple(
   graphics.setDepth(DepthLayer.ForceShieldRipple);
   graphics.setBlendMode(Phaser.BlendModes.ADD);
 
-  const impactX = centerX + Math.cos(impactAngle) * shieldRadius;
-  const impactY = centerY + Math.sin(impactAngle) * shieldRadius;
-  const impactLight = scene.lights?.addLight(impactX, impactY, 70, RIPPLE_COLOR, 1.4);
-
   let elapsed = 0;
   let isCleanedUp = false;
 
@@ -38,14 +33,6 @@ export function createForceShieldRipple(
     }
 
     isCleanedUp = true;
-    if (impactLight && scene.lights) {
-      try {
-        scene.lights.removeLight(impactLight);
-      } catch {
-        // Scene lights may already be gone during shutdown.
-      }
-    }
-
     graphics.destroy();
   };
 
@@ -96,17 +83,6 @@ export function createForceShieldRipple(
           waveAlpha
         );
       }
-    }
-
-    // Dent at the impact point, swelling and fading.
-    const dentRadius = 3 + progress * 10;
-    graphics.lineStyle(1.5, RIPPLE_CORE_COLOR, 0.8 * fade);
-    graphics.strokeCircle(impactX, impactY, dentRadius);
-    graphics.fillStyle(RIPPLE_CORE_COLOR, 0.5 * fade * fade);
-    graphics.fillCircle(impactX, impactY, 3);
-
-    if (impactLight) {
-      impactLight.intensity = 1.4 * fade;
     }
 
     if (progress >= 1) {
