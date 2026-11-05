@@ -229,6 +229,7 @@ export interface ProjectileVisualBundle {
   readonly light?: Phaser.GameObjects.Light;
   readonly particles: ReturnType<Phaser.Scene["add"]["particles"]>;
   syncLight(): void;
+  setOpacity(opacity: number): void;
   cleanup(forceImmediate?: boolean): void;
 }
 
@@ -276,6 +277,14 @@ export function createProjectileVisuals(
     light.y = projectile.y;
   };
 
+  const setOpacity = (opacity: number) => {
+    const normalizedOpacity = Phaser.Math.Clamp(opacity, 0, 1);
+    if (light) {
+      light.intensity = config.lightIntensity * normalizedOpacity;
+    }
+    particles.setAlpha(normalizedOpacity);
+  };
+
   const cleanup = (forceImmediate = false) => {
     if (isCleanedUp) {
       return;
@@ -313,6 +322,7 @@ export function createProjectileVisuals(
     light,
     particles,
     syncLight,
+    setOpacity,
     cleanup
   };
 }

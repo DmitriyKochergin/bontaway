@@ -54,13 +54,14 @@ interface ProjectileState {
   expiresAt: number;
   lightningGraphics?: Phaser.GameObjects.Graphics;
   shieldOwner?: NPC;
+  shieldCapturedAt?: number;
   isActive: boolean;
 }
 
 // Non-hostile NPCs wear an invisible force sphere that drains projectiles into a slow crawl.
 const FORCE_SHIELD_PADDING = 34;
-const FORCE_SHIELD_CRAWL_SPEED = 16;
-const FORCE_SHIELD_CAPTURE_LIFETIME_MS = 4000;
+const FORCE_SHIELD_CRAWL_SPEED = 20;
+const FORCE_SHIELD_CAPTURE_LIFETIME_MS = 500;
 
 interface ProjectileProfile {
   readonly textureKey: string;
@@ -344,6 +345,7 @@ export class WeaponSystem {
     state.launchedAt = 0;
     state.expiresAt = 0;
     state.shieldOwner = undefined;
+    state.shieldCapturedAt = undefined;
     this.activeCleanups.delete(state.cleanup);
     this.activeProjectiles.delete(state);
     this.activeRays.delete(state);
@@ -419,6 +421,8 @@ export class WeaponSystem {
       if (state.kind === WEAPON_KIND.sphere) {
         this.updateSphereEffects(state, time - state.launchedAt);
       }
+
+      this.updateShieldCaptureFade(state, time);
     }
 
     for (const explosion of this.activeExplosions) {
@@ -426,6 +430,18 @@ export class WeaponSystem {
         this.activeExplosions.delete(explosion);
       }
     }
+  }
+
+  private updateShieldCaptureFade(projectileState: ProjectileState, time: number): void {
+    if (projectileState.shieldCapturedAt === undefined) {
+      return;
+    }
+
+    const profile = PROJECTILE_PROFILES[projectileState.kind];
+    const elapsed = time - projectileState.shieldCapturedAt;
+    const opacity = 1 - Phaser.Math.Clamp(elapsed / FORCE_SHIELD_CAPTURE_LIFETIME_MS, 0, 1);
+    projectileState.sprite.setAlpha(profile.alpha * opacity);
+    projectileState.visuals?.setOpacity(opacity);
   }
 
   /** Returns true when the shield fully absorbed the projectile. */
@@ -453,6 +469,7 @@ export class WeaponSystem {
       }
 
       projectileState.shieldOwner = npc;
+      projectileState.shieldCapturedAt = time;
       const velocity = sprite.body.velocity;
       if (velocity.lengthSq() > 0) {
         const crawlVelocity = velocity.clone().normalize().scale(FORCE_SHIELD_CRAWL_SPEED);

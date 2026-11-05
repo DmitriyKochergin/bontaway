@@ -7,7 +7,8 @@ const RIPPLE_COLOR = 0x9fd8ff;
 const RIPPLE_CORE_COLOR = 0xecffff;
 const WAVE_FRONT_COUNT = 3;
 const WAVE_FRONT_DELAY = 0.16;
-const WAVE_FRONT_ARC = 0.32;
+const WAVE_FRONT_ARC = Math.PI / 3;
+const WAVE_TRAVEL_ANGLE = Math.PI / 6;
 
 /**
  * Wave running across an otherwise invisible force sphere. Starts at the impact point and
@@ -79,7 +80,7 @@ export function createForceShieldRipple(
         continue;
       }
 
-      const travelledAngle = Math.min(waveProgress, 1) * Math.PI * 0.85;
+      const travelledAngle = Math.min(waveProgress, 1) * WAVE_TRAVEL_ANGLE;
       const waveAlpha = (1 - Math.min(waveProgress, 1)) * (0.75 - waveIndex * 0.2);
       const lineWidth = 3 - waveIndex * 0.8;
 
