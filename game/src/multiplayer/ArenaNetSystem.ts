@@ -1,9 +1,10 @@
 import Phaser from "phaser";
 import type { Player } from "../entities/Player";
 import type { WeaponSystem } from "../systems/WeaponSystem";
+import { WEAPON_KIND, type WeaponKind } from "../types/weapon";
 import { MAX_ROOM_PEERS, NetworkManager, type NetworkStats } from "./NetworkManager";
 import { RemotePlayer } from "./RemotePlayer";
-import type { SyncMessage, WeaponKind } from "./SyncMessages";
+import type { SyncMessage } from "./SyncMessages";
 
 const APP_ID = "bontaway";
 const DEFAULT_ROOM_ID = "bontaway-arena";
@@ -167,13 +168,13 @@ export class ArenaNetSystem {
         );
         break;
       case "fire":
-        if (message.weapon === "fireball") {
+        if (message.weapon === WEAPON_KIND.fireball) {
           this.weaponSystem.castFireball(message.tx, message.ty, message.ox, message.oy);
-        } else if (message.weapon === "ray") {
+        } else if (message.weapon === WEAPON_KIND.ray) {
           this.weaponSystem.castRay(message.tx, message.ty, message.ox, message.oy);
-        } else if (message.weapon === "icicle") {
+        } else if (message.weapon === WEAPON_KIND.icicle) {
           this.weaponSystem.castIcicle(message.tx, message.ty, message.ox, message.oy);
-        } else if (message.weapon === "sphere") {
+        } else if (message.weapon === WEAPON_KIND.sphere) {
           this.weaponSystem.castSphere(message.tx, message.ty, message.ox, message.oy);
         }
         this.remotePlayers.get(peerId)?.flash();

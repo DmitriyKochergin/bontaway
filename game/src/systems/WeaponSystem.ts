@@ -2,6 +2,7 @@ import Phaser from "phaser";
 import type { NPC } from "../entities/NPC";
 import type { Player } from "../entities/Player";
 import { DepthLayer } from "../types/depth-layer";
+import { PROJECTILE_EFFECT_TEXTURE_KEYS, WEAPON_KIND, WEAPON_TEXTURE_KEYS, type WeaponKind } from "../types/weapon";
 import type { AudioSystem } from "./AudioSystem";
 import type { DungeonSystem } from "./DungeonSystem";
 import type { FieldOfViewSystem } from "./FieldOfViewSystem";
@@ -10,14 +11,11 @@ import {
   createProjectileVisuals,
   getProjectileImpactRadius,
   type ProjectileImpactKind,
-  type ProjectileImpactVisualBundle,
-  type ProjectileVisualKind
+  type ProjectileImpactVisualBundle
 } from "./ProjectileVisuals";
 
-type ProjectileKind = ProjectileVisualKind;
-
 interface ProjectileState {
-  readonly kind: ProjectileKind;
+  readonly kind: WeaponKind;
   readonly sprite: Phaser.Types.Physics.Arcade.SpriteWithDynamicBody;
   readonly collisionRadius: number;
   cleanup: () => void;
@@ -43,16 +41,9 @@ interface ExplosionDamageProfile {
   readonly minimumDamage: number;
 }
 
-const WEAPON_TEXTURES = {
-  ray: "weapon-blue-ray",
-  icicle: "weapon-icicle",
-  sphere: "weapon-blue-sphere",
-  spark: "weapon-blue-spark"
-} as const;
-
-const PROJECTILE_PROFILES: Record<ProjectileKind, ProjectileProfile> = {
-  fireball: {
-    textureKey: "fireball",
+const PROJECTILE_PROFILES: Record<WeaponKind, ProjectileProfile> = {
+  [WEAPON_KIND.fireball]: {
+    textureKey: WEAPON_TEXTURE_KEYS.fireball,
     depth: DepthLayer.FireballProjectile,
     alpha: 1,
     speed: 300,
@@ -60,8 +51,8 @@ const PROJECTILE_PROFILES: Record<ProjectileKind, ProjectileProfile> = {
     collisionRadius: 6,
     explosionKind: "fireball"
   },
-  ray: {
-    textureKey: WEAPON_TEXTURES.ray,
+  [WEAPON_KIND.ray]: {
+    textureKey: WEAPON_TEXTURE_KEYS.ray,
     depth: DepthLayer.RayProjectile,
     alpha: 0.98,
     speed: 980,
@@ -69,8 +60,8 @@ const PROJECTILE_PROFILES: Record<ProjectileKind, ProjectileProfile> = {
     collisionRadius: 6,
     explosionKind: "small"
   },
-  icicle: {
-    textureKey: WEAPON_TEXTURES.icicle,
+  [WEAPON_KIND.icicle]: {
+    textureKey: WEAPON_TEXTURE_KEYS.icicle,
     depth: DepthLayer.IcicleProjectile,
     alpha: 0.98,
     speed: 980,
@@ -78,8 +69,8 @@ const PROJECTILE_PROFILES: Record<ProjectileKind, ProjectileProfile> = {
     collisionRadius: 6,
     explosionKind: "small"
   },
-  sphere: {
-    textureKey: WEAPON_TEXTURES.sphere,
+  [WEAPON_KIND.sphere]: {
+    textureKey: WEAPON_TEXTURE_KEYS.sphere,
     depth: DepthLayer.SphereProjectile,
     alpha: 0.94,
     speed: 280,
@@ -109,11 +100,11 @@ export class WeaponSystem {
   private readonly activeSpheres = new Set<ProjectileState>();
   private readonly activeExplosions = new Set<ProjectileImpactVisualBundle>();
   private npcTargets: () => readonly NPC[] = () => [];
-  private readonly projectilePools: Record<ProjectileKind, ProjectileState[]> = {
-    fireball: [],
-    ray: [],
-    icicle: [],
-    sphere: []
+  private readonly projectilePools: Record<WeaponKind, ProjectileState[]> = {
+    [WEAPON_KIND.fireball]: [],
+    [WEAPON_KIND.ray]: [],
+    [WEAPON_KIND.icicle]: [],
+    [WEAPON_KIND.sphere]: []
   };
   private isDestroyed = false;
 
@@ -184,23 +175,23 @@ export class WeaponSystem {
 
     this.audioSystem?.playFireballCast(0.45);
 
-    this.launchProjectile("fireball", targetX, targetY, originX, originY);
+    this.launchProjectile(WEAPON_KIND.fireball, targetX, targetY, originX, originY);
   }
 
   public castRay(targetX: number, targetY: number, originX = this.player.x, originY = this.player.y): void {
-    this.castProjectile("ray", targetX, targetY, originX, originY);
+    this.castProjectile(WEAPON_KIND.ray, targetX, targetY, originX, originY);
   }
 
   public castIcicle(targetX: number, targetY: number, originX = this.player.x, originY = this.player.y): void {
-    this.castProjectile("icicle", targetX, targetY, originX, originY);
+    this.castProjectile(WEAPON_KIND.icicle, targetX, targetY, originX, originY);
   }
 
   public castSphere(targetX: number, targetY: number, originX = this.player.x, originY = this.player.y): void {
-    this.castProjectile("sphere", targetX, targetY, originX, originY);
+    this.castProjectile(WEAPON_KIND.sphere, targetX, targetY, originX, originY);
   }
 
   private castProjectile(
-    kind: ProjectileKind,
+    kind: WeaponKind,
     targetX: number,
     targetY: number,
     originX = this.player.x,
@@ -215,7 +206,7 @@ export class WeaponSystem {
       return;
     }
 
-    if (kind === "ray" || kind === "icicle") {
+    if (kind === WEAPON_KIND.ray || kind === WEAPON_KIND.icicle) {
       this.audioSystem?.playShockRifleFire(0.35);
     } else {
       this.audioSystem?.playShockRifleAltFire(0.55);
@@ -224,13 +215,7 @@ export class WeaponSystem {
     this.launchProjectile(kind, targetX, targetY, originX, originY);
   }
 
-  private launchProjectile(
-    kind: ProjectileKind,
-    targetX: number,
-    targetY: number,
-    originX: number,
-    originY: number
-  ): void {
+  private launchProjectile(kind: WeaponKind, targetX: number, targetY: number, originX: number, originY: number): void {
     const profile = PROJECTILE_PROFILES[kind];
     const state = this.acquireProjectile(kind);
     const { sprite } = state;
@@ -240,7 +225,7 @@ export class WeaponSystem {
     sprite.setPipeline("Light2D");
     sprite.setDepth(profile.depth);
     sprite.setAlpha(profile.alpha);
-    if (kind === "icicle") {
+    if (kind === WEAPON_KIND.icicle) {
       sprite.setRotation(Phaser.Math.Angle.Between(originX, originY, targetX, targetY) + Math.PI / 2);
     } else {
       sprite.setRotation(0);
@@ -261,16 +246,16 @@ export class WeaponSystem {
     this.activeCleanups.add(state.cleanup);
     this.activeProjectiles.add(state);
 
-    if (kind === "ray") {
+    if (kind === WEAPON_KIND.ray) {
       this.activeRays.add(state);
-    } else if (kind === "icicle") {
+    } else if (kind === WEAPON_KIND.icicle) {
       this.activeIcicles.add(state);
-    } else if (kind === "sphere") {
+    } else if (kind === WEAPON_KIND.sphere) {
       this.activeSpheres.add(state);
     }
   }
 
-  private acquireProjectile(kind: ProjectileKind): ProjectileState {
+  private acquireProjectile(kind: WeaponKind): ProjectileState {
     const pool = this.projectilePools[kind];
     const reusableState = pool.find(state => !state.isActive);
     if (reusableState) {
@@ -300,7 +285,7 @@ export class WeaponSystem {
       isActive: true
     };
 
-    if (kind === "sphere") {
+    if (kind === WEAPON_KIND.sphere) {
       state.lightningGraphics = this.scene.add.graphics();
       state.lightningGraphics.setDepth(DepthLayer.SphereLightning);
       state.lightningGraphics.setBlendMode(Phaser.BlendModes.ADD);
@@ -357,10 +342,10 @@ export class WeaponSystem {
     }
 
     const { sprite } = state;
-    if (state.kind === "fireball") {
+    if (state.kind === WEAPON_KIND.fireball) {
       this.audioSystem?.playFireballHit(0.55);
     } else {
-      if (state.kind === "sphere") {
+      if (state.kind === WEAPON_KIND.sphere) {
         this.audioSystem?.playShockRifleHit(0.65);
       }
     }
@@ -383,7 +368,7 @@ export class WeaponSystem {
 
       state.visuals?.syncLight();
 
-      if (state.kind === "ray" || state.kind === "icicle") {
+      if (state.kind === WEAPON_KIND.ray || state.kind === WEAPON_KIND.icicle) {
         this.resolveSphereImpact(state);
         if (!state.isActive) {
           continue;
@@ -394,7 +379,7 @@ export class WeaponSystem {
         continue;
       }
 
-      if (state.kind === "sphere") {
+      if (state.kind === WEAPON_KIND.sphere) {
         this.updateSphereEffects(state, time - state.launchedAt);
       }
     }
@@ -424,13 +409,13 @@ export class WeaponSystem {
         continue;
       }
 
-      if (projectileState.kind === "fireball") {
+      if (projectileState.kind === WEAPON_KIND.fireball) {
         this.audioSystem?.playFireballHit(0.7);
       } else {
-        this.audioSystem?.playShockRifleHit(projectileState.kind === "sphere" ? 0.8 : 0.55);
+        this.audioSystem?.playShockRifleHit(projectileState.kind === WEAPON_KIND.sphere ? 0.8 : 0.55);
       }
 
-      if (projectileState.kind === "icicle") {
+      if (projectileState.kind === WEAPON_KIND.icicle) {
         npc.applyFrozen(this.scene.time.now);
       }
       this.createExplosion(projectileState.sprite.x, projectileState.sprite.y, profile.explosionKind);
@@ -585,7 +570,7 @@ export class WeaponSystem {
   }
 
   private ensureWeaponTextures(): void {
-    if (!this.scene.textures.exists(WEAPON_TEXTURES.ray)) {
+    if (!this.scene.textures.exists(WEAPON_TEXTURE_KEYS.ray)) {
       const rayGraphics = this.scene.add.graphics();
       rayGraphics.clear();
       rayGraphics.fillStyle(0x2553ff, 0.3);
@@ -594,11 +579,11 @@ export class WeaponSystem {
       rayGraphics.fillCircle(12, 12, 7);
       rayGraphics.fillStyle(0xf6ffff, 1);
       rayGraphics.fillCircle(12, 12, 3.5);
-      rayGraphics.generateTexture(WEAPON_TEXTURES.ray, 24, 24);
+      rayGraphics.generateTexture(WEAPON_TEXTURE_KEYS.ray, 24, 24);
       rayGraphics.destroy();
     }
 
-    if (!this.scene.textures.exists(WEAPON_TEXTURES.icicle)) {
+    if (!this.scene.textures.exists(WEAPON_TEXTURE_KEYS.icicle)) {
       const icicleGraphics = this.scene.add.graphics();
       icicleGraphics.clear();
       const textureWidth = 24;
@@ -630,11 +615,11 @@ export class WeaponSystem {
       fillDiamond(7);
       icicleGraphics.fillStyle(0xf6ffff, 1);
       fillDiamond(3.5);
-      icicleGraphics.generateTexture(WEAPON_TEXTURES.icicle, textureWidth, textureHeight);
+      icicleGraphics.generateTexture(WEAPON_TEXTURE_KEYS.icicle, textureWidth, textureHeight);
       icicleGraphics.destroy();
     }
 
-    if (!this.scene.textures.exists(WEAPON_TEXTURES.sphere)) {
+    if (!this.scene.textures.exists(WEAPON_TEXTURE_KEYS.sphere)) {
       const sphereGraphics = this.scene.add.graphics();
       sphereGraphics.clear();
       sphereGraphics.fillStyle(0x1346ff, 0.22);
@@ -647,18 +632,18 @@ export class WeaponSystem {
       sphereGraphics.fillCircle(24, 24, 4);
       sphereGraphics.lineStyle(2, 0xd9f7ff, 0.55);
       sphereGraphics.strokeCircle(24, 24, 18);
-      sphereGraphics.generateTexture(WEAPON_TEXTURES.sphere, 48, 48);
+      sphereGraphics.generateTexture(WEAPON_TEXTURE_KEYS.sphere, 48, 48);
       sphereGraphics.destroy();
     }
 
-    if (!this.scene.textures.exists(WEAPON_TEXTURES.spark)) {
+    if (!this.scene.textures.exists(PROJECTILE_EFFECT_TEXTURE_KEYS.spark)) {
       const sparkGraphics = this.scene.add.graphics();
       sparkGraphics.clear();
       sparkGraphics.fillStyle(0x8be6ff, 0.8);
       sparkGraphics.fillCircle(5, 5, 4);
       sparkGraphics.fillStyle(0xffffff, 1);
       sparkGraphics.fillCircle(5, 5, 1.6);
-      sparkGraphics.generateTexture(WEAPON_TEXTURES.spark, 10, 10);
+      sparkGraphics.generateTexture(PROJECTILE_EFFECT_TEXTURE_KEYS.spark, 10, 10);
       sparkGraphics.destroy();
     }
   }

@@ -1,3 +1,5 @@
+import { PRIMARY_WEAPON_KINDS } from "../types/weapon";
+
 export interface PlayerProgressState {
   levelId: string;
   x: number;
@@ -13,7 +15,7 @@ function isFiniteNumber(value: unknown): value is number {
 }
 
 function isValidWeaponSlot(value: unknown): value is number {
-  return typeof value === "number" && Number.isInteger(value) && value >= 0 && value <= 2;
+  return typeof value === "number" && Number.isInteger(value) && value >= 0 && value < PRIMARY_WEAPON_KINDS.length;
 }
 
 function isPlayerProgressState(value: unknown): value is PlayerProgressState {

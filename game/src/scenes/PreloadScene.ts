@@ -2,6 +2,7 @@ import Phaser from "phaser";
 import { DEFAULT_NPC_STYLE } from "../entities/NpcStyle";
 import { ensureNpcTexture } from "../entities/NpcTextureGenerator";
 import { DepthLayer } from "../types/depth-layer";
+import { WEAPON_ICON_TEXTURE_KEYS, WEAPON_TEXTURE_KEYS } from "../types/weapon";
 
 /**
  * Boot scene.
@@ -246,7 +247,7 @@ export default class PreloadScene extends Phaser.Scene {
     const fireball = this.add.graphics();
     fireball.fillStyle(0xff5500);
     fireball.fillCircle(8, 8, 8);
-    fireball.generateTexture("fireball", 16, 16);
+    fireball.generateTexture(WEAPON_TEXTURE_KEYS.fireball, 16, 16);
     fireball.destroy();
   }
 
@@ -294,7 +295,7 @@ export default class PreloadScene extends Phaser.Scene {
       }
     }
 
-    graphics.generateTexture("fireball_tile", 32, 32);
+    graphics.generateTexture(WEAPON_ICON_TEXTURE_KEYS.fireball, 32, 32);
     graphics.destroy();
   }
 

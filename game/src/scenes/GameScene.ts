@@ -17,6 +17,7 @@ import { PlayerTeleport } from "../systems/PlayerTeleport";
 import { TorchManager } from "../systems/TorchManager";
 import { WeaponSystem } from "../systems/WeaponSystem";
 import type { PhaserRaycasterPlugin } from "../types/phaser-raycaster";
+import { PRIMARY_WEAPON_KINDS, type PrimaryWeaponKind, WEAPON_KIND } from "../types/weapon";
 import { BaseScene } from "./BaseScene";
 
 /**
@@ -333,6 +334,10 @@ export default class GameScene extends BaseScene {
     return mainScene.getSelectedWeaponSlot?.() ?? this.selectedWeaponSlot;
   }
 
+  private getActivePrimaryWeaponKind(): PrimaryWeaponKind {
+    return PRIMARY_WEAPON_KINDS[this.getActiveSelectedWeaponSlot()] ?? PRIMARY_WEAPON_KINDS[0];
+  }
+
   private getMultiplayerRoomId(): string | undefined {
     if (this.levelId !== "arena" && this.levelId !== "trademeet") {
       return undefined;
@@ -342,26 +347,27 @@ export default class GameScene extends BaseScene {
   }
 
   private castSelectedPrimaryWeapon(targetX: number, targetY: number): void {
-    if (this.getActiveSelectedWeaponSlot() === 1) {
+    const weaponKind = this.getActivePrimaryWeaponKind();
+    if (weaponKind === WEAPON_KIND.ray) {
       this.weaponSystem.castRay(targetX, targetY);
-      this.sharedNet?.broadcastFire("ray", this.player.x, this.player.y, targetX, targetY);
+      this.sharedNet?.broadcastFire(WEAPON_KIND.ray, this.player.x, this.player.y, targetX, targetY);
       return;
     }
 
-    if (this.getActiveSelectedWeaponSlot() === 2) {
+    if (weaponKind === WEAPON_KIND.icicle) {
       this.weaponSystem.castIcicle(targetX, targetY);
-      this.sharedNet?.broadcastFire("icicle", this.player.x, this.player.y, targetX, targetY);
+      this.sharedNet?.broadcastFire(WEAPON_KIND.icicle, this.player.x, this.player.y, targetX, targetY);
       return;
     }
 
     this.weaponSystem.castFireball(targetX, targetY);
-    this.sharedNet?.broadcastFire("fireball", this.player.x, this.player.y, targetX, targetY);
+    this.sharedNet?.broadcastFire(WEAPON_KIND.fireball, this.player.x, this.player.y, targetX, targetY);
   }
 
   private castSelectedSecondaryWeapon(targetX: number, targetY: number): void {
-    if (this.getActiveSelectedWeaponSlot() === 1) {
+    if (this.getActivePrimaryWeaponKind() === WEAPON_KIND.ray) {
       this.weaponSystem.castSphere(targetX, targetY);
-      this.sharedNet?.broadcastFire("sphere", this.player.x, this.player.y, targetX, targetY);
+      this.sharedNet?.broadcastFire(WEAPON_KIND.sphere, this.player.x, this.player.y, targetX, targetY);
       return;
     }
 

@@ -1,8 +1,8 @@
 import Phaser from "phaser";
 import { DepthLayer } from "../types/depth-layer";
+import { PROJECTILE_EFFECT_TEXTURE_KEYS, WEAPON_KIND, WEAPON_TEXTURE_KEYS, type WeaponKind } from "../types/weapon";
 import type { FieldOfViewSystem } from "./FieldOfViewSystem";
 
-export type ProjectileVisualKind = "fireball" | "ray" | "icicle" | "sphere";
 export type ProjectileImpactKind = "fireball" | "small" | "large" | "huge";
 
 interface ProjectileVisualConfig {
@@ -15,9 +15,9 @@ interface ProjectileVisualConfig {
   readonly particleDestroyDelayMs: number;
 }
 
-const PROJECTILE_VISUALS: Record<ProjectileVisualKind, ProjectileVisualConfig> = {
-  fireball: {
-    particleTexture: "fireball",
+const PROJECTILE_VISUALS: Record<WeaponKind, ProjectileVisualConfig> = {
+  [WEAPON_KIND.fireball]: {
+    particleTexture: WEAPON_TEXTURE_KEYS.fireball,
     particleDepth: DepthLayer.FireballTrail,
     particleConfig: {
       speed: 20,
@@ -30,8 +30,8 @@ const PROJECTILE_VISUALS: Record<ProjectileVisualKind, ProjectileVisualConfig> =
     lightIntensity: 3,
     particleDestroyDelayMs: 500
   },
-  ray: {
-    particleTexture: "weapon-blue-spark",
+  [WEAPON_KIND.ray]: {
+    particleTexture: PROJECTILE_EFFECT_TEXTURE_KEYS.spark,
     particleDepth: DepthLayer.RayTrail,
     particleConfig: {
       speed: { min: 25, max: 90 },
@@ -48,8 +48,8 @@ const PROJECTILE_VISUALS: Record<ProjectileVisualKind, ProjectileVisualConfig> =
     lightIntensity: 3.4,
     particleDestroyDelayMs: 240
   },
-  icicle: {
-    particleTexture: "weapon-blue-spark",
+  [WEAPON_KIND.icicle]: {
+    particleTexture: PROJECTILE_EFFECT_TEXTURE_KEYS.spark,
     particleDepth: DepthLayer.IcicleTrail,
     particleConfig: {
       speed: { min: 25, max: 90 },
@@ -66,8 +66,8 @@ const PROJECTILE_VISUALS: Record<ProjectileVisualKind, ProjectileVisualConfig> =
     lightIntensity: 3.4,
     particleDestroyDelayMs: 240
   },
-  sphere: {
-    particleTexture: "weapon-blue-spark",
+  [WEAPON_KIND.sphere]: {
+    particleTexture: PROJECTILE_EFFECT_TEXTURE_KEYS.spark,
     particleDepth: DepthLayer.SphereTrail,
     particleConfig: {
       speed: { min: 45, max: 165 },
@@ -123,7 +123,7 @@ const IMPACT_VISUALS: Record<ProjectileImpactKind, ProjectileImpactConfig> = {
     intensity: 10,
     lightColor: 0xff5500,
     duration: 1000,
-    particleTexture: "fireball",
+    particleTexture: WEAPON_TEXTURE_KEYS.fireball,
     particleSpeedMin: 30,
     particleSpeedMax: 120,
     particleLifespanMin: 600,
@@ -141,7 +141,7 @@ const IMPACT_VISUALS: Record<ProjectileImpactKind, ProjectileImpactConfig> = {
     intensity: 6,
     lightColor: 0x8fdcff,
     duration: 420,
-    particleTexture: "weapon-blue-spark",
+    particleTexture: PROJECTILE_EFFECT_TEXTURE_KEYS.spark,
     particleSpeedMin: 40,
     particleSpeedMax: 130,
     particleLifespanMin: 220,
@@ -166,7 +166,7 @@ const IMPACT_VISUALS: Record<ProjectileImpactKind, ProjectileImpactConfig> = {
     intensity: 8,
     lightColor: 0x8fdcff,
     duration: 650,
-    particleTexture: "weapon-blue-spark",
+    particleTexture: PROJECTILE_EFFECT_TEXTURE_KEYS.spark,
     particleSpeedMin: 60,
     particleSpeedMax: 180,
     particleLifespanMin: 320,
@@ -191,7 +191,7 @@ const IMPACT_VISUALS: Record<ProjectileImpactKind, ProjectileImpactConfig> = {
     intensity: 12,
     lightColor: 0x8fdcff,
     duration: 980,
-    particleTexture: "weapon-blue-spark",
+    particleTexture: PROJECTILE_EFFECT_TEXTURE_KEYS.spark,
     particleSpeedMin: 90,
     particleSpeedMax: 260,
     particleLifespanMin: 420,
@@ -233,7 +233,7 @@ export interface ProjectileImpactVisualBundle {
 export function createProjectileVisuals(
   scene: Phaser.Scene,
   projectile: Phaser.Physics.Arcade.Sprite,
-  kind: ProjectileVisualKind
+  kind: WeaponKind
 ): ProjectileVisualBundle {
   const config = PROJECTILE_VISUALS[kind];
 

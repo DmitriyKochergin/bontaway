@@ -3,6 +3,7 @@ import { getLevels } from "../levels";
 import type { NetworkStats } from "../multiplayer/NetworkManager";
 import type { AudioSystem } from "../systems/AudioSystem";
 import { DepthLayer } from "../types/depth-layer";
+import { PRIMARY_WEAPON_KINDS, WEAPON_ICON_TEXTURE_KEYS } from "../types/weapon";
 import { SettingsButton } from "./SettingsButton";
 
 /**
@@ -50,7 +51,7 @@ export abstract class BaseGameHUD {
 
   protected readonly slotSize = 64;
   protected readonly slotPadding = 12;
-  protected readonly numSlots = 3;
+  protected readonly numSlots = PRIMARY_WEAPON_KINDS.length;
   protected readonly panelPadding = 10;
   protected readonly panelHeight = 84;
   protected readonly locationIconSize = 36;
@@ -143,7 +144,7 @@ export abstract class BaseGameHUD {
   protected abstract drawLevelSelectionPanel(): void;
 
   private createSlots(): void {
-    const textures = ["fireball_tile", "weapon-blue-ray", "weapon-icicle"] as const;
+    const textures = PRIMARY_WEAPON_KINDS.map(kind => WEAPON_ICON_TEXTURE_KEYS[kind]);
     const centerY = this.panelHeight / 2;
 
     textures.forEach((texture, index) => {

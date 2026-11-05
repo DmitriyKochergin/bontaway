@@ -1,6 +1,7 @@
 import Phaser from "phaser";
 import { getLevelDefinition } from "../levels";
 import { DepthLayer } from "../types/depth-layer";
+import { WEAPON_TEXTURE_KEYS } from "../types/weapon";
 import type { DungeonSystem } from "./DungeonSystem";
 import type { FieldOfViewSystem } from "./FieldOfViewSystem";
 
@@ -64,7 +65,7 @@ export class TorchManager {
       // Body of the flame seen from directly above: soft particles flare outward in every direction
       // from the hot core, tinted hot-to-cool as they spread and shrink. No vertical bias — a top-down
       // fire radiates, it does not rise, so the perspective stays flat.
-      const flame = this.scene.add.particles(worldX, worldY, "fireball", {
+      const flame = this.scene.add.particles(worldX, worldY, WEAPON_TEXTURE_KEYS.fireball, {
         speed: { min: 8 * scaleRatio, max: 26 * scaleRatio },
         angle: { min: 0, max: 360 },
         scale: { start: 0.55 * scaleRatio, end: 0 },
@@ -85,7 +86,7 @@ export class TorchManager {
       this.torchFx.push(flame);
 
       // Sparse embers that shoot outward and wink out — "real fire sparks" scattering across the floor.
-      const embers = this.scene.add.particles(worldX, worldY, "fireball", {
+      const embers = this.scene.add.particles(worldX, worldY, WEAPON_TEXTURE_KEYS.fireball, {
         speed: { min: 30 * scaleRatio, max: 70 * scaleRatio },
         angle: { min: 0, max: 360 },
         scale: { start: 0.16 * scaleRatio, end: 0 },

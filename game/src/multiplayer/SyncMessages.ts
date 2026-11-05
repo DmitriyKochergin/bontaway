@@ -1,3 +1,7 @@
+import type { WeaponKind } from "../types/weapon";
+
+export type { WeaponKind };
+
 /**
  * Wire protocol for the arena's peer-to-peer presence.
  *
@@ -5,8 +9,6 @@
  * authoritative world state to reconcile. Every peer simply owns itself: it broadcasts where it
  * is, where it faces, and what it fires. Others render dumb, interpolated replicas.
  */
-
-export type WeaponKind = "fireball" | "ray" | "icicle" | "sphere";
 
 // These are `type` aliases (not interfaces) on purpose: Trystero's makeAction<T> requires the
 // payload to satisfy a JSON index signature, which TS grants implicitly to object type-literals
